@@ -75,7 +75,7 @@ export function SettingsClient({ profile, auditLogs }: Props) {
       {/* Security */}
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Shield size={16} className="text-violet-400" />
+          <Shield size={16} className="text-white/70" />
           <h3 className="text-sm font-semibold text-white">Security</h3>
         </div>
         <div className="text-xs text-[#8888aa] space-y-2">
@@ -87,7 +87,7 @@ export function SettingsClient({ profile, auditLogs }: Props) {
       {/* Audit Log */}
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-[#2a2a3a] flex items-center gap-2">
-          <Clock size={16} className="text-violet-400" />
+          <Clock size={16} className="text-white/70" />
           <h3 className="text-sm font-semibold text-white">Activity Log</h3>
           <span className="text-xs text-[#8888aa] ml-auto">Last 50 actions</span>
         </div>
@@ -102,7 +102,7 @@ export function SettingsClient({ profile, auditLogs }: Props) {
                   <div className="text-sm text-white">
                     <span className="font-medium">{(log.profile as { full_name?: string } | null)?.full_name ?? 'System'}</span>
                     {' '}<span className="text-[#8888aa]">{log.action as string}</span>
-                    {' '}<span className="text-violet-400">{log.entity_type as string}</span>
+                    {' '}<span className="text-white/70">{log.entity_type as string}</span>
                   </div>
                   <div className="text-xs text-[#5a5a7a]">{formatRelative(log.created_at as string)}</div>
                 </div>

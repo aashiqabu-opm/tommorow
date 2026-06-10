@@ -124,7 +124,7 @@ export default async function DashboardPage() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-[#8888aa] uppercase tracking-wider">Projects</h2>
-          <Link href="/projects" className="text-xs text-violet-400 hover:text-violet-300">View all</Link>
+          <Link href="/projects" className="text-xs text-white/70 hover:text-white">View all</Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {projects.slice(0, 6).map((project) => (
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold text-[#8888aa] uppercase tracking-wider">Liability Tracker</h2>
-            <Link href="/liabilities" className="text-xs text-violet-400 hover:text-violet-300">Manage</Link>
+            <Link href="/liabilities" className="text-xs text-white/70 hover:text-white">Manage</Link>
           </div>
           <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl divide-y divide-[#2a2a3a]">
             {liabilities.slice(0, 5).map((lib, i) => {
@@ -174,8 +174,8 @@ export default async function DashboardPage() {
 function ProjectCard({ project }: { project: { id: string; name: string; status: string } }) {
   const statusConfig = {
     active: { label: 'Active', color: 'text-emerald-400', dot: 'bg-emerald-400' },
-    development: { label: 'Development', color: 'text-blue-400', dot: 'bg-blue-400' },
-    post_production: { label: 'Post Production', color: 'text-violet-400', dot: 'bg-violet-400' },
+    development: { label: 'Development', color: 'text-gray-300', dot: 'bg-gray-300' },
+    post_production: { label: 'Post Production', color: 'text-gray-300', dot: 'bg-gray-400' },
     released: { label: 'Released', color: 'text-gray-400', dot: 'bg-gray-400' },
     on_hold: { label: 'On Hold', color: 'text-amber-400', dot: 'bg-amber-400' },
     cancelled: { label: 'Cancelled', color: 'text-red-400', dot: 'bg-red-400' },
@@ -183,10 +183,10 @@ function ProjectCard({ project }: { project: { id: string; name: string; status:
 
   return (
     <Link href={`/projects/${project.id}`}>
-      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 hover:border-violet-500/30 hover:bg-[#16161f] transition-all cursor-pointer">
+      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 hover:border-white/30 hover:bg-[#16161f] transition-all cursor-pointer">
         <div className="flex items-start justify-between mb-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-600/20 border border-violet-500/20 flex items-center justify-center">
-            <Clapperboard size={18} className="text-violet-400" />
+          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
+            <Clapperboard size={18} className="text-white/70" />
           </div>
           <div className={cn('flex items-center gap-1.5 text-xs font-medium', statusConfig.color)}>
             <div className={cn('w-1.5 h-1.5 rounded-full', statusConfig.dot)} />

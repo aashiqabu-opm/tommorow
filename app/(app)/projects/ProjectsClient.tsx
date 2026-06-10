@@ -31,8 +31,8 @@ const STATUS_OPTIONS = [
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'green' | 'yellow' | 'red' | 'blue' | 'purple' | 'gray'; dot: string }> = {
   active: { label: 'Active', variant: 'green', dot: 'bg-emerald-400' },
-  development: { label: 'Development', variant: 'blue', dot: 'bg-blue-400' },
-  post_production: { label: 'Post Production', variant: 'purple', dot: 'bg-violet-400' },
+  development: { label: 'Development', variant: 'gray', dot: 'bg-gray-300' },
+  post_production: { label: 'Post Production', variant: 'gray', dot: 'bg-gray-400' },
   released: { label: 'Released', variant: 'gray', dot: 'bg-gray-400' },
   on_hold: { label: 'On Hold', variant: 'yellow', dot: 'bg-amber-400' },
   cancelled: { label: 'Cancelled', variant: 'red', dot: 'bg-red-400' },
@@ -92,10 +92,10 @@ export function ProjectsClient({ projects, userId, role }: Props) {
           const cfg = STATUS_CONFIG[project.status] ?? { label: project.status, variant: 'gray' as const, dot: 'bg-gray-400' }
           return (
             <Link key={project.id} href={`/projects/${project.id}`}>
-              <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 hover:border-violet-500/30 hover:bg-[#16161f] transition-all cursor-pointer group">
+              <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 hover:border-white/30 hover:bg-[#16161f] transition-all cursor-pointer group">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="w-11 h-11 rounded-xl bg-violet-600/20 border border-violet-500/20 flex items-center justify-center group-hover:bg-violet-600/30 transition-colors">
-                    <Clapperboard size={20} className="text-violet-400" />
+                  <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center group-hover:bg-white/15 transition-colors">
+                    <Clapperboard size={20} className="text-white/70" />
                   </div>
                   <StatusBadge label={cfg.label} variant={cfg.variant} />
                 </div>

@@ -157,7 +157,7 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${activeTab === tab ? 'bg-violet-600 text-white' : 'text-[#8888aa] hover:text-white'}`}
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${activeTab === tab ? 'bg-white text-black' : 'text-[#8888aa] hover:text-white'}`}
           >
             {tab}
             {tab === 'pending' && pendingCount > 0 && (
@@ -203,7 +203,7 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
                   {/* Action buttons */}
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     {req.bill_url && (
-                      <a href={req.bill_url} target="_blank" rel="noreferrer" className="text-xs text-violet-400 hover:text-violet-300">View Bill</a>
+                      <a href={req.bill_url} target="_blank" rel="noreferrer" className="text-xs text-white/70 hover:text-white">View Bill</a>
                     )}
                     {canVerify && req.verification_status === 'pending' && (
                       <>
@@ -218,7 +218,7 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
                       </>
                     )}
                     {canVerify && req.approval_status === 'approved' && req.payment_status === 'unpaid' && (
-                      <button onClick={() => handleMarkPaid(req)} className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1"><CheckCircle size={12} /> Mark Paid</button>
+                      <button onClick={() => handleMarkPaid(req)} className="text-xs text-white/70 hover:text-white flex items-center gap-1"><CheckCircle size={12} /> Mark Paid</button>
                     )}
                   </div>
                 </div>

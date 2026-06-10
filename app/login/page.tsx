@@ -36,7 +36,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-white/5 rounded-full blur-3xl" />
       </div>
 
       <div className="w-full max-w-sm relative z-10">
@@ -57,7 +57,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@opmcinemas.com"
-              className="w-full bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#5a5a7a] focus:outline-none focus:ring-1 focus:ring-violet-500/60 focus:border-violet-500/40"
+              className="w-full bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#5a5a7a] focus:outline-none focus:ring-1 focus:ring-white/40 focus:border-white/40"
             />
           </div>
 
@@ -70,7 +70,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-[#5a5a7a] focus:outline-none focus:ring-1 focus:ring-violet-500/60 focus:border-violet-500/40"
+                className="w-full bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-[#5a5a7a] focus:outline-none focus:ring-1 focus:ring-white/40 focus:border-white/40"
               />
               <button
                 type="button"
@@ -91,7 +91,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+            className="w-full bg-white hover:bg-gray-200 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>

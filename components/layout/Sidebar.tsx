@@ -85,11 +85,11 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   active
-                    ? 'bg-violet-600/20 text-violet-300 border border-violet-500/20'
+                    ? 'bg-white/10 text-white border border-white/15'
                     : 'text-[#8888aa] hover:text-white hover:bg-[#1a1a24]'
                 )}
               >
-                <item.icon size={17} className={active ? 'text-violet-400' : ''} />
+                <item.icon size={17} className={active ? 'text-white/70' : ''} />
                 {item.label}
               </Link>
             )

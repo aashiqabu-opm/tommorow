@@ -147,7 +147,7 @@ export function CashClientPage({ entries, userId }: Props) {
                     <td className="px-5 py-3 text-[#8888aa]">{(entry.profile as { full_name?: string } | null)?.full_name ?? '—'}</td>
                     <td className="px-5 py-3">
                       {entry.proof_file_url ? (
-                        <a href={entry.proof_file_url} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300">
+                        <a href={entry.proof_file_url} target="_blank" rel="noreferrer" className="text-white/70 hover:text-white">
                           <Paperclip size={14} />
                         </a>
                       ) : <span className="text-[#5a5a7a]">—</span>}

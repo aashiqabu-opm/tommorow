@@ -171,7 +171,7 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
                     <div className="mt-2">
                       <button
                         onClick={() => setPaymentModal(lib)}
-                        className="text-xs text-violet-400 hover:text-violet-300 font-medium"
+                        className="text-xs text-white/70 hover:text-white font-medium"
                       >
                         + Record Payment
                       </button>

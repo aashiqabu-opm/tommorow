@@ -54,7 +54,7 @@ export function Header({ profile, onMenuClick }: HeaderProps) {
             onClick={() => setMenuOpen(!menuOpen)}
             className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-lg hover:bg-[#1a1a24] transition-colors"
           >
-            <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-xs font-bold text-white">
+            <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-xs font-bold text-white">
               {profile.full_name.charAt(0).toUpperCase()}
             </div>
             <div className="hidden sm:block text-left">

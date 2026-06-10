@@ -75,7 +75,7 @@ export function ReportsClient({ cashEntries, liabilities, payments, documents, p
           <button
             key={tab.key}
             onClick={() => setActive(tab.key)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${active === tab.key ? 'bg-violet-600 text-white' : 'text-[#8888aa] hover:text-white'}`}
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${active === tab.key ? 'bg-white text-black' : 'text-[#8888aa] hover:text-white'}`}
           >
             {tab.label}
           </button>

@@ -123,12 +123,12 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
           placeholder="Search documents..."
           value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="flex-1 min-w-48 bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-2 text-sm text-white placeholder-[#5a5a7a] focus:outline-none focus:ring-1 focus:ring-violet-500/60"
+          className="flex-1 min-w-48 bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-2 text-sm text-white placeholder-[#5a5a7a] focus:outline-none focus:ring-1 focus:ring-white/40"
         />
         <select
           value={projectFilter}
           onChange={e => setProjectFilter(e.target.value)}
-          className="bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-violet-500/60"
+          className="bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40"
         >
           <option value="">All Projects</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -146,8 +146,8 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
             return (
               <div key={doc.id} className={`bg-[#13131a] border rounded-2xl p-5 transition-colors ${expiryS === 'expired' ? 'border-red-500/30' : expiryS === 'warning' ? 'border-amber-500/30' : 'border-[#2a2a3a]'}`}>
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-violet-600/15 border border-violet-500/20 flex items-center justify-center">
-                    <FileText size={16} className="text-violet-400" />
+                  <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
+                    <FileText size={16} className="text-white/70" />
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <StatusBadge label={statusB.label} variant={statusB.variant} />

@@ -36,7 +36,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   }
 
   const STATUS_VARIANTS: Record<string, 'green' | 'yellow' | 'red' | 'blue' | 'purple' | 'gray'> = {
-    active: 'green', development: 'blue', post_production: 'purple',
+    active: 'green', development: 'gray', post_production: 'gray',
     released: 'gray', on_hold: 'yellow', cancelled: 'red',
   }
 
@@ -45,8 +45,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-violet-600/20 border border-violet-500/20 flex items-center justify-center">
-            <Clapperboard size={22} className="text-violet-400" />
+          <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center">
+            <Clapperboard size={22} className="text-white/70" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -72,7 +72,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-[#2a2a3a] flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">Documents</h3>
-            <Link href="/documents" className="text-xs text-violet-400 hover:text-violet-300">View all</Link>
+            <Link href="/documents" className="text-xs text-white/70 hover:text-white">View all</Link>
           </div>
           {(documents ?? []).length === 0 ? (
             <div className="py-8 text-center text-[#8888aa] text-sm">No documents</div>
@@ -98,7 +98,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-[#2a2a3a] flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">Payment Requests</h3>
-            <Link href="/payments" className="text-xs text-violet-400 hover:text-violet-300">View all</Link>
+            <Link href="/payments" className="text-xs text-white/70 hover:text-white">View all</Link>
           </div>
           {(payments ?? []).length === 0 ? (
             <div className="py-8 text-center text-[#8888aa] text-sm">No payment requests</div>

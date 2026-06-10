@@ -23,7 +23,7 @@ const iconStyles = {
   green: 'bg-emerald-500/15 text-emerald-400',
   yellow: 'bg-amber-500/15 text-amber-400',
   red: 'bg-red-500/15 text-red-400',
-  default: 'bg-violet-500/15 text-violet-400',
+  default: 'bg-white/10 text-white',
 }
 
 const valueStyles = {

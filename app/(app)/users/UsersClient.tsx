@@ -34,10 +34,10 @@ const ROLE_LABELS: Record<Role, string> = {
 }
 
 const ROLE_VARIANTS: Record<Role, 'green' | 'yellow' | 'red' | 'blue' | 'purple' | 'gray'> = {
-  founder: 'purple',
-  accountant: 'blue',
-  executive_producer: 'green',
-  production_manager: 'yellow',
+  founder: 'gray',
+  accountant: 'gray',
+  executive_producer: 'gray',
+  production_manager: 'gray',
   legal_viewer: 'gray',
 }
 
@@ -86,7 +86,7 @@ export function UsersClient({ profiles, currentUserId }: Props) {
           {profiles.map((profile) => (
             <div key={profile.id} className="px-5 py-4 flex items-center gap-4">
               {/* Avatar */}
-              <div className="w-10 h-10 rounded-full bg-violet-600/30 flex items-center justify-center text-sm font-bold text-violet-300 shrink-0">
+              <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold text-white shrink-0">
                 {profile.full_name.charAt(0).toUpperCase()}
               </div>
 
@@ -106,7 +106,7 @@ export function UsersClient({ profiles, currentUserId }: Props) {
                   value={profile.role}
                   onChange={e => updateRole(profile.id, e.target.value as Role)}
                   disabled={updating === profile.id || profile.id === currentUserId}
-                  className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-violet-500/60 disabled:opacity-50"
+                  className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40 disabled:opacity-50"
                 >
                   {ROLE_OPTIONS.map(o => (
                     <option key={o.value} value={o.value} className="bg-[#1a1a24]">{o.label}</option>
@@ -134,14 +134,14 @@ export function UsersClient({ profiles, currentUserId }: Props) {
         </div>
       </div>
 
-      <div className="bg-[#13131a] border border-amber-500/20 rounded-2xl p-5">
-        <h3 className="text-sm font-semibold text-amber-400 mb-3">Access Control Summary</h3>
+      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
+        <h3 className="text-sm font-semibold text-white mb-3">Access Control Summary</h3>
         <div className="space-y-2 text-xs text-[#8888aa]">
-          <p><span className="text-violet-400 font-medium">Founder</span> — Full access to all modules including finance, users, settings</p>
-          <p><span className="text-blue-400 font-medium">Accountant</span> — Finance, cash, liabilities, payments, reports</p>
-          <p><span className="text-green-400 font-medium">Executive Producer</span> — Assigned project documents and payment request status</p>
-          <p><span className="text-amber-400 font-medium">Production Manager</span> — Upload bills, receipts, documents; create payment requests</p>
-          <p><span className="text-gray-400 font-medium">Legal / CA Viewer</span> — Read-only access to selected documents and reports</p>
+          <p><span className="text-white font-medium">Founder</span> — Full access to all modules including finance, users, settings</p>
+          <p><span className="text-white font-medium">Accountant</span> — Finance, cash, liabilities, payments, reports</p>
+          <p><span className="text-white font-medium">Executive Producer</span> — Assigned project documents and payment request status</p>
+          <p><span className="text-white font-medium">Production Manager</span> — Upload bills, receipts, documents; create payment requests</p>
+          <p><span className="text-white font-medium">Legal / CA Viewer</span> — Read-only access to selected documents and reports</p>
         </div>
       </div>
     </div>

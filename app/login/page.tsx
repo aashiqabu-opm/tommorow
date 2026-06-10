@@ -42,9 +42,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
-          <OPMLogo size="md" className="text-white mb-6" />
-          <h1 className="text-2xl font-bold text-white tracking-tight">OPM Office</h1>
-          <p className="text-sm text-[#8888aa] mt-1.5">The company, at a glance.</p>
+          <OPMLogo width={190} className="text-white mb-7" />
+          <h1 className="text-xl font-semibold text-white tracking-tight">OPM Office</h1>
+          <p className="text-sm text-[#8888aa] mt-1">The company, at a glance.</p>
         </div>
 
         {/* Form */}

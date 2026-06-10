@@ -7,7 +7,6 @@ import {
   Wallet,
   CreditCard,
   FileText,
-  FolderOpen,
   BarChart3,
   Users,
   Settings,
@@ -63,12 +62,12 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-5 border-b border-[#2a2a3a]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-              <FolderOpen size={16} className="text-white" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
+              <Clapperboard size={15} className="text-white" />
             </div>
             <div>
               <div className="text-sm font-semibold text-white leading-none">OPM Office</div>
-              <div className="text-[10px] text-[#8888aa] mt-0.5">Cinemas</div>
+              <div className="text-[9px] font-medium text-violet-400 uppercase tracking-[0.25em] mt-1">OPM Cinemas</div>
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden text-[#8888aa] hover:text-white">

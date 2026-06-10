@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { FolderOpen, Eye, EyeOff } from 'lucide-react'
+import { Clapperboard, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -41,11 +41,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
-          <div className="w-14 h-14 rounded-2xl bg-violet-600 flex items-center justify-center mb-4 shadow-lg shadow-violet-600/30">
-            <FolderOpen size={26} className="text-white" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center mb-5 shadow-lg shadow-violet-600/40">
+            <Clapperboard size={30} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">OPM Office</h1>
-          <p className="text-sm text-[#8888aa] mt-1">OPM Cinemas Internal System</p>
+          <div className="text-[11px] font-semibold text-violet-400 uppercase tracking-[0.35em] mb-1.5">OPM Cinemas</div>
+          <h1 className="text-3xl font-bold text-white tracking-tight">OPM Office</h1>
+          <p className="text-sm text-[#8888aa] mt-2">The company, at a glance.</p>
         </div>
 
         {/* Form */}

@@ -43,8 +43,8 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
           <OPMLogo width={171} className="text-white mb-7" />
-          <h1 className="text-xl font-semibold text-white tracking-tight">OPM Office</h1>
-          <p className="text-sm text-[#8888aa] mt-1">The company, at a glance.</p>
+          <h1 className="text-xl font-semibold text-white tracking-tight">OFFICE</h1>
+          <p className="text-sm text-[#8888aa] mt-1">OPM Control Center</p>
         </div>
 
         {/* Form */}
@@ -98,7 +98,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-[11px] text-[#5a5a7a] mt-8">
-          Access restricted to OPM Cinemas staff only
+          Access OPM Cinemas staffs only
         </p>
       </div>
     </div>

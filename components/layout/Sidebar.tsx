@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { OPMLogo } from '@/components/ui/OPMLogo'
 import type { Role } from '@/lib/types'
 
 interface SidebarProps {
@@ -61,14 +62,9 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-5 border-b border-[#2a2a3a]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
-              <Clapperboard size={15} className="text-white" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-white leading-none">OPM Office</div>
-              <div className="text-[9px] font-medium text-violet-400 uppercase tracking-[0.25em] mt-1">OPM Cinemas</div>
-            </div>
+          <div className="flex flex-col gap-0.5">
+            <OPMLogo size="sm" className="text-white" />
+            <div className="text-[10px] font-medium text-[#8888aa] tracking-wide">Internal Office</div>
           </div>
           <button onClick={onClose} className="lg:hidden text-[#8888aa] hover:text-white">
             <X size={18} />

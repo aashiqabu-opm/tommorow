@@ -125,7 +125,7 @@ CREATE POLICY "payment_requests_read" ON payment_requests
 -- Production staff + finance can create
 CREATE POLICY "payment_requests_insert" ON payment_requests
   FOR INSERT TO authenticated WITH CHECK (
-    public.user_role() IN ('founder', 'accountant', 'executive_producer', 'production_manager')
+    public.user_role() IN ('founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager')
   );
 
 -- Finance can update (verify, approve, mark paid)
@@ -150,18 +150,18 @@ CREATE POLICY "documents_read" ON documents
     (public.user_role() = 'accountant' AND access_level IN ('founder_only', 'finance_team', 'project_team', 'all_staff'))
     OR
     -- Others see project_team and all_staff docs
-    (public.user_role() IN ('executive_producer', 'production_manager', 'legal_viewer')
+    (public.user_role() IN ('general_manager', 'executive_producer', 'production_manager', 'legal_viewer')
       AND access_level IN ('project_team', 'all_staff'))
   );
 
 CREATE POLICY "documents_insert" ON documents
   FOR INSERT TO authenticated WITH CHECK (
-    public.user_role() IN ('founder', 'accountant', 'production_manager')
+    public.user_role() IN ('founder', 'accountant', 'general_manager', 'production_manager')
   );
 
 CREATE POLICY "documents_update" ON documents
   FOR UPDATE TO authenticated USING (
-    public.user_role() IN ('founder', 'accountant', 'production_manager')
+    public.user_role() IN ('founder', 'accountant', 'general_manager', 'production_manager')
   );
 
 CREATE POLICY "documents_delete_founder" ON documents
@@ -177,7 +177,7 @@ CREATE POLICY "document_files_read" ON document_files
 
 CREATE POLICY "document_files_insert" ON document_files
   FOR INSERT TO authenticated WITH CHECK (
-    public.user_role() IN ('founder', 'accountant', 'production_manager')
+    public.user_role() IN ('founder', 'accountant', 'general_manager', 'production_manager')
   );
 
 CREATE POLICY "document_files_delete_founder" ON document_files

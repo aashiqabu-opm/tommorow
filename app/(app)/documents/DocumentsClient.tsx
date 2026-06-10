@@ -46,7 +46,7 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
   const [filter, setFilter] = useState('')
   const [projectFilter, setProjectFilter] = useState('')
 
-  const canUpload = ['founder', 'accountant', 'production_manager'].includes(role)
+  const canUpload = ['founder', 'accountant', 'general_manager', 'production_manager'].includes(role)
 
   const expiring = documents.filter(d => d.expiry_date && isExpiringSoon(d.expiry_date, 30))
   const expired = documents.filter(d => d.expiry_date && isExpired(d.expiry_date))

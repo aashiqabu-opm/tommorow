@@ -1,4 +1,4 @@
-export type Role = 'founder' | 'accountant' | 'executive_producer' | 'production_manager' | 'legal_viewer'
+export type Role = 'founder' | 'accountant' | 'general_manager' | 'executive_producer' | 'production_manager' | 'legal_viewer'
 
 export type ProjectStatus = 'active' | 'development' | 'post_production' | 'released' | 'on_hold' | 'cancelled'
 

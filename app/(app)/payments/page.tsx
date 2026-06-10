@@ -10,7 +10,7 @@ export default async function PaymentsPage() {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   const role = profile?.role
 
-  const allowed = ['founder', 'accountant', 'executive_producer', 'production_manager']
+  const allowed = ['founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager']
   if (!allowed.includes(role ?? '')) redirect('/dashboard')
 
   const [{ data: requests }, { data: projects }] = await Promise.all([

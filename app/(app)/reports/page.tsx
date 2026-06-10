@@ -8,7 +8,7 @@ export default async function ReportsPage() {
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  const allowed = ['founder', 'accountant', 'legal_viewer']
+  const allowed = ['founder', 'accountant', 'general_manager', 'legal_viewer']
   if (!allowed.includes(profile?.role ?? '')) redirect('/dashboard')
 
   const [

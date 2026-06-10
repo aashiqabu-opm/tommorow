@@ -25,13 +25,13 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'executive_producer', 'production_manager', 'legal_viewer'] },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager', 'legal_viewer'] },
   { href: '/cash', label: 'Cash in Hand', icon: Wallet, roles: ['founder', 'accountant'] },
   { href: '/liabilities', label: 'Liabilities', icon: AlertTriangle, roles: ['founder', 'accountant'] },
-  { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['founder', 'accountant', 'executive_producer', 'production_manager'] },
-  { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'executive_producer', 'production_manager', 'legal_viewer'] },
-  { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'executive_producer', 'production_manager', 'legal_viewer'] },
-  { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'legal_viewer'] },
+  { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager'] },
+  { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager', 'legal_viewer'] },
+  { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager', 'legal_viewer'] },
+  { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
   { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['founder', 'accountant'] },
 ] as const

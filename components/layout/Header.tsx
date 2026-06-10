@@ -14,6 +14,7 @@ interface HeaderProps {
 const ROLE_LABELS: Record<string, string> = {
   founder: 'Founder',
   accountant: 'Accountant',
+  general_manager: 'General Manager',
   executive_producer: 'Executive Producer',
   production_manager: 'Production Manager',
   legal_viewer: 'Legal / CA Viewer',

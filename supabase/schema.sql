@@ -12,7 +12,7 @@ CREATE TABLE profiles (
   email TEXT NOT NULL,
   full_name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'production_manager'
-    CHECK (role IN ('founder', 'accountant', 'executive_producer', 'production_manager', 'legal_viewer')),
+    CHECK (role IN ('founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager', 'legal_viewer')),
   avatar_url TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

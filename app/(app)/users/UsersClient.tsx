@@ -20,6 +20,7 @@ interface Props {
 const ROLE_OPTIONS = [
   { value: 'founder', label: 'Founder / Owner' },
   { value: 'accountant', label: 'Accountant' },
+  { value: 'general_manager', label: 'General Manager' },
   { value: 'executive_producer', label: 'Executive Producer' },
   { value: 'production_manager', label: 'Production Manager' },
   { value: 'legal_viewer', label: 'Legal / CA Viewer' },
@@ -28,6 +29,7 @@ const ROLE_OPTIONS = [
 const ROLE_LABELS: Record<Role, string> = {
   founder: 'Founder',
   accountant: 'Accountant',
+  general_manager: 'General Manager',
   executive_producer: 'Executive Producer',
   production_manager: 'Production Manager',
   legal_viewer: 'Legal / CA Viewer',
@@ -36,6 +38,7 @@ const ROLE_LABELS: Record<Role, string> = {
 const ROLE_VARIANTS: Record<Role, 'green' | 'yellow' | 'red' | 'blue' | 'purple' | 'gray'> = {
   founder: 'gray',
   accountant: 'gray',
+  general_manager: 'gray',
   executive_producer: 'gray',
   production_manager: 'gray',
   legal_viewer: 'gray',
@@ -139,6 +142,7 @@ export function UsersClient({ profiles, currentUserId }: Props) {
         <div className="space-y-2 text-xs text-[#8888aa]">
           <p><span className="text-white font-medium">Founder</span> — Full access to all modules including finance, users, settings</p>
           <p><span className="text-white font-medium">Accountant</span> — Finance, cash, liabilities, payments, reports</p>
+          <p><span className="text-white font-medium">General Manager</span> — Payments, documents, projects, reports (no cash/liabilities)</p>
           <p><span className="text-white font-medium">Executive Producer</span> — Assigned project documents and payment request status</p>
           <p><span className="text-white font-medium">Production Manager</span> — Upload bills, receipts, documents; create payment requests</p>
           <p><span className="text-white font-medium">Legal / CA Viewer</span> — Read-only access to selected documents and reports</p>

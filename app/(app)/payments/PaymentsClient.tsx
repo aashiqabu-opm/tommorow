@@ -41,7 +41,7 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
 
   const isFounder = role === 'founder'
   const isAccountant = role === 'accountant'
-  const canCreate = ['founder', 'accountant', 'executive_producer', 'production_manager'].includes(role)
+  const canCreate = ['founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager'].includes(role)
   const canVerify = isFounder || isAccountant
   const canApprove = isFounder
 

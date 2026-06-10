@@ -29,8 +29,8 @@ Internal office operating system for OPM Cinemas. A founder-first visual dashboa
 |---|---|
 | **Founder** | Full access to everything |
 | **Accountant** | Finance, cash, liabilities, payments, reports |
-| **Executive Producer** | Project documents, payment request status |
-| **Production Manager** | Upload bills/documents, create payment requests |
+| **General Manager** | Payments, documents, projects, reports (no cash/liabilities) |
+| **Executive Producer** | Upload bills/documents, create payment requests, projects |
 | **Legal / CA Viewer** | Read-only documents and reports |
 
 ---
@@ -99,7 +99,7 @@ Open [http://localhost:3000](http://localhost:3000)
 ## Adding More Users
 
 1. In Supabase Auth → Invite User (or they sign up)
-2. A profile row is auto-created with `production_manager` role
+2. A profile row is auto-created with `executive_producer` role
 3. Founder logs in → **Users** page → change role as needed
 
 ---

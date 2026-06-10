@@ -16,7 +16,6 @@ const ROLE_LABELS: Record<string, string> = {
   accountant: 'Accountant',
   general_manager: 'General Manager',
   executive_producer: 'Executive Producer',
-  production_manager: 'Production Manager',
   legal_viewer: 'Legal / CA Viewer',
 }
 

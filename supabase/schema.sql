@@ -11,8 +11,8 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   full_name TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'production_manager'
-    CHECK (role IN ('founder', 'accountant', 'general_manager', 'executive_producer', 'production_manager', 'legal_viewer')),
+  role TEXT NOT NULL DEFAULT 'executive_producer'
+    CHECK (role IN ('founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer')),
   avatar_url TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -28,7 +28,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'production_manager')
+    COALESCE(NEW.raw_user_meta_data->>'role', 'executive_producer')
   );
   RETURN NEW;
 END;

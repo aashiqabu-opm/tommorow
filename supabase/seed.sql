@@ -51,9 +51,18 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
--- Storage RLS policies
-INSERT INTO storage.policies (bucket_id, name, definition, check_definition, operation)
-VALUES
-  ('documents', 'Allow authenticated upload', '(auth.role() = ''authenticated'')', '(auth.role() = ''authenticated'')', 'INSERT'),
-  ('documents', 'Allow authenticated read', '(auth.role() = ''authenticated'')', NULL, 'SELECT')
-ON CONFLICT DO NOTHING;
+-- Storage RLS policies on storage.objects.
+-- Wrapped in a DO block: on some hosted Supabase projects the SQL editor cannot
+-- create policies on storage.objects — in that case create the same policies via
+-- Dashboard > Storage > documents bucket > Policies instead.
+DO $$
+BEGIN
+  CREATE POLICY "documents_bucket_upload" ON storage.objects
+    FOR INSERT TO authenticated WITH CHECK (bucket_id = 'documents');
+  CREATE POLICY "documents_bucket_read" ON storage.objects
+    FOR SELECT TO authenticated USING (bucket_id = 'documents');
+  CREATE POLICY "documents_bucket_delete_founder" ON storage.objects
+    FOR DELETE TO authenticated USING (bucket_id = 'documents' AND public.is_founder());
+EXCEPTION WHEN insufficient_privilege OR duplicate_object THEN
+  RAISE NOTICE 'Storage policies skipped — create them via Dashboard > Storage > Policies';
+END $$;

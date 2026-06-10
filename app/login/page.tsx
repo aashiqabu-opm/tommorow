@@ -42,7 +42,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
-          <OPMLogo width={190} className="text-white mb-7" />
+          <OPMLogo width={171} className="text-white mb-7" />
           <h1 className="text-xl font-semibold text-white tracking-tight">OPM Office</h1>
           <p className="text-sm text-[#8888aa] mt-1">The company, at a glance.</p>
         </div>
@@ -91,7 +91,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-white hover:bg-gray-200 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+            className="w-full bg-white hover:bg-gray-200 disabled:opacity-60 text-black font-semibold py-3 rounded-xl transition-colors text-sm"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>

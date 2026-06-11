@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { MoneyInput } from '@/components/ui/MoneyInput'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { FilePicker } from '@/components/ui/FilePicker'
 import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -261,15 +262,7 @@ export function CashClientPage({ entries, userId }: Props) {
             placeholder="Optional notes..."
           />
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-[#8888aa]">Proof Attachment</label>
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={e => setFile(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-[#8888aa] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#2a2a3a] file:text-white file:text-xs file:cursor-pointer"
-            />
-          </div>
+          <FilePicker label="Proof Attachment" file={file} onChange={setFile} />
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>

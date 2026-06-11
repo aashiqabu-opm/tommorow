@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select } from '@/components/ui/Input'
 import { MoneyInput } from '@/components/ui/MoneyInput'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { FilePicker } from '@/components/ui/FilePicker'
 import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, PAYMENT_CATEGORY_OPTIONS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -427,9 +428,7 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
             <Input label="Due Date" type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-[#8888aa]">Bill / Receipt</label>
-            <input type="file" accept="image/*,.pdf" onChange={e => setBill(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-[#8888aa] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#2a2a3a] file:text-white file:text-xs" />
+            <FilePicker label="Bill / Receipt" file={bill} onChange={setBill} />
             {!bill && <p className="text-[11px] text-amber-400">Uploading a bill is recommended before submission</p>}
           </div>
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />

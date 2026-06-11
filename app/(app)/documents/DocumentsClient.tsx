@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { compressImage } from '@/lib/compressImage'
 import { useToast } from '@/components/ui/Toast'
+import { FilePicker } from '@/components/ui/FilePicker'
 import type { Document } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -209,11 +210,7 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
                 { value: 'all_staff', label: 'All Staff' },
               ]} />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-[#8888aa]">File Upload</label>
-            <input type="file" accept=".pdf,.doc,.docx,image/*" onChange={e => setFile(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-[#8888aa] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#2a2a3a] file:text-white file:text-xs" />
-          </div>
+          <FilePicker label="File Upload" file={file} onChange={setFile} accept=".pdf,.doc,.docx,image/*" />
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>

@@ -1,9 +1,19 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Bell, CheckCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification } from '@/lib/types'
+
+const ENTITY_ROUTES: Record<string, string> = {
+  payment_requests: '/payments',
+  liabilities: '/liabilities',
+  documents: '/documents',
+  cash_entries: '/cash',
+  projects: '/projects',
+  profiles: '/users',
+}
 
 function timeAgo(dateStr: string) {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
@@ -18,6 +28,7 @@ function timeAgo(dateStr: string) {
 }
 
 export function NotificationsBell() {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
 
@@ -46,10 +57,14 @@ export function NotificationsBell() {
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
   }
 
-  async function markRead(id: string) {
+  function handleNotificationClick(n: Notification) {
+    // Mark read in the background — don't block navigation on the network
+    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)))
     const supabase = createClient()
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)))
+    supabase.from('notifications').update({ is_read: true }).eq('id', n.id).then()
+    setOpen(false)
+    const route = n.entity_type ? ENTITY_ROUTES[n.entity_type] : undefined
+    if (route) router.push(route)
   }
 
   function toggle() {
@@ -93,7 +108,7 @@ export function NotificationsBell() {
                 notifications.map((n) => (
                   <button
                     key={n.id}
-                    onClick={() => markRead(n.id)}
+                    onClick={() => handleNotificationClick(n)}
                     className={`w-full text-left px-4 py-3 hover:bg-[#2a2a3a]/50 transition-colors ${
                       n.is_read ? 'opacity-60' : ''
                     }`}

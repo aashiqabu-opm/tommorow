@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppShell } from '@/components/layout/AppShell'
+import { WhatsAppNudge } from '@/components/ui/WhatsAppNudge'
 import type { Profile } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <AppShell profile={profile as Profile}>
+      {!(profile as Profile).whatsapp_number && <WhatsAppNudge />}
       <div className="p-4 lg:p-6">
         {children}
       </div>

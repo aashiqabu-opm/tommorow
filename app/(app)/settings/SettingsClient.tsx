@@ -122,7 +122,7 @@ export function SettingsClient({ profile, auditLogs }: Props) {
           <label className="flex items-center justify-between gap-4 cursor-pointer">
             <div>
               <div className="text-sm text-white">WhatsApp alerts</div>
-              <div className="text-xs text-[#8888aa]">Same alerts on WhatsApp (requires number below)</div>
+              <div className="text-xs text-[#8888aa]">Urgent only — payment approvals, rejections, overdue dues (requires number below)</div>
             </div>
             <input
               type="checkbox"

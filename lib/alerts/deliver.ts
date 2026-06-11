@@ -3,13 +3,15 @@ import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfig
 import { CATEGORY_LABELS, type AlertCategory } from '@/lib/alerts/categories'
 
 // Fan an alert out to users via every channel they've enabled, skipping
-// anyone who muted the category. Server-side only. Silently does nothing
+// anyone who muted the category. Email carries everything; WhatsApp is
+// reserved for important alerts. Server-side only. Silently does nothing
 // if no provider is configured.
 export async function deliverAlert(
   userIds: string[],
   title: string,
   body?: string,
-  category: AlertCategory = 'general'
+  category: AlertCategory = 'general',
+  important = false
 ) {
   if (userIds.length === 0) return
   if (!emailConfigured() && !whatsappConfigured()) return
@@ -40,7 +42,7 @@ export async function deliverAlert(
       if (p.email_alerts && p.email) {
         jobs.push(sendEmail(p.email, `OPM Office [${tag}] — ${title}`, html))
       }
-      if (p.whatsapp_alerts && p.whatsapp_number) {
+      if (important && p.whatsapp_alerts && p.whatsapp_number) {
         jobs.push(sendWhatsApp(p.whatsapp_number, text))
       }
       return jobs

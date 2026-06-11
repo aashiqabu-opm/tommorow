@@ -6,7 +6,8 @@ export async function notifyUsers(
   title: string,
   body?: string,
   entityType?: string,
-  entityId?: string
+  entityId?: string,
+  important = false
 ) {
   if (userIds.length === 0) return
   const supabase = createClient()
@@ -24,7 +25,7 @@ export async function notifyUsers(
     void fetch('/api/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userIds, title, body, category: categoryFor(entityType) }),
+      body: JSON.stringify({ userIds, title, body, category: categoryFor(entityType), important }),
       keepalive: true,
     })
   } catch {
@@ -38,7 +39,8 @@ export async function notifyFinance(
   body?: string,
   entityType?: string,
   entityId?: string,
-  excludeUserId?: string
+  excludeUserId?: string,
+  important = false
 ) {
   const supabase = createClient()
   const { data } = await supabase
@@ -47,5 +49,5 @@ export async function notifyFinance(
     .in('role', ['founder', 'accountant'])
     .eq('is_active', true)
   const ids = (data ?? []).map((p) => p.id).filter((id) => id !== excludeUserId)
-  await notifyUsers(ids, title, body, entityType, entityId)
+  await notifyUsers(ids, title, body, entityType, entityId, important)
 }

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let payload: { userIds?: unknown; title?: unknown; body?: unknown; category?: unknown }
+  let payload: { userIds?: unknown; title?: unknown; body?: unknown; category?: unknown; important?: unknown }
   try {
     payload = await request.json()
   } catch {
@@ -39,6 +39,6 @@ export async function POST(request: Request) {
   }
 
   const category = isAlertCategory(payload.category) ? payload.category : 'general'
-  await deliverAlert(userIds, title, body, category)
+  await deliverAlert(userIds, title, body, category, payload.important === true)
   return NextResponse.json({ ok: true })
 }

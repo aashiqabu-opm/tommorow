@@ -111,7 +111,8 @@ export async function GET(request: Request) {
 
   const dateStr = today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
   const html = emailTemplate(`Daily Digest — ${dateStr}`, sections.join(''))
-  const text = `*OPM Office — Daily Digest (${dateStr})*\n${textLines.join('\n')}`
+  // WhatsApp is reserved for urgent matters — only fires when something is overdue
+  const urgentText = `*OPM Office — Urgent (${dateStr})*\n🔴 ${overdue.length} overdue liabilit${overdue.length === 1 ? 'y' : 'ies'}:\n${overdue.slice(0, 5).map((l) => `• ${l.party_name} — ${inr(Number(l.balance_remaining))} (due ${l.due_date})`).join('\n')}${pending.length > 0 ? `\n⏳ ${pending.length} payment${pending.length === 1 ? '' : 's'} awaiting approval` : ''}`
 
   let sent = 0
   await Promise.allSettled(
@@ -120,8 +121,8 @@ export async function GET(request: Request) {
       if (r.email_alerts && r.email) {
         jobs.push(sendEmail(r.email, `OPM Office — Daily Digest (${dateStr})`, html).then((ok) => { if (ok) sent++; return ok }))
       }
-      if (r.whatsapp_alerts && r.whatsapp_number) {
-        jobs.push(sendWhatsApp(r.whatsapp_number, text).then((ok) => { if (ok) sent++; return ok }))
+      if (overdue.length > 0 && r.whatsapp_alerts && r.whatsapp_number) {
+        jobs.push(sendWhatsApp(r.whatsapp_number, urgentText).then((ok) => { if (ok) sent++; return ok }))
       }
       return jobs
     })

@@ -149,7 +149,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
       await notifyFinance(
         `New payment request: ${form.payee}`,
         `${formatCurrency(parseFloat(form.amount) || 0)} — ${form.purpose}`,
-        'payment_requests', data.id, userId
+        'payment_requests', data.id, userId, true
       )
     }
     localStorage.setItem('opm_last_project', form.project_id)
@@ -193,7 +193,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
       await notifyUsers([req.requested_by],
         `Payment request approved: ${req.payee}`,
         `${formatCurrency(req.amount)} — payment will be processed`,
-        'payment_requests', req.id)
+        'payment_requests', req.id, true)
     }
     toast.success(`Approved: ${req.payee}`)
     router.refresh()
@@ -228,7 +228,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
       await notifyUsers([req.requested_by],
         `Payment request rejected: ${req.payee}`,
         reason || `${formatCurrency(req.amount)} — see comments for details`,
-        'payment_requests', req.id)
+        'payment_requests', req.id, true)
     }
 
     toast.success(`Rejected: ${req.payee} — requester notified`)
@@ -252,7 +252,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
       await notifyUsers([req.requested_by],
         `Payment completed: ${req.payee}`,
         `${formatCurrency(req.amount)} has been paid`,
-        'payment_requests', req.id)
+        'payment_requests', req.id, true)
     }
     toast.success(`Marked paid: ${req.payee}`)
     router.refresh()

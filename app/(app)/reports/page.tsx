@@ -14,13 +14,22 @@ export default async function ReportsPage() {
   const [
     { data: cashEntries },
     { data: liabilities },
+    { data: liabilityPayments },
     { data: payments },
     { data: documents },
     { data: projects },
   ] = await Promise.all([
-    supabase.from('cash_entries').select('*').order('entry_date', { ascending: false }).limit(90),
-    supabase.from('liabilities').select('*'),
-    supabase.from('payment_requests').select('*, project:projects(name)').order('created_at', { ascending: false }),
+    // No limit — CA needs full cash book
+    supabase.from('cash_entries')
+      .select('*, entered_by_profile:profiles!entered_by(full_name)')
+      .order('entry_date', { ascending: true }),
+    supabase.from('liabilities').select('*, project:projects(name)').order('created_at', { ascending: true }),
+    supabase.from('liability_payments')
+      .select('*, liability:liabilities(party_name), paid_by_profile:profiles!paid_by(full_name)')
+      .order('payment_date', { ascending: true }),
+    supabase.from('payment_requests')
+      .select('*, project:projects(name), requester:profiles!requested_by(full_name), approver:profiles!approved_by(full_name)')
+      .order('created_at', { ascending: true }),
     supabase.from('documents').select('*, project:projects(name)').order('created_at', { ascending: false }),
     supabase.from('projects').select('id, name'),
   ])
@@ -29,6 +38,7 @@ export default async function ReportsPage() {
     <ReportsClient
       cashEntries={cashEntries ?? []}
       liabilities={liabilities ?? []}
+      liabilityPayments={liabilityPayments ?? []}
       payments={payments ?? []}
       documents={documents ?? []}
       projects={projects ?? []}

@@ -9,6 +9,8 @@ import { StatusBadge, getLiabilityStatusBadge, getPriorityBadge } from '@/compon
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select } from '@/components/ui/Input'
+import { MoneyInput } from '@/components/ui/MoneyInput'
+import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, paidPercent, LIABILITY_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
@@ -36,6 +38,7 @@ const INITIAL_FORM = {
 
 export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(INITIAL_FORM)
@@ -77,9 +80,14 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
       created_by: userId,
     }).select().single()
 
-    if (!error && data) {
-      await logAction('create', 'liabilities', data.id, undefined, data)
+    if (error) {
+      toast.error("Couldn't save liability — please try again")
+      setSaving(false)
+      return
     }
+
+    if (data) await logAction('create', 'liabilities', data.id, undefined, data)
+    toast.success('Liability added')
 
     setSaving(false)
     setOpen(false)
@@ -89,9 +97,13 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
 
   async function handlePayment() {
     if (!paymentModal || savingPayment) return
+    const amount = parseFloat(paymentAmount) || 0
+    if (amount > paymentModal.balance_remaining) {
+      toast.error(`Payment exceeds balance of ${formatCurrency(paymentModal.balance_remaining)}`)
+      return
+    }
     setSavingPayment(true)
     const supabase = createClient()
-    const amount = parseFloat(paymentAmount) || 0
     const newPaid = paymentModal.amount_paid + amount
     const newBalance = paymentModal.amount_owed - newPaid
     const newStatus = newBalance <= 0 ? 'cleared' : 'partly_paid'
@@ -111,6 +123,7 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
     }).eq('id', paymentModal.id).select().single()
 
     if (updated) await logAction('update', 'liabilities', paymentModal.id, paymentModal as unknown as Record<string, unknown>, updated)
+    toast.success(`Payment of ${formatCurrency(amount)} recorded`)
 
     setSavingPayment(false)
     setPaymentModal(null)
@@ -192,8 +205,8 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Party Name" value={form.party_name} onChange={e => setForm({ ...form, party_name: e.target.value })} required placeholder="Vendor / Artist / Person name" />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Amount Owed" type="number" min="0" value={form.amount_owed} onChange={e => setForm({ ...form, amount_owed: e.target.value })} required />
-            <Input label="Already Paid" type="number" min="0" value={form.amount_paid} onChange={e => setForm({ ...form, amount_paid: e.target.value })} />
+            <MoneyInput label="Amount Owed" value={form.amount_owed} onChange={v => setForm({ ...form, amount_owed: v })} required />
+            <MoneyInput label="Already Paid" value={form.amount_paid} onChange={v => setForm({ ...form, amount_paid: v })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Original Date" type="date" value={form.original_date} onChange={e => setForm({ ...form, original_date: e.target.value })} required />
@@ -226,8 +239,7 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
               <div className="text-xs text-[#8888aa] mb-1">{paymentModal.party_name}</div>
               <div className="text-sm font-semibold text-white">Balance: {formatCurrency(paymentModal.balance_remaining)}</div>
             </div>
-            <Input label="Payment Amount" type="number" min="0" max={paymentModal.balance_remaining}
-              value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} required />
+            <MoneyInput label="Payment Amount" value={paymentAmount} onChange={setPaymentAmount} required />
             <Textarea label="Notes" value={paymentNote} onChange={e => setPaymentNote(e.target.value)} rows={2} />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setPaymentModal(null)}>Cancel</Button>

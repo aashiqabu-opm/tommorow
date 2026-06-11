@@ -8,6 +8,9 @@ import { StatusBadge, getPaymentStatusBadge } from '@/components/ui/StatusBadge'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select } from '@/components/ui/Input'
+import { MoneyInput } from '@/components/ui/MoneyInput'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, PAYMENT_CATEGORY_OPTIONS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
@@ -36,6 +39,7 @@ const INITIAL_FORM = {
 
 export function PaymentsClient({ requests, projects, comments, userId, role }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(INITIAL_FORM)
@@ -70,9 +74,17 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
   const approvedUnpaid = requests.filter(r => r.approval_status === 'approved' && r.payment_status === 'unpaid').length
   const totalPending = requests.filter(r => r.approval_status === 'pending').reduce((s, r) => s + r.amount, 0)
 
+  function openNewRequest() {
+    // Pre-select the project used last time
+    const lastProject = localStorage.getItem('opm_last_project') ?? ''
+    setForm({ ...INITIAL_FORM, project_id: projects.some(p => p.id === lastProject) ? lastProject : '' })
+    setBill(null)
+    setOpen(true)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.project_id) return alert('Please select a project')
+    if (!form.project_id) return toast.error('Please select a project')
     setSaving(true)
     const supabase = createClient()
 
@@ -106,7 +118,12 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
       notes: form.notes || null,
     }).select().single()
 
-    if (!error && data) {
+    if (error) {
+      toast.error("Couldn't submit request — please try again")
+      setSaving(false)
+      return
+    }
+    if (data) {
       await logAction('create', 'payment_requests', data.id, undefined, data)
       await notifyFinance(
         `New payment request: ${form.payee}`,
@@ -114,6 +131,8 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
         'payment_requests', data.id, userId
       )
     }
+    localStorage.setItem('opm_last_project', form.project_id)
+    toast.success('Payment request submitted')
     setSaving(false)
     setOpen(false)
     setForm(INITIAL_FORM)
@@ -136,6 +155,7 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
         `${formatCurrency(req.amount)} — awaiting founder approval`,
         'payment_requests', req.id)
     }
+    toast.success(`Verified: ${req.payee}`)
     router.refresh()
   }
 
@@ -154,6 +174,7 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
         `${formatCurrency(req.amount)} — payment will be processed`,
         'payment_requests', req.id)
     }
+    toast.success(`Approved: ${req.payee}`)
     router.refresh()
   }
 
@@ -189,6 +210,7 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
         'payment_requests', req.id)
     }
 
+    toast.success(`Rejected: ${req.payee} — requester notified`)
     setRejecting(false)
     setRejectTarget(null)
     setRejectReason('')
@@ -196,7 +218,7 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
   }
 
   async function handleMarkPaid(req: PaymentRequest) {
-    if (req.approval_status !== 'approved') return alert('Cannot mark paid — not yet approved')
+    if (req.approval_status !== 'approved') return toast.error('Cannot mark paid — not yet approved')
     const supabase = createClient()
     const update = {
       payment_status: 'paid',
@@ -211,6 +233,7 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
         `${formatCurrency(req.amount)} has been paid`,
         'payment_requests', req.id)
     }
+    toast.success(`Marked paid: ${req.payee}`)
     router.refresh()
   }
 
@@ -243,7 +266,7 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
       <PageHeader
         title="Payment Requests"
         subtitle="Track and approve all payment requests"
-        action={canCreate ? <Button icon={Plus} onClick={() => setOpen(true)}>New Request</Button> : undefined}
+        action={canCreate ? <Button icon={Plus} onClick={openNewRequest}>New Request</Button> : undefined}
       />
 
       {/* Stats */}
@@ -272,7 +295,12 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
       {/* Requests list */}
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="py-12 text-center text-[#8888aa] text-sm">No requests found</div>
+          <EmptyState
+            icon={CreditCard}
+            title={activeTab === 'all' ? 'No payment requests yet' : `No ${activeTab} requests`}
+            description={canCreate && activeTab === 'all' ? 'Create a request when a payment needs to be made — it goes through verification and approval before being paid.' : undefined}
+            action={canCreate && activeTab === 'all' ? <Button icon={Plus} size="sm" onClick={openNewRequest}>New Request</Button> : undefined}
+          />
         ) : (
           <div className="divide-y divide-[#2a2a3a]">
             {filtered.map((req) => {
@@ -390,7 +418,7 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
           />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Payee *" value={form.payee} onChange={e => setForm({ ...form, payee: e.target.value })} required placeholder="Person / company to pay" />
-            <Input label="Amount *" type="number" min="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required />
+            <MoneyInput label="Amount *" value={form.amount} onChange={v => setForm({ ...form, amount: v })} required />
           </div>
           <Input label="Purpose *" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} required placeholder="What is this payment for?" />
           <div className="grid grid-cols-2 gap-3">

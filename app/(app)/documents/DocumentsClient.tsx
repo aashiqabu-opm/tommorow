@@ -12,6 +12,7 @@ import { formatDate, formatCurrency, DOCUMENT_TYPE_LABELS, isExpiringSoon, isExp
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { compressImage } from '@/lib/compressImage'
+import { useToast } from '@/components/ui/Toast'
 import type { Document } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -40,6 +41,7 @@ const INITIAL_FORM = {
 
 export function DocumentsClient({ documents, projects, userId, role }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(INITIAL_FORM)
@@ -79,7 +81,13 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
       uploaded_by: userId,
     }).select().single()
 
-    if (!error && doc && file) {
+    if (error) {
+      toast.error("Couldn't save document — please try again")
+      setSaving(false)
+      return
+    }
+
+    if (doc && file) {
       const upload = await compressImage(file)
       const path = `documents/${doc.id}/${upload.name}`
       const { data: up } = await supabase.storage.from('documents').upload(path, upload)
@@ -95,7 +103,8 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
       }
     }
 
-    if (!error && doc) await logAction('create', 'documents', doc.id, undefined, doc)
+    if (doc) await logAction('create', 'documents', doc.id, undefined, doc)
+    toast.success('Document saved')
     setSaving(false)
     setOpen(false)
     setForm(INITIAL_FORM)

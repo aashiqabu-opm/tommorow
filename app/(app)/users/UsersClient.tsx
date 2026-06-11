@@ -6,6 +6,9 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Select } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { useToast } from '@/components/ui/Toast'
 import { formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
@@ -41,30 +44,37 @@ const ROLE_VARIANTS: Record<Role, 'green' | 'yellow' | 'red' | 'blue' | 'purple'
   legal_viewer: 'gray',
 }
 
+type PendingAction =
+  | { type: 'role'; profile: Profile; newRole: Role }
+  | { type: 'active'; profile: Profile }
+
 export function UsersClient({ profiles, currentUserId }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [updating, setUpdating] = useState<string | null>(null)
+  const [pending, setPending] = useState<PendingAction | null>(null)
 
   const active = profiles.filter(p => p.is_active)
   const inactive = profiles.filter(p => !p.is_active)
 
-  async function updateRole(profileId: string, role: Role) {
-    setUpdating(profileId)
+  async function confirmPending() {
+    if (!pending) return
+    const { profile } = pending
+    setUpdating(profile.id)
     const supabase = createClient()
-    const old = profiles.find(p => p.id === profileId)
-    await supabase.from('profiles').update({ role, updated_at: new Date().toISOString() }).eq('id', profileId)
-    await logAction('update', 'profiles', profileId, { role: old?.role }, { role })
-    setUpdating(null)
-    router.refresh()
-  }
 
-  async function toggleActive(profileId: string, isActive: boolean) {
-    if (profileId === currentUserId) return
-    setUpdating(profileId)
-    const supabase = createClient()
-    await supabase.from('profiles').update({ is_active: !isActive }).eq('id', profileId)
-    await logAction('update', 'profiles', profileId, { is_active: isActive }, { is_active: !isActive })
+    if (pending.type === 'role') {
+      await supabase.from('profiles').update({ role: pending.newRole, updated_at: new Date().toISOString() }).eq('id', profile.id)
+      await logAction('update', 'profiles', profile.id, { role: profile.role }, { role: pending.newRole })
+      toast.success(`${profile.full_name} is now ${ROLE_LABELS[pending.newRole]}`)
+    } else {
+      await supabase.from('profiles').update({ is_active: !profile.is_active }).eq('id', profile.id)
+      await logAction('update', 'profiles', profile.id, { is_active: profile.is_active }, { is_active: !profile.is_active })
+      toast.success(`${profile.full_name} ${profile.is_active ? 'deactivated' : 'activated'}`)
+    }
+
     setUpdating(null)
+    setPending(null)
     router.refresh()
   }
 
@@ -104,7 +114,7 @@ export function UsersClient({ profiles, currentUserId }: Props) {
               <div className="w-48 shrink-0">
                 <select
                   value={profile.role}
-                  onChange={e => updateRole(profile.id, e.target.value as Role)}
+                  onChange={e => setPending({ type: 'role', profile, newRole: e.target.value as Role })}
                   disabled={updating === profile.id || profile.id === currentUserId}
                   className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40 disabled:opacity-50"
                 >
@@ -116,7 +126,7 @@ export function UsersClient({ profiles, currentUserId }: Props) {
 
               {/* Active toggle */}
               <button
-                onClick={() => toggleActive(profile.id, profile.is_active)}
+                onClick={() => setPending({ type: 'active', profile })}
                 disabled={profile.id === currentUserId || updating === profile.id}
                 className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 ${
                   profile.is_active
@@ -144,6 +154,39 @@ export function UsersClient({ profiles, currentUserId }: Props) {
           <p><span className="text-white font-medium">Legal / CA Viewer</span> — Read-only access to selected documents and reports</p>
         </div>
       </div>
+
+      {/* Confirmation dialog */}
+      <Modal
+        open={pending !== null}
+        onClose={() => setPending(null)}
+        title={pending?.type === 'role' ? 'Change role?' : pending?.profile.is_active ? 'Deactivate user?' : 'Activate user?'}
+      >
+        {pending && (
+          <div className="space-y-4">
+            <p className="text-sm text-[#8888aa]">
+              {pending.type === 'role' ? (
+                <>Change <span className="text-white font-medium">{pending.profile.full_name}</span>&apos;s role from{' '}
+                <span className="text-white">{ROLE_LABELS[pending.profile.role]}</span> to{' '}
+                <span className="text-white">{ROLE_LABELS[pending.newRole]}</span>? Their access changes immediately.</>
+              ) : pending.profile.is_active ? (
+                <><span className="text-white font-medium">{pending.profile.full_name}</span> will no longer be able to use the app. Their data and history stay intact.</>
+              ) : (
+                <><span className="text-white font-medium">{pending.profile.full_name}</span> will regain access to the app.</>
+              )}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setPending(null)}>Cancel</Button>
+              <Button
+                variant={pending.type === 'active' && pending.profile.is_active ? 'danger' : 'primary'}
+                onClick={confirmPending}
+                loading={updating === pending.profile.id}
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

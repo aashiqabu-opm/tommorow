@@ -7,6 +7,9 @@ import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
+import { MoneyInput } from '@/components/ui/MoneyInput'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
@@ -21,6 +24,7 @@ interface Props {
 
 export function CashClientPage({ entries, userId }: Props) {
   const router = useRouter()
+  const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -88,9 +92,14 @@ export function CashClientPage({ entries, userId }: Props) {
       proof_file_name: proofName,
     }).select().single()
 
-    if (!error && data) {
-      await logAction('create', 'cash_entries', data.id, undefined, data)
+    if (error) {
+      toast.error("Couldn't save entry — please try again")
+      setSaving(false)
+      return
     }
+
+    if (data) await logAction('create', 'cash_entries', data.id, undefined, data)
+    toast.success('Cash entry saved')
 
     setSaving(false)
     setOpen(false)
@@ -142,9 +151,39 @@ export function CashClientPage({ entries, userId }: Props) {
           <h3 className="text-sm font-semibold text-white">Cash Entries</h3>
         </div>
         {entries.length === 0 ? (
-          <div className="py-12 text-center text-[#8888aa] text-sm">No entries yet. Add your first cash entry.</div>
+          <EmptyState
+            icon={Wallet}
+            title="No cash entries yet"
+            description="Start by recording how much cash the company holds today. From tomorrow, the opening balance carries forward automatically."
+            action={<Button icon={Plus} size="sm" onClick={openAddEntry}>Add First Entry</Button>}
+          />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-[#2a2a3a]">
+            {entries.map((entry) => (
+              <div key={entry.id} className="px-4 py-3.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-white">{formatDate(entry.entry_date)}</span>
+                  <span className="text-sm font-bold text-white tabular-nums">{formatCurrency(entry.closing_cash)}</span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] tabular-nums">
+                  <span className="text-emerald-400">+{formatCurrency(entry.cash_in)}</span>
+                  <span className="text-red-400">-{formatCurrency(entry.cash_out)}</span>
+                  <span className="text-[#5a5a7a] ml-auto">
+                    {(entry.profile as { full_name?: string } | null)?.full_name ?? ''}
+                  </span>
+                  {entry.proof_file_url && (
+                    <a href={entry.proof_file_url} target="_blank" rel="noreferrer" className="text-white/70">
+                      <Paperclip size={12} />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#2a2a3a]">
@@ -174,6 +213,7 @@ export function CashClientPage({ entries, userId }: Props) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -188,29 +228,20 @@ export function CashClientPage({ entries, userId }: Props) {
             required
           />
           <div className="grid grid-cols-3 gap-3">
-            <Input
+            <MoneyInput
               label="Opening Cash"
-              type="number"
-              min="0"
               value={form.opening_cash}
-              onChange={e => setForm({ ...form, opening_cash: e.target.value })}
-              placeholder="0"
+              onChange={v => setForm({ ...form, opening_cash: v })}
             />
-            <Input
+            <MoneyInput
               label="Cash In"
-              type="number"
-              min="0"
               value={form.cash_in}
-              onChange={e => setForm({ ...form, cash_in: e.target.value })}
-              placeholder="0"
+              onChange={v => setForm({ ...form, cash_in: v })}
             />
-            <Input
+            <MoneyInput
               label="Cash Out"
-              type="number"
-              min="0"
               value={form.cash_out}
-              onChange={e => setForm({ ...form, cash_out: e.target.value })}
-              placeholder="0"
+              onChange={v => setForm({ ...form, cash_out: v })}
             />
           </div>
 

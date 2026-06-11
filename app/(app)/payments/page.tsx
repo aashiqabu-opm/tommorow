@@ -13,12 +13,16 @@ export default async function PaymentsPage() {
   const allowed = ['founder', 'accountant', 'general_manager', 'executive_producer']
   if (!allowed.includes(role ?? '')) redirect('/dashboard')
 
-  const [{ data: requests }, { data: projects }] = await Promise.all([
+  const [{ data: requests }, { data: projects }, { data: comments }] = await Promise.all([
     supabase.from('payment_requests')
       .select('*, project:projects(name), requester:profiles!requested_by(full_name)')
       .order('created_at', { ascending: false }),
     supabase.from('projects').select('id, name'),
+    supabase.from('comments')
+      .select('*, profile:profiles(full_name)')
+      .eq('entity_type', 'payment_requests')
+      .order('created_at', { ascending: true }),
   ])
 
-  return <PaymentsClient requests={requests ?? []} projects={projects ?? []} userId={user.id} role={role ?? ''} />
+  return <PaymentsClient requests={requests ?? []} projects={projects ?? []} comments={comments ?? []} userId={user.id} role={role ?? ''} />
 }

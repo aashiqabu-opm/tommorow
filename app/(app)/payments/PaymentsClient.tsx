@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, CheckCircle, XCircle, CreditCard } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge, getPaymentStatusBadge } from '@/components/ui/StatusBadge'
@@ -11,12 +11,14 @@ import { Input, Textarea, Select } from '@/components/ui/Input'
 import { formatCurrency, formatDate, PAYMENT_CATEGORY_OPTIONS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { PaymentRequest } from '@/lib/types'
+import { notifyUsers, notifyFinance } from '@/lib/notifications'
+import type { PaymentRequest, Comment } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
 interface Props {
   requests: PaymentRequest[]
   projects: { id: string; name: string }[]
+  comments: Comment[]
   userId: string
   role: string
 }
@@ -31,13 +33,24 @@ const INITIAL_FORM = {
   notes: '',
 }
 
-export function PaymentsClient({ requests, projects, userId, role }: Props) {
+export function PaymentsClient({ requests, projects, comments, userId, role }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(INITIAL_FORM)
   const [bill, setBill] = useState<File | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'paid'>('all')
+  const [commentsFor, setCommentsFor] = useState<string | null>(null)
+  const [commentText, setCommentText] = useState('')
+  const [postingComment, setPostingComment] = useState(false)
+  const [rejectTarget, setRejectTarget] = useState<{ req: PaymentRequest; stage: 'verify' | 'approve' } | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejecting, setRejecting] = useState(false)
+
+  const commentsByRequest = comments.reduce<Record<string, Comment[]>>((acc, c) => {
+    ;(acc[c.entity_id] = acc[c.entity_id] ?? []).push(c)
+    return acc
+  }, {})
 
   const isFounder = role === 'founder'
   const isAccountant = role === 'accountant'
@@ -91,7 +104,14 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
       notes: form.notes || null,
     }).select().single()
 
-    if (!error && data) await logAction('create', 'payment_requests', data.id, undefined, data)
+    if (!error && data) {
+      await logAction('create', 'payment_requests', data.id, undefined, data)
+      await notifyFinance(
+        `New payment request: ${form.payee}`,
+        `${formatCurrency(parseFloat(form.amount) || 0)} — ${form.purpose}`,
+        'payment_requests', data.id, userId
+      )
+    }
     setSaving(false)
     setOpen(false)
     setForm(INITIAL_FORM)
@@ -99,27 +119,77 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
     router.refresh()
   }
 
-  async function handleVerify(req: PaymentRequest, approved: boolean) {
+  async function handleVerify(req: PaymentRequest) {
     const supabase = createClient()
     const update = {
-      verification_status: approved ? 'verified' : 'rejected',
+      verification_status: 'verified',
       verified_by: userId,
       verified_at: new Date().toISOString(),
     }
     await supabase.from('payment_requests').update(update).eq('id', req.id)
     await logAction('update', 'payment_requests', req.id, { verification_status: req.verification_status }, update)
+    if (req.requested_by !== userId) {
+      await notifyUsers([req.requested_by],
+        `Payment request verified: ${req.payee}`,
+        `${formatCurrency(req.amount)} — awaiting founder approval`,
+        'payment_requests', req.id)
+    }
     router.refresh()
   }
 
-  async function handleApprove(req: PaymentRequest, approved: boolean) {
+  async function handleApprove(req: PaymentRequest) {
     const supabase = createClient()
     const update = {
-      approval_status: approved ? 'approved' : 'rejected',
+      approval_status: 'approved',
       approved_by: userId,
       approved_at: new Date().toISOString(),
     }
     await supabase.from('payment_requests').update(update).eq('id', req.id)
     await logAction('update', 'payment_requests', req.id, { approval_status: req.approval_status }, update)
+    if (req.requested_by !== userId) {
+      await notifyUsers([req.requested_by],
+        `Payment request approved: ${req.payee}`,
+        `${formatCurrency(req.amount)} — payment will be processed`,
+        'payment_requests', req.id)
+    }
+    router.refresh()
+  }
+
+  async function handleReject(e: React.FormEvent) {
+    e.preventDefault()
+    if (!rejectTarget) return
+    const { req, stage } = rejectTarget
+    setRejecting(true)
+    const supabase = createClient()
+
+    const update = stage === 'verify'
+      ? { verification_status: 'rejected', verified_by: userId, verified_at: new Date().toISOString() }
+      : { approval_status: 'rejected', approved_by: userId, approved_at: new Date().toISOString() }
+
+    await supabase.from('payment_requests').update(update).eq('id', req.id)
+    await logAction('update', 'payment_requests', req.id,
+      stage === 'verify' ? { verification_status: req.verification_status } : { approval_status: req.approval_status },
+      update)
+
+    const reason = rejectReason.trim()
+    if (reason) {
+      await supabase.from('comments').insert({
+        entity_type: 'payment_requests',
+        entity_id: req.id,
+        user_id: userId,
+        content: `Rejected: ${reason}`,
+      })
+    }
+    if (req.requested_by !== userId) {
+      await notifyUsers([req.requested_by],
+        `Payment request rejected: ${req.payee}`,
+        reason || `${formatCurrency(req.amount)} — see comments for details`,
+        'payment_requests', req.id)
+    }
+
+    setRejecting(false)
+    setRejectTarget(null)
+    setRejectReason('')
     router.refresh()
   }
 
@@ -133,6 +203,36 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
     }
     await supabase.from('payment_requests').update(update).eq('id', req.id)
     await logAction('update', 'payment_requests', req.id, { payment_status: 'unpaid' }, update)
+    if (req.requested_by !== userId) {
+      await notifyUsers([req.requested_by],
+        `Payment completed: ${req.payee}`,
+        `${formatCurrency(req.amount)} has been paid`,
+        'payment_requests', req.id)
+    }
+    router.refresh()
+  }
+
+  async function handlePostComment(req: PaymentRequest) {
+    const content = commentText.trim()
+    if (!content) return
+    setPostingComment(true)
+    const supabase = createClient()
+    await supabase.from('comments').insert({
+      entity_type: 'payment_requests',
+      entity_id: req.id,
+      user_id: userId,
+      content,
+    })
+    // Notify the requester and finance, excluding whoever wrote the comment
+    const targets = new Set<string>()
+    if (req.requested_by !== userId) targets.add(req.requested_by)
+    await notifyUsers([...targets],
+      `New comment on payment: ${req.payee}`,
+      content,
+      'payment_requests', req.id)
+    await notifyFinance(`New comment on payment: ${req.payee}`, content, 'payment_requests', req.id, userId)
+    setPostingComment(false)
+    setCommentText('')
     router.refresh()
   }
 
@@ -201,26 +301,74 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <div className="flex items-center gap-3 mt-3 flex-wrap">
                     {req.bill_url && (
                       <a href={req.bill_url} target="_blank" rel="noreferrer" className="text-xs text-white/70 hover:text-white">View Bill</a>
                     )}
                     {canVerify && req.verification_status === 'pending' && (
                       <>
-                        <button onClick={() => handleVerify(req, true)} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"><CheckCircle size={12} /> Verify</button>
-                        <button onClick={() => handleVerify(req, false)} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"><XCircle size={12} /> Reject</button>
+                        <button onClick={() => handleVerify(req)} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"><CheckCircle size={12} /> Verify</button>
+                        <button onClick={() => setRejectTarget({ req, stage: 'verify' })} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"><XCircle size={12} /> Reject</button>
                       </>
                     )}
                     {canApprove && req.verification_status === 'verified' && req.approval_status === 'pending' && (
                       <>
-                        <button onClick={() => handleApprove(req, true)} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"><CheckCircle size={12} /> Approve</button>
-                        <button onClick={() => handleApprove(req, false)} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"><XCircle size={12} /> Reject</button>
+                        <button onClick={() => handleApprove(req)} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"><CheckCircle size={12} /> Approve</button>
+                        <button onClick={() => setRejectTarget({ req, stage: 'approve' })} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"><XCircle size={12} /> Reject</button>
                       </>
                     )}
                     {canVerify && req.approval_status === 'approved' && req.payment_status === 'unpaid' && (
                       <button onClick={() => handleMarkPaid(req)} className="text-xs text-white/70 hover:text-white flex items-center gap-1"><CheckCircle size={12} /> Mark Paid</button>
                     )}
+                    <button
+                      onClick={() => { setCommentsFor(commentsFor === req.id ? null : req.id); setCommentText('') }}
+                      className="text-xs text-[#8888aa] hover:text-white flex items-center gap-1"
+                    >
+                      <MessageSquare size={12} />
+                      {(commentsByRequest[req.id]?.length ?? 0) > 0
+                        ? `Comments (${commentsByRequest[req.id].length})`
+                        : 'Comment'}
+                    </button>
                   </div>
+
+                  {/* Comments thread */}
+                  {commentsFor === req.id && (
+                    <div className="mt-3 bg-[#0f0f16] border border-[#2a2a3a] rounded-xl p-4 space-y-3">
+                      {(commentsByRequest[req.id] ?? []).map((c) => (
+                        <div key={c.id} className="flex items-start gap-2.5">
+                          <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold text-white shrink-0 mt-0.5">
+                            {(c.profile?.full_name ?? '?').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-xs font-medium text-white">{c.profile?.full_name ?? 'Unknown'}</span>
+                              <span className="text-[10px] text-[#5a5a7a]">{formatDate(c.created_at)}</span>
+                            </div>
+                            <p className={`text-xs mt-0.5 ${c.content.startsWith('Rejected:') ? 'text-red-300' : 'text-[#b0b0c8]'}`}>{c.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {(commentsByRequest[req.id]?.length ?? 0) === 0 && (
+                        <p className="text-xs text-[#5a5a7a]">No comments yet</p>
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        <input
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handlePostComment(req) } }}
+                          placeholder="Write a comment..."
+                          className="flex-1 bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#5a5a7a] focus:outline-none focus:ring-1 focus:ring-white/40"
+                        />
+                        <button
+                          onClick={() => handlePostComment(req)}
+                          disabled={postingComment || !commentText.trim()}
+                          className="px-3 py-2 bg-white text-black rounded-lg disabled:opacity-40 hover:bg-gray-200 transition-colors"
+                        >
+                          <Send size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -258,6 +406,30 @@ export function PaymentsClient({ requests, projects, userId, role }: Props) {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" loading={saving}>Submit Request</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal
+        open={rejectTarget !== null}
+        onClose={() => { setRejectTarget(null); setRejectReason('') }}
+        title={`Reject: ${rejectTarget?.req.payee ?? ''}`}
+      >
+        <form onSubmit={handleReject} className="space-y-4">
+          <p className="text-xs text-[#8888aa]">
+            The reason will be posted as a comment and sent to {(rejectTarget?.req.requester as { full_name?: string } | null)?.full_name ?? 'the requester'} as a notification.
+          </p>
+          <Textarea
+            label="Reason for rejection"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="e.g. Wrong amount — please resubmit with the correct bill"
+            required
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" type="button" onClick={() => { setRejectTarget(null); setRejectReason('') }}>Cancel</Button>
+            <Button type="submit" variant="danger" loading={rejecting}>Reject Request</Button>
           </div>
         </form>
       </Modal>

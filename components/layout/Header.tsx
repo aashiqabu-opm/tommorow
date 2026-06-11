@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, Bell, LogOut, ChevronDown } from 'lucide-react'
+import { Menu, LogOut, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { NotificationsBell } from './NotificationsBell'
 import type { Profile } from '@/lib/types'
 
 interface HeaderProps {
@@ -45,9 +46,7 @@ export function Header({ profile, onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button className="p-2 text-[#8888aa] hover:text-white rounded-lg hover:bg-[#1a1a24] relative">
-          <Bell size={18} />
-        </button>
+        <NotificationsBell />
 
         <div className="relative">
           <button

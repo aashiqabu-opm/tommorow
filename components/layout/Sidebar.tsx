@@ -12,6 +12,7 @@ import {
   Settings,
   AlertTriangle,
   Clapperboard,
+  ScrollText,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -33,6 +34,7 @@ const navItems = [
   { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
   { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
+  { href: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['founder'] },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['founder', 'accountant'] },
 ] as const
 

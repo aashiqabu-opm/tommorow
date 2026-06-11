@@ -1,0 +1,39 @@
+import { createClient } from '@/lib/supabase/client'
+
+export async function notifyUsers(
+  userIds: string[],
+  title: string,
+  body?: string,
+  entityType?: string,
+  entityId?: string
+) {
+  if (userIds.length === 0) return
+  const supabase = createClient()
+  await supabase.from('notifications').insert(
+    userIds.map((user_id) => ({
+      user_id,
+      title,
+      body: body ?? null,
+      entity_type: entityType ?? null,
+      entity_id: entityId ?? null,
+    }))
+  )
+}
+
+// Notify all active founder + accountant users (optionally excluding the actor)
+export async function notifyFinance(
+  title: string,
+  body?: string,
+  entityType?: string,
+  entityId?: string,
+  excludeUserId?: string
+) {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('profiles')
+    .select('id')
+    .in('role', ['founder', 'accountant'])
+    .eq('is_active', true)
+  const ids = (data ?? []).map((p) => p.id).filter((id) => id !== excludeUserId)
+  await notifyUsers(ids, title, body, entityType, entityId)
+}

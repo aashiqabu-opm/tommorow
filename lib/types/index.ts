@@ -174,6 +174,27 @@ export interface AuditLog {
   profile?: Pick<Profile, 'full_name'>
 }
 
+export interface Comment {
+  id: string
+  entity_type: string
+  entity_id: string
+  user_id: string
+  content: string
+  created_at: string
+  profile?: Pick<Profile, 'full_name'>
+}
+
+export interface Notification {
+  id: string
+  user_id: string
+  title: string
+  body?: string
+  is_read: boolean
+  entity_type?: string
+  entity_id?: string
+  created_at: string
+}
+
 export interface DashboardStats {
   cash_in_hand: number
   bank_balance: number

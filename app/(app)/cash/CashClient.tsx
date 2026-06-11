@@ -10,6 +10,7 @@ import { Input, Textarea } from '@/components/ui/Input'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
+import { compressImage } from '@/lib/compressImage'
 import type { CashEntry } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -64,13 +65,14 @@ export function CashClientPage({ entries, userId }: Props) {
     let proofName: string | undefined
 
     if (file) {
-      const ext = file.name.split('.').pop()
+      const upload = await compressImage(file)
+      const ext = upload.name.split('.').pop()
       const path = `cash/${userId}/${Date.now()}.${ext}`
-      const { data: uploadData } = await supabase.storage.from('documents').upload(path, file)
+      const { data: uploadData } = await supabase.storage.from('documents').upload(path, upload)
       if (uploadData) {
         const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
         proofUrl = urlData.publicUrl
-        proofName = file.name
+        proofName = upload.name
       }
     }
 

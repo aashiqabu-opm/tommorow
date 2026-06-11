@@ -11,6 +11,7 @@ import { Input, Textarea, Select } from '@/components/ui/Input'
 import { formatDate, formatCurrency, DOCUMENT_TYPE_LABELS, isExpiringSoon, isExpired, getExpiryStatus } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
+import { compressImage } from '@/lib/compressImage'
 import type { Document } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -79,15 +80,16 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
     }).select().single()
 
     if (!error && doc && file) {
-      const path = `documents/${doc.id}/${file.name}`
-      const { data: up } = await supabase.storage.from('documents').upload(path, file)
+      const upload = await compressImage(file)
+      const path = `documents/${doc.id}/${upload.name}`
+      const { data: up } = await supabase.storage.from('documents').upload(path, upload)
       if (up) {
         const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
         await supabase.from('document_files').insert({
           document_id: doc.id,
-          file_name: file.name,
+          file_name: upload.name,
           file_url: urlData.publicUrl,
-          file_size: file.size,
+          file_size: upload.size,
           uploaded_by: userId,
         })
       }

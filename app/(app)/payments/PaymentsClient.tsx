@@ -12,6 +12,7 @@ import { formatCurrency, formatDate, PAYMENT_CATEGORY_OPTIONS } from '@/lib/util
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { notifyUsers, notifyFinance } from '@/lib/notifications'
+import { compressImage } from '@/lib/compressImage'
 import type { PaymentRequest, Comment } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -79,12 +80,13 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
     let billName: string | undefined
 
     if (bill) {
-      const path = `payments/${userId}/${Date.now()}_${bill.name}`
-      const { data: up } = await supabase.storage.from('documents').upload(path, bill)
+      const upload = await compressImage(bill)
+      const path = `payments/${userId}/${Date.now()}_${upload.name}`
+      const { data: up } = await supabase.storage.from('documents').upload(path, upload)
       if (up) {
         const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
         billUrl = urlData.publicUrl
-        billName = bill.name
+        billName = upload.name
       }
     }
 

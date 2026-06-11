@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Bell, CheckCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification } from '@/lib/types'
@@ -29,6 +29,7 @@ function timeAgo(dateStr: string) {
 
 export function NotificationsBell() {
   const router = useRouter()
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
 
@@ -64,7 +65,9 @@ export function NotificationsBell() {
     supabase.from('notifications').update({ is_read: true }).eq('id', n.id).then()
     setOpen(false)
     const route = n.entity_type ? ENTITY_ROUTES[n.entity_type] : undefined
-    if (route) router.push(route)
+    if (!route) return
+    if (pathname === route) router.refresh()
+    else router.push(route)
   }
 
   function toggle() {
@@ -89,7 +92,7 @@ export function NotificationsBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-[#1a1a24] border border-[#2a2a3a] rounded-xl shadow-xl z-50 overflow-hidden">
+          <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80 bg-[#1a1a24] border border-[#2a2a3a] rounded-xl shadow-xl z-50 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a3a]">
               <span className="text-sm font-semibold text-white">Notifications</span>
               {unread.length > 0 && (

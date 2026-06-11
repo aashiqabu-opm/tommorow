@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff } from 'lucide-react'
 import { OPMLogo } from '@/components/ui/OPMLogo'
+import { APP_VERSION } from '@/lib/version'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -100,6 +101,7 @@ export default function LoginPage() {
         <p className="text-center text-[11px] text-[#5a5a7a] mt-8">
           Access OPM Cinemas staffs only
         </p>
+        <p className="text-center text-[10px] text-[#3a3a4a] mt-2">{APP_VERSION}</p>
       </div>
     </div>
   )

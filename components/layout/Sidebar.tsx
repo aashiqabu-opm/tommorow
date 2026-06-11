@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { APP_VERSION } from '@/lib/version'
 import { OPMLogo } from '@/components/ui/OPMLogo'
 import type { Role } from '@/lib/types'
 
@@ -103,6 +104,7 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
           <div className="text-[10px] text-[#8888aa] text-center uppercase tracking-widest">
             OPM Cinemas &copy; {new Date().getFullYear()}
           </div>
+          <div className="text-[9px] text-[#5a5a7a] text-center mt-1">{APP_VERSION}</div>
         </div>
       </aside>
     </>

@@ -10,8 +10,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ALERT_CATEGORIES, CATEGORY_LABELS } from '@/lib/alerts/categories'
 
+import type { Profile } from '@/lib/types'
+
 interface Props {
-  profile: Record<string, unknown>
+  profile: Profile
   auditLogs: Record<string, unknown>[]
 }
 

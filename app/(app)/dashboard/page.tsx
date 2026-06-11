@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth'
 import { Wallet, Building2, AlertTriangle, Clock, FileWarning, FileX, Clapperboard, Landmark } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -10,15 +10,15 @@ import Link from 'next/link'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  const role = profile?.role
+  const profile = await requireProfile()
+  const role = profile.role
 
   const isFinance = role === 'founder' || role === 'accountant'
 
-  // Fetch data in parallel
+  const sixMonthsAgo = new Date(new Date().setMonth(new Date().getMonth() - 6))
+
+  // Fetch everything in one parallel wave — including the monthly chart data,
+  // which previously ran as two extra sequential round-trips after this batch.
   const [
     cashResult,
     liabilitiesResult,
@@ -26,6 +26,8 @@ export default async function DashboardPage() {
     documentsResult,
     projectsResult,
     bankAccountsResult,
+    monthlySpendResult,
+    monthlyIncomeResult,
   ] = await Promise.all([
     isFinance ? supabase.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).limit(1) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('liabilities').select('amount_owed, amount_paid, balance_remaining, status, priority, due_date') : Promise.resolve({ data: null }),
@@ -33,6 +35,8 @@ export default async function DashboardPage() {
     supabase.from('documents').select('status, expiry_date'),
     supabase.from('projects').select('id, name, status'),
     isFinance ? supabase.from('bank_accounts').select('current_balance').eq('is_active', true) : Promise.resolve({ data: null }),
+    isFinance ? supabase.from('payment_requests').select('created_at, amount').eq('approval_status', 'approved').gte('created_at', sixMonthsAgo.toISOString()) : Promise.resolve({ data: null }),
+    isFinance ? supabase.from('project_income').select('income_date, amount').gte('income_date', sixMonthsAgo.toISOString().split('T')[0]) : Promise.resolve({ data: null }),
   ])
 
   const cashInHand = cashResult.data?.[0]?.closing_cash ?? 0
@@ -54,17 +58,8 @@ export default async function DashboardPage() {
   const urgentLiabilities = liabilities.filter(l => l.priority === 'urgent' && l.status !== 'cleared')
   const projects = projectsResult.data ?? []
 
-  // ── Monthly spend (last 6 months) ──
-  const { data: monthlySpend } = isFinance ? await supabase
-    .from('payment_requests')
-    .select('created_at, amount')
-    .in('approval_status', ['approved'])
-    .gte('created_at', new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString()) : { data: null }
-
-  const { data: monthlyIncome } = isFinance ? await supabase
-    .from('project_income')
-    .select('income_date, amount')
-    .gte('income_date', new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString().split('T')[0]) : { data: null }
+  const monthlySpend = monthlySpendResult.data
+  const monthlyIncome = monthlyIncomeResult.data
 
   // Build last 6 months labels and data
   const now = new Date()

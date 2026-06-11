@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth'
 import Link from 'next/link'
 import { CreditCard, Building2, AlertTriangle, FileText, Clapperboard, Search } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
@@ -11,11 +11,8 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string }>
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  const role = profile?.role ?? ''
+  const profile = await requireProfile()
+  const role = profile.role
 
   const params = await searchParams
   const q = (params.q ?? '').trim()

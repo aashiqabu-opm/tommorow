@@ -1,17 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth'
 import { VendorsClient } from './VendorsClient'
 
 export default async function VendorsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  const role = profile?.role
+  const profile = await requireProfile()
 
   const allowed = ['founder', 'accountant', 'general_manager']
-  if (!allowed.includes(role ?? '')) redirect('/dashboard')
+  if (!allowed.includes(profile.role)) redirect('/dashboard')
 
   const [{ data: vendors }, { data: paidStats }] = await Promise.all([
     supabase.from('vendors').select('*').order('name'),
@@ -40,7 +37,7 @@ export default async function VendorsPage() {
     <VendorsClient
       vendors={vendorsWithPaid}
       totalEverPaid={totalEverPaid}
-      userId={user.id}
+      userId={profile.id}
     />
   )
 }

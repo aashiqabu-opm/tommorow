@@ -1,15 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth'
 import { ReportsClient } from './ReportsClient'
 
 export default async function ReportsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const profile = await requireProfile()
   const allowed = ['founder', 'accountant', 'general_manager', 'legal_viewer']
-  if (!allowed.includes(profile?.role ?? '')) redirect('/dashboard')
+  if (!allowed.includes(profile.role)) redirect('/dashboard')
 
   const [
     { data: cashEntries },
@@ -42,7 +40,7 @@ export default async function ReportsPage() {
       payments={payments ?? []}
       documents={documents ?? []}
       projects={projects ?? []}
-      role={profile?.role ?? ''}
+      role={profile.role}
     />
   )
 }

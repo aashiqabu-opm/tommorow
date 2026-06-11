@@ -1,17 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth'
 import { PaymentsClient } from './PaymentsClient'
 
 export default async function PaymentsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  const role = profile?.role
+  const profile = await requireProfile()
+  const role = profile.role
 
   const allowed = ['founder', 'accountant', 'general_manager', 'executive_producer']
-  if (!allowed.includes(role ?? '')) redirect('/dashboard')
+  if (!allowed.includes(role)) redirect('/dashboard')
 
   const [{ data: requests }, { data: projects }, { data: comments }, { data: vendors }] = await Promise.all([
     supabase.from('payment_requests')
@@ -25,5 +23,5 @@ export default async function PaymentsPage() {
     supabase.from('vendors').select('id, name').order('name'),
   ])
 
-  return <PaymentsClient requests={requests ?? []} projects={projects ?? []} comments={comments ?? []} vendors={vendors ?? []} userId={user.id} role={role ?? ''} />
+  return <PaymentsClient requests={requests ?? []} projects={projects ?? []} comments={comments ?? []} vendors={vendors ?? []} userId={profile.id} role={role} />
 }

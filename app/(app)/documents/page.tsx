@@ -1,14 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth'
 import { DocumentsClient } from './DocumentsClient'
 
 export default async function DocumentsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  const role = profile?.role ?? ''
+  const profile = await requireProfile()
+  const role = profile.role
 
   const [{ data: documents }, { data: projects }] = await Promise.all([
     supabase.from('documents')
@@ -17,5 +14,5 @@ export default async function DocumentsPage() {
     supabase.from('projects').select('id, name'),
   ])
 
-  return <DocumentsClient documents={documents ?? []} projects={projects ?? []} userId={user.id} role={role} />
+  return <DocumentsClient documents={documents ?? []} projects={projects ?? []} userId={profile.id} role={role} />
 }

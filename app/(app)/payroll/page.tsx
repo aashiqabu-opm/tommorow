@@ -1,17 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth'
 import { PayrollClient } from './PayrollClient'
 
 export default async function PayrollPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  const role = profile?.role
+  const profile = await requireProfile()
 
   const allowed = ['founder', 'accountant']
-  if (!allowed.includes(role ?? '')) redirect('/dashboard')
+  if (!allowed.includes(profile.role)) redirect('/dashboard')
 
   const now = new Date()
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -36,7 +33,7 @@ export default async function PayrollPage() {
       vendors={vendors ?? []}
       totalMonthlyPayroll={totalMonthlyPayroll}
       pendingThisMonth={pendingLiabilities?.length ?? 0}
-      userId={user.id}
+      userId={profile.id}
     />
   )
 }

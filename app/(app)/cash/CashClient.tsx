@@ -35,6 +35,21 @@ export function CashClientPage({ entries, userId }: Props) {
   const cashInHand = latest?.closing_cash ?? 0
   const safetyStatus = cashInHand > 500000 ? 'green' : cashInHand > 100000 ? 'yellow' : 'red'
 
+  const cutoff30d = Date.now() - 30 * 86400000
+  const recent = entries.filter(e => new Date(e.entry_date).getTime() >= cutoff30d)
+
+  function openAddEntry() {
+    // Carry forward the latest closing balance so cash isn't double-counted
+    setForm({
+      entry_date: new Date().toISOString().split('T')[0],
+      opening_cash: latest ? String(latest.closing_cash) : '',
+      cash_in: '',
+      cash_out: '',
+      notes: '',
+    })
+    setOpen(true)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -87,7 +102,7 @@ export function CashClientPage({ entries, userId }: Props) {
       <PageHeader
         title="Cash in Hand"
         subtitle="Daily cash movement tracker"
-        action={<Button icon={Plus} onClick={() => setOpen(true)}>Add Entry</Button>}
+        action={<Button icon={Plus} onClick={openAddEntry}>Add Entry</Button>}
       />
 
       {/* Hero number */}
@@ -106,13 +121,13 @@ export function CashClientPage({ entries, userId }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <StatCard
             title="Total Cash In (30d)"
-            value={formatCurrency(entries.reduce((s, e) => s + e.cash_in, 0))}
+            value={formatCurrency(recent.reduce((s, e) => s + e.cash_in, 0))}
             icon={TrendingUp}
             status="green"
           />
           <StatCard
             title="Total Cash Out (30d)"
-            value={formatCurrency(entries.reduce((s, e) => s + e.cash_out, 0))}
+            value={formatCurrency(recent.reduce((s, e) => s + e.cash_out, 0))}
             icon={TrendingDown}
             status="red"
           />

@@ -36,6 +36,9 @@ export default async function DashboardPage() {
   const liabilities = liabilitiesResult.data ?? []
   const totalLiabilities = liabilities.reduce((s, l) => s + (l.amount_owed ?? 0), 0)
   const totalPaid = liabilities.reduce((s, l) => s + (l.amount_paid ?? 0), 0)
+  const outstanding = liabilities
+    .filter(l => l.status !== 'cleared')
+    .reduce((s, l) => s + (l.balance_remaining ?? 0), 0)
   const pendingApprovals = paymentRequestsResult.data?.length ?? 0
 
   const today = new Date()
@@ -68,11 +71,11 @@ export default async function DashboardPage() {
               subtitle="Latest closing balance"
             />
             <StatCard
-              title="Total Liabilities"
-              value={formatCurrency(totalLiabilities)}
+              title="Outstanding Liabilities"
+              value={formatCurrency(outstanding)}
               icon={AlertTriangle}
-              status={totalLiabilities === 0 ? 'green' : totalLiabilities > 2000000 ? 'red' : 'yellow'}
-              subtitle={`${paidPercent(totalPaid, totalLiabilities)}% paid`}
+              status={outstanding === 0 ? 'green' : outstanding > 2000000 ? 'red' : 'yellow'}
+              subtitle={`of ${formatCurrency(totalLiabilities)} total owed`}
             />
             <StatCard
               title="Urgent Dues"

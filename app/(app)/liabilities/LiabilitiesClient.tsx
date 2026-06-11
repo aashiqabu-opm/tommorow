@@ -42,6 +42,7 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
   const [paymentModal, setPaymentModal] = useState<Liability | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentNote, setPaymentNote] = useState('')
+  const [savingPayment, setSavingPayment] = useState(false)
 
   const totalOwed = liabilities.reduce((s, l) => s + l.amount_owed, 0)
   const totalPaid = liabilities.reduce((s, l) => s + l.amount_paid, 0)
@@ -87,7 +88,8 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
   }
 
   async function handlePayment() {
-    if (!paymentModal) return
+    if (!paymentModal || savingPayment) return
+    setSavingPayment(true)
     const supabase = createClient()
     const amount = parseFloat(paymentAmount) || 0
     const newPaid = paymentModal.amount_paid + amount
@@ -110,6 +112,7 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
 
     if (updated) await logAction('update', 'liabilities', paymentModal.id, paymentModal as unknown as Record<string, unknown>, updated)
 
+    setSavingPayment(false)
     setPaymentModal(null)
     setPaymentAmount('')
     setPaymentNote('')
@@ -228,7 +231,7 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
             <Textarea label="Notes" value={paymentNote} onChange={e => setPaymentNote(e.target.value)} rows={2} />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setPaymentModal(null)}>Cancel</Button>
-              <Button onClick={handlePayment} disabled={!paymentAmount}>Save Payment</Button>
+              <Button onClick={handlePayment} disabled={!paymentAmount} loading={savingPayment}>Save Payment</Button>
             </div>
           </div>
         )}

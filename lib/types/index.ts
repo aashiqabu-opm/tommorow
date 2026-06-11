@@ -49,6 +49,7 @@ export interface Project {
   name: string
   slug: string
   status: ProjectStatus
+  is_priority?: boolean
   description?: string
   start_date?: string
   end_date?: string

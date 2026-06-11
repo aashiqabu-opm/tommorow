@@ -33,7 +33,7 @@ export default async function DashboardPage() {
     isFinance ? supabase.from('liabilities').select('amount_owed, amount_paid, balance_remaining, status, priority, due_date') : Promise.resolve({ data: null }),
     supabase.from('payment_requests').select('approval_status, payment_status').eq('approval_status', 'pending'),
     supabase.from('documents').select('status, expiry_date'),
-    supabase.from('projects').select('id, name, status'),
+    supabase.from('projects').select('id, name, status, is_priority'),
     isFinance ? supabase.from('bank_accounts').select('current_balance').eq('is_active', true) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('payment_requests').select('created_at, amount').eq('approval_status', 'approved').gte('created_at', sixMonthsAgo.toISOString()) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('project_income').select('income_date, amount').gte('income_date', sixMonthsAgo.toISOString().split('T')[0]) : Promise.resolve({ data: null }),
@@ -56,7 +56,9 @@ export default async function DashboardPage() {
   const missingDocTypes = 5 // simplified placeholder
 
   const urgentLiabilities = liabilities.filter(l => l.priority === 'urgent' && l.status !== 'cleared')
-  const projects = projectsResult.data ?? []
+  const projects = (projectsResult.data ?? []).sort(
+    (a, b) => Number(b.is_priority ?? false) - Number(a.is_priority ?? false)
+  )
 
   const monthlySpend = monthlySpendResult.data
   const monthlyIncome = monthlyIncomeResult.data
@@ -250,7 +252,7 @@ export default async function DashboardPage() {
   )
 }
 
-function ProjectCard({ project }: { project: { id: string; name: string; status: string } }) {
+function ProjectCard({ project }: { project: { id: string; name: string; status: string; is_priority?: boolean } }) {
   const statusConfig = {
     active: { label: 'Active', color: 'text-emerald-400', dot: 'bg-emerald-400' },
     development: { label: 'Development', color: 'text-gray-300', dot: 'bg-gray-300' },
@@ -262,14 +264,22 @@ function ProjectCard({ project }: { project: { id: string; name: string; status:
 
   return (
     <Link href={`/projects/${project.id}`}>
-      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 hover:border-white/30 hover:bg-[#16161f] transition-all cursor-pointer">
+      <div className={cn(
+        'bg-[#13131a] border rounded-2xl p-5 hover:bg-[#16161f] transition-all cursor-pointer',
+        project.is_priority ? 'border-amber-500/40 hover:border-amber-400/60' : 'border-[#2a2a3a] hover:border-white/30'
+      )}>
         <div className="flex items-start justify-between mb-3">
           <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
             <Clapperboard size={18} className="text-white/70" />
           </div>
-          <div className={cn('flex items-center gap-1.5 text-xs font-medium', statusConfig.color)}>
-            <div className={cn('w-1.5 h-1.5 rounded-full', statusConfig.dot)} />
-            {statusConfig.label}
+          <div className="flex items-center gap-2">
+            {project.is_priority && (
+              <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full">★ PRIORITY</span>
+            )}
+            <div className={cn('flex items-center gap-1.5 text-xs font-medium', statusConfig.color)}>
+              <div className={cn('w-1.5 h-1.5 rounded-full', statusConfig.dot)} />
+              {statusConfig.label}
+            </div>
           </div>
         </div>
         <h3 className="text-sm font-semibold text-white">{project.name}</h3>

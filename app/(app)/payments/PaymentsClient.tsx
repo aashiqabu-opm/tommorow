@@ -95,7 +95,12 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
     if (bill) {
       const upload = await compressImage(bill)
       const path = `payments/${userId}/${Date.now()}_${upload.name}`
-      const { data: up } = await supabase.storage.from('documents').upload(path, upload)
+      const { data: up, error: upErr } = await supabase.storage.from('documents').upload(path, upload)
+      if (upErr) {
+        toast.error('File upload failed — check storage bucket is set up')
+        setSaving(false)
+        return
+      }
       if (up) {
         const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
         billUrl = urlData.publicUrl

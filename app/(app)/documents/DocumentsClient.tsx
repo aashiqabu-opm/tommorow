@@ -91,7 +91,8 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
     if (doc && file) {
       const upload = await compressImage(file)
       const path = `documents/${doc.id}/${upload.name}`
-      const { data: up } = await supabase.storage.from('documents').upload(path, upload)
+      const { data: up, error: upErr } = await supabase.storage.from('documents').upload(path, upload)
+      if (upErr) { toast.error('File upload failed — check storage bucket'); setSaving(false); return }
       if (up) {
         const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
         await supabase.from('document_files').insert({

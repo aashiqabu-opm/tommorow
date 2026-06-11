@@ -73,7 +73,8 @@ export function CashClientPage({ entries, userId }: Props) {
       const upload = await compressImage(file)
       const ext = upload.name.split('.').pop()
       const path = `cash/${userId}/${Date.now()}.${ext}`
-      const { data: uploadData } = await supabase.storage.from('documents').upload(path, upload)
+      const { data: uploadData, error: upErr } = await supabase.storage.from('documents').upload(path, upload)
+      if (upErr) { toast.error('File upload failed — check storage bucket'); setSaving(false); return }
       if (uploadData) {
         const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
         proofUrl = urlData.publicUrl

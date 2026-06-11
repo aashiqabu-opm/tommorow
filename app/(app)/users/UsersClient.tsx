@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, UserCheck, UserX } from 'lucide-react'
+import { Users, UserCheck, UserX, MessageCircle } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { Select } from '@/components/ui/Input'
+import { Select, Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
@@ -53,6 +53,39 @@ export function UsersClient({ profiles, currentUserId }: Props) {
   const toast = useToast()
   const [updating, setUpdating] = useState<string | null>(null)
   const [pending, setPending] = useState<PendingAction | null>(null)
+  const [waEdit, setWaEdit] = useState<Profile | null>(null)
+  const [waNumber, setWaNumber] = useState('')
+  const [waEnabled, setWaEnabled] = useState(false)
+  const [waSaving, setWaSaving] = useState(false)
+
+  function openWaEdit(profile: Profile) {
+    setWaEdit(profile)
+    setWaNumber(profile.whatsapp_number ?? '')
+    setWaEnabled(Boolean(profile.whatsapp_alerts))
+  }
+
+  async function saveWa() {
+    if (!waEdit) return
+    setWaSaving(true)
+    const supabase = createClient()
+    const number = waNumber.trim() || null
+    const { error } = await supabase.from('profiles').update({
+      whatsapp_number: number,
+      whatsapp_alerts: waEnabled && Boolean(number),
+      updated_at: new Date().toISOString(),
+    }).eq('id', waEdit.id)
+    setWaSaving(false)
+    if (error) {
+      toast.error('Could not save WhatsApp details')
+      return
+    }
+    await logAction('update', 'profiles', waEdit.id,
+      { whatsapp_number: waEdit.whatsapp_number ?? null },
+      { whatsapp_number: number })
+    toast.success(`WhatsApp details saved for ${waEdit.full_name}`)
+    setWaEdit(null)
+    router.refresh()
+  }
 
   const active = profiles.filter(p => p.is_active)
   const inactive = profiles.filter(p => !p.is_active)
@@ -110,6 +143,23 @@ export function UsersClient({ profiles, currentUserId }: Props) {
                 <div className="text-xs text-[#8888aa]">{profile.email} · Joined {formatDate(profile.created_at)}</div>
               </div>
 
+              {/* WhatsApp */}
+              <button
+                onClick={() => openWaEdit(profile)}
+                disabled={updating === profile.id}
+                title={profile.whatsapp_number ? `WhatsApp: ${profile.whatsapp_number}` : 'Add WhatsApp number'}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors shrink-0 ${
+                  profile.whatsapp_number
+                    ? profile.whatsapp_alerts
+                      ? 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10'
+                      : 'text-[#8888aa] border-[#2a2a3a] hover:bg-white/5'
+                    : 'text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/10'
+                }`}
+              >
+                <MessageCircle size={13} />
+                {profile.whatsapp_number ? (profile.whatsapp_alerts ? 'WhatsApp on' : 'WhatsApp off') : 'No number'}
+              </button>
+
               {/* Role selector */}
               <div className="w-48 shrink-0">
                 <select
@@ -154,6 +204,37 @@ export function UsersClient({ profiles, currentUserId }: Props) {
           <p><span className="text-white font-medium">Legal / CA Viewer</span> — Read-only access to selected documents and reports</p>
         </div>
       </div>
+
+      {/* WhatsApp number dialog */}
+      <Modal
+        open={waEdit !== null}
+        onClose={() => setWaEdit(null)}
+        title={`WhatsApp — ${waEdit?.full_name ?? ''}`}
+      >
+        {waEdit && (
+          <div className="space-y-4">
+            <Input
+              label="WhatsApp Number (with country code)"
+              placeholder="+91XXXXXXXXXX"
+              value={waNumber}
+              onChange={e => setWaNumber(e.target.value)}
+            />
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-white">
+              <input
+                type="checkbox"
+                checked={waEnabled}
+                onChange={e => setWaEnabled(e.target.checked)}
+                className="h-4 w-4 accent-white shrink-0"
+              />
+              Send WhatsApp alerts to this number
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setWaEdit(null)}>Cancel</Button>
+              <Button onClick={saveWa} loading={waSaving}>Save</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Confirmation dialog */}
       <Modal

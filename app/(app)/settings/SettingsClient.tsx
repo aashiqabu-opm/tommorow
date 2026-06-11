@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { formatRelative } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { ALERT_CATEGORIES, CATEGORY_LABELS } from '@/lib/alerts/categories'
 
 interface Props {
   profile: Record<string, unknown>
@@ -31,8 +32,13 @@ export function SettingsClient({ profile, auditLogs }: Props) {
   const [emailAlerts, setEmailAlerts] = useState(Boolean(profile.email_alerts ?? true))
   const [whatsappAlerts, setWhatsappAlerts] = useState(Boolean(profile.whatsapp_alerts ?? false))
   const [whatsappNumber, setWhatsappNumber] = useState((profile.whatsapp_number as string) ?? '')
+  const [muted, setMuted] = useState<string[]>((profile.muted_categories as string[]) ?? [])
   const [alertsSaving, setAlertsSaving] = useState(false)
   const [alertsSaved, setAlertsSaved] = useState(false)
+
+  function toggleCategory(cat: string, enabled: boolean) {
+    setMuted(prev => enabled ? prev.filter(c => c !== cat) : [...prev.filter(c => c !== cat), cat])
+  }
 
   async function handleSaveAlerts(e: React.FormEvent) {
     e.preventDefault()
@@ -42,6 +48,7 @@ export function SettingsClient({ profile, auditLogs }: Props) {
       email_alerts: emailAlerts,
       whatsapp_alerts: whatsappAlerts,
       whatsapp_number: whatsappNumber.trim() || null,
+      muted_categories: muted,
       updated_at: new Date().toISOString(),
     }).eq('id', profile.id as string)
     setAlertsSaving(false)
@@ -130,6 +137,23 @@ export function SettingsClient({ profile, auditLogs }: Props) {
             value={whatsappNumber}
             onChange={e => setWhatsappNumber(e.target.value)}
           />
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-[#8888aa]">Alert categories</div>
+            <div className="grid grid-cols-2 gap-2">
+              {ALERT_CATEGORIES.map(cat => (
+                <label key={cat} className="flex items-center gap-2 cursor-pointer text-sm text-white">
+                  <input
+                    type="checkbox"
+                    checked={!muted.includes(cat)}
+                    onChange={e => toggleCategory(cat, e.target.checked)}
+                    className="h-4 w-4 accent-white shrink-0"
+                  />
+                  {CATEGORY_LABELS[cat]}
+                </label>
+              ))}
+            </div>
+            <div className="text-xs text-[#5a5a7a]">Unticked categories are muted for both email and WhatsApp.</div>
+          </div>
           <Button type="submit" loading={alertsSaving}>
             {alertsSaved ? '✓ Saved' : 'Save Alert Preferences'}
           </Button>

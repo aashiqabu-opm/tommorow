@@ -36,6 +36,10 @@ export interface Profile {
   role: Role
   avatar_url?: string
   is_active: boolean
+  email_alerts?: boolean
+  whatsapp_alerts?: boolean
+  whatsapp_number?: string | null
+  muted_categories?: string[]
   created_at: string
   updated_at: string
 }

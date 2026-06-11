@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { deliverAlert } from '@/lib/alerts/deliver'
+import { isAlertCategory } from '@/lib/alerts/categories'
 
 // Instant outbound alerts. Called fire-and-forget by lib/notifications.ts
 // right after in-app notifications are inserted. Caller must be an active user.
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let payload: { userIds?: unknown; title?: unknown; body?: unknown }
+  let payload: { userIds?: unknown; title?: unknown; body?: unknown; category?: unknown }
   try {
     payload = await request.json()
   } catch {
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'userIds and title required' }, { status: 400 })
   }
 
-  await deliverAlert(userIds, title, body)
+  const category = isAlertCategory(payload.category) ? payload.category : 'general'
+  await deliverAlert(userIds, title, body, category)
   return NextResponse.json({ ok: true })
 }

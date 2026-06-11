@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { categoryFor } from '@/lib/alerts/categories'
 
 export async function notifyUsers(
   userIds: string[],
@@ -23,7 +24,7 @@ export async function notifyUsers(
     void fetch('/api/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userIds, title, body }),
+      body: JSON.stringify({ userIds, title, body, category: categoryFor(entityType) }),
       keepalive: true,
     })
   } catch {

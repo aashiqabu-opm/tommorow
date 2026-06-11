@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Download, BarChart3, AlertTriangle, FileCheck } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
@@ -20,6 +21,8 @@ interface Props {
   documents: Row[]
   projects: { id: string; name: string }[]
   role: string
+  initialFrom: string
+  initialTo: string
 }
 
 type ReportType = 'cash' | 'liability' | 'liability_payments' | 'payments' | 'documents' | 'expiring' | 'tds_register'
@@ -45,11 +48,24 @@ function downloadCSV(headers: string[], rows: unknown[][], filename: string) {
 const ddmmyyyy = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-IN') : '')
 const num = (v: unknown) => Number(v ?? 0).toFixed(2)
 
-export function ReportsClient({ cashEntries, liabilities, liabilityPayments, payments, documents, role }: Props) {
+export function ReportsClient({ cashEntries, liabilities, liabilityPayments, payments, documents, role, initialFrom, initialTo }: Props) {
+  const router = useRouter()
   const [active, setActive] = useState<ReportType>('cash')
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
+  const [fromDate, setFromDate] = useState(initialFrom)
+  const [toDate, setToDate] = useState(initialTo)
   const isFinance = role === 'founder' || role === 'accountant'
+
+  // Changing the period updates the URL so the server refetches only that
+  // range — keeps the payload small no matter how many years accumulate.
+  function applyRange(from: string, to: string) {
+    setFromDate(from)
+    setToDate(to)
+    const params = new URLSearchParams()
+    if (!from && !to) params.set('all', '1')
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    router.replace(`/reports?${params.toString()}`)
+  }
 
   // ── Date range filter ──
   const inRange = (dateStr?: string | null) => {
@@ -231,13 +247,13 @@ export function ReportsClient({ cashEntries, liabilities, liabilityPayments, pay
       {/* Date range filter */}
       <div className="flex items-center gap-3 flex-wrap bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-3">
         <span className="text-xs font-medium text-[#8888aa]">Period:</span>
-        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+        <input type="date" value={fromDate} onChange={e => applyRange(e.target.value, toDate)}
           className="bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40" />
         <span className="text-xs text-[#5a5a7a]">to</span>
-        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+        <input type="date" value={toDate} onChange={e => applyRange(fromDate, e.target.value)}
           className="bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40" />
         {(fromDate || toDate) && (
-          <button onClick={() => { setFromDate(''); setToDate('') }} className="text-xs text-[#8888aa] hover:text-white">Clear</button>
+          <button onClick={() => applyRange('', '')} className="text-xs text-[#8888aa] hover:text-white">All time</button>
         )}
         <span className="text-xs text-[#5a5a7a] ml-auto">{periodLabel}</span>
       </div>

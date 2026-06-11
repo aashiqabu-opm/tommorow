@@ -8,11 +8,13 @@ export async function logAction(
   newValues?: Record<string, unknown>
 ) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  // getSession() reads the local session — no auth-server round-trip per
+  // logged action (RLS still validates the JWT when the insert hits the DB).
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return
 
   await supabase.from('audit_logs').insert({
-    user_id: user.id,
+    user_id: session.user.id,
     action,
     entity_type: entityType,
     entity_id: entityId,

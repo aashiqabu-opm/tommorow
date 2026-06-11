@@ -5,6 +5,7 @@ interface ProgressBarProps {
   max?: number
   showLabel?: boolean
   size?: 'sm' | 'md'
+  status?: 'green' | 'yellow' | 'red'
   className?: string
 }
 
@@ -14,14 +15,17 @@ function getColor(pct: number) {
   return 'bg-red-500'
 }
 
-export function ProgressBar({ value, max = 100, showLabel = false, size = 'sm', className }: ProgressBarProps) {
+const STATUS_COLOR = { green: 'bg-emerald-500', yellow: 'bg-amber-500', red: 'bg-red-500' }
+
+export function ProgressBar({ value, max = 100, showLabel = false, size = 'sm', status, className }: ProgressBarProps) {
   const pct = Math.min(Math.round((value / max) * 100), 100)
+  const barColor = status ? STATUS_COLOR[status] : getColor(pct)
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <div className={cn('flex-1 rounded-full bg-[#2a2a3a] overflow-hidden', size === 'sm' ? 'h-1.5' : 'h-2.5')}>
         <div
-          className={cn('h-full rounded-full transition-all duration-500', getColor(pct))}
+          className={cn('h-full rounded-full transition-all duration-500', barColor)}
           style={{ width: `${pct}%` }}
         />
       </div>

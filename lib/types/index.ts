@@ -54,6 +54,17 @@ export interface Project {
   updated_at: string
 }
 
+export interface ProjectIncome {
+  id: string
+  project_id: string
+  amount: number
+  source: string
+  income_date: string
+  notes?: string
+  recorded_by: string
+  created_at: string
+}
+
 export interface CashEntry {
   id: string
   entry_date: string

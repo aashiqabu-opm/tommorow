@@ -69,6 +69,22 @@ CREATE TABLE project_members (
 );
 
 -- ─────────────────────────────────────────────
+-- PROJECT INCOME (revenue entries per project)
+-- ─────────────────────────────────────────────
+CREATE TABLE project_income (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  amount NUMERIC(15, 2) NOT NULL,
+  source TEXT NOT NULL,
+  income_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  notes TEXT,
+  recorded_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_project_income_project ON project_income(project_id);
+
+-- ─────────────────────────────────────────────
 -- CASH ENTRIES
 -- ─────────────────────────────────────────────
 CREATE TABLE cash_entries (

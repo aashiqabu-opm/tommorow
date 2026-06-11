@@ -2,7 +2,7 @@ export type Role = 'founder' | 'accountant' | 'general_manager' | 'executive_pro
 
 export type ProjectStatus = 'active' | 'development' | 'post_production' | 'released' | 'on_hold' | 'cancelled'
 
-export type LiabilityType = 'loan' | 'vendor' | 'artist' | 'technician' | 'rent' | 'tax' | 'personal' | 'other'
+export type LiabilityType = 'loan' | 'vendor' | 'artist' | 'technician' | 'rent' | 'tax' | 'personal' | 'other' | 'salary'
 export type LiabilityPriority = 'urgent' | 'normal' | 'low'
 export type LiabilityStatus = 'unpaid' | 'partly_paid' | 'cleared' | 'disputed'
 
@@ -140,6 +140,30 @@ export interface PaymentRequest {
   project?: Pick<Project, 'name'>
   requester?: Pick<Profile, 'full_name'>
   approver?: Pick<Profile, 'full_name'>
+  payee_vendor_id?: string
+  gst_amount?: number
+  tds_percent?: number
+  tds_amount?: number
+  net_payable?: number
+  vendor?: { pan?: string } | null
+}
+
+export interface Vendor {
+  id: string
+  name: string
+  phone?: string
+  email?: string
+  gst_number?: string
+  pan?: string
+  bank_account_name?: string
+  bank_account_number?: string
+  bank_ifsc?: string
+  upi_id?: string
+  notes?: string
+  created_by?: string
+  created_at: string
+  updated_at: string
+  total_paid?: number
 }
 
 export interface Document {
@@ -204,6 +228,44 @@ export interface Notification {
   entity_type?: string
   entity_id?: string
   created_at: string
+}
+
+export interface BankAccount {
+  id: string
+  name: string
+  account_type: 'bank' | 'upi' | 'cash_drawer'
+  account_number?: string
+  ifsc?: string
+  opening_balance: number
+  current_balance: number
+  is_active: boolean
+  created_at: string
+  recent_transactions?: AccountTransaction[]
+}
+
+export interface AccountTransaction {
+  id: string
+  account_id: string
+  txn_date: string
+  direction: 'in' | 'out'
+  amount: number
+  description?: string
+  reference?: string
+  entity_type?: string
+  entity_id?: string
+  created_by?: string
+  created_at: string
+}
+
+export interface StaffSalary {
+  id: string
+  person_name: string
+  role_title?: string
+  monthly_salary: number
+  vendor_id?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface DashboardStats {

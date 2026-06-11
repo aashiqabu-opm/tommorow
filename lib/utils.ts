@@ -79,6 +79,7 @@ export const LIABILITY_TYPE_LABELS: Record<string, string> = {
   rent: 'Rent',
   tax: 'Tax',
   personal: 'Personal',
+  salary: 'Salary',
   other: 'Other',
 }
 
@@ -107,3 +108,38 @@ export const DEFAULT_PROJECTS = [
   'TOMORROW',
   'Other',
 ]
+
+// ─── Number to Indian English Words ──────────────────────────────────────────
+const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+
+function twoDigits(n: number): string {
+  if (n < 20) return ONES[n]
+  return (TENS[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + ONES[n % 10] : '')).trim()
+}
+
+function threeDigits(n: number): string {
+  if (n < 100) return twoDigits(n)
+  const hundreds = Math.floor(n / 100)
+  const rest = n % 100
+  return (ONES[hundreds] + ' Hundred' + (rest > 0 ? ' ' + twoDigits(rest) : '')).trim()
+}
+
+export function numberToWordsIndian(n: number): string {
+  const num = Math.floor(Math.abs(n))
+  if (num === 0) return 'Zero'
+
+  const crore = Math.floor(num / 10000000)
+  const lakh = Math.floor((num % 10000000) / 100000)
+  const thousand = Math.floor((num % 100000) / 1000)
+  const remainder = num % 1000
+
+  const parts: string[] = []
+  if (crore > 0) parts.push(threeDigits(crore) + ' Crore')
+  if (lakh > 0) parts.push(threeDigits(lakh) + ' Lakh')
+  if (thousand > 0) parts.push(threeDigits(thousand) + ' Thousand')
+  if (remainder > 0) parts.push(threeDigits(remainder))
+
+  return parts.join(' ')
+}

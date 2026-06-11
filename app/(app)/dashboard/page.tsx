@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Wallet, Building2, AlertTriangle, Clock, FileWarning, FileX, Clapperboard } from 'lucide-react'
+import { Wallet, Building2, AlertTriangle, Clock, FileWarning, FileX, Clapperboard, Landmark } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { BarChart } from '@/components/ui/BarChart'
 import { formatCurrency, formatDate, paidPercent, cn } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -24,15 +25,18 @@ export default async function DashboardPage() {
     paymentRequestsResult,
     documentsResult,
     projectsResult,
+    bankAccountsResult,
   ] = await Promise.all([
     isFinance ? supabase.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).limit(1) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('liabilities').select('amount_owed, amount_paid, balance_remaining, status, priority, due_date') : Promise.resolve({ data: null }),
     supabase.from('payment_requests').select('approval_status, payment_status').eq('approval_status', 'pending'),
     supabase.from('documents').select('status, expiry_date'),
     supabase.from('projects').select('id, name, status'),
+    isFinance ? supabase.from('bank_accounts').select('current_balance').eq('is_active', true) : Promise.resolve({ data: null }),
   ])
 
   const cashInHand = cashResult.data?.[0]?.closing_cash ?? 0
+  const bankBalance = (bankAccountsResult.data ?? []).reduce((s, a) => s + (a.current_balance ?? 0), 0)
   const liabilities = liabilitiesResult.data ?? []
   const totalLiabilities = liabilities.reduce((s, l) => s + (l.amount_owed ?? 0), 0)
   const totalPaid = liabilities.reduce((s, l) => s + (l.amount_paid ?? 0), 0)
@@ -49,6 +53,55 @@ export default async function DashboardPage() {
 
   const urgentLiabilities = liabilities.filter(l => l.priority === 'urgent' && l.status !== 'cleared')
   const projects = projectsResult.data ?? []
+
+  // ── Monthly spend (last 6 months) ──
+  const { data: monthlySpend } = isFinance ? await supabase
+    .from('payment_requests')
+    .select('created_at, amount')
+    .in('approval_status', ['approved'])
+    .gte('created_at', new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString()) : { data: null }
+
+  const { data: monthlyIncome } = isFinance ? await supabase
+    .from('project_income')
+    .select('income_date, amount')
+    .gte('income_date', new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString().split('T')[0]) : { data: null }
+
+  // Build last 6 months labels and data
+  const now = new Date()
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
+    return {
+      label: d.toLocaleString('en-IN', { month: 'short' }),
+      year: d.getFullYear(),
+      month: d.getMonth(),
+    }
+  })
+
+  const spendByMonth = months.map(m => {
+    const total = (monthlySpend ?? [])
+      .filter(p => {
+        const d = new Date(p.created_at)
+        return d.getFullYear() === m.year && d.getMonth() === m.month
+      })
+      .reduce((s, p) => s + (p.amount ?? 0), 0)
+    return { label: m.label, value: total }
+  })
+
+  const incomeByMonth = months.map(m => {
+    const total = (monthlyIncome ?? [])
+      .filter(p => {
+        const d = new Date(p.income_date)
+        return d.getFullYear() === m.year && d.getMonth() === m.month
+      })
+      .reduce((s, p) => s + (p.amount ?? 0), 0)
+    return { label: m.label, value: total }
+  })
+
+  const dualChartData = months.map((m, i) => ({
+    label: m.label,
+    value: spendByMonth[i].value,
+    value2: incomeByMonth[i].value,
+  }))
 
   return (
     <div className="space-y-6">
@@ -71,6 +124,13 @@ export default async function DashboardPage() {
               subtitle="Latest closing balance"
             />
             <StatCard
+              title="Bank Balance"
+              value={formatCurrency(bankBalance)}
+              icon={Landmark}
+              status={bankBalance > 500000 ? 'green' : bankBalance > 100000 ? 'yellow' : 'red'}
+              subtitle="Sum of active accounts"
+            />
+            <StatCard
               title="Outstanding Liabilities"
               value={formatCurrency(outstanding)}
               icon={AlertTriangle}
@@ -83,13 +143,6 @@ export default async function DashboardPage() {
               icon={Clock}
               status={urgentLiabilities.length === 0 ? 'green' : 'red'}
               subtitle="Require immediate action"
-            />
-            <StatCard
-              title="Paid Liabilities"
-              value={`${paidPercent(totalPaid, totalLiabilities)}%`}
-              icon={Building2}
-              status={paidPercent(totalPaid, totalLiabilities) >= 80 ? 'green' : paidPercent(totalPaid, totalLiabilities) >= 40 ? 'yellow' : 'red'}
-              subtitle={`${formatCurrency(totalPaid)} of ${formatCurrency(totalLiabilities)}`}
             />
           </div>
         </section>
@@ -167,6 +220,34 @@ export default async function DashboardPage() {
                 </div>
               )
             })}
+          </div>
+        </section>
+      )}
+
+      {/* Monthly Charts — Finance only */}
+      {isFinance && (
+        <section>
+          <h2 className="text-xs font-semibold text-[#8888aa] uppercase tracking-wider mb-3">Monthly Trends</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
+              <div className="text-sm font-semibold text-white mb-4">Monthly Spend</div>
+              <BarChart
+                data={spendByMonth}
+                label1="Spend"
+                formatValue={(v) => `₹${Math.round(v / 1000)}K`}
+                height={120}
+              />
+            </div>
+            <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
+              <div className="text-sm font-semibold text-white mb-4">Income vs Expenses</div>
+              <BarChart
+                data={dualChartData}
+                label1="Expenses"
+                label2="Income"
+                formatValue={(v) => `₹${Math.round(v / 1000)}K`}
+                height={120}
+              />
+            </div>
           </div>
         </section>
       )}

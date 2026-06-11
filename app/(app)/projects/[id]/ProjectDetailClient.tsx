@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
   id: string; payee: string; purpose: string; amount: number
-  approval_status: string; verification_status: string; created_at: string
+  approval_status: string; verification_status: string; created_at: string; category?: string
 }
 
 interface Props {
@@ -86,6 +86,16 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
   const budgetStatus = budgetUsedPct >= 100 ? 'red' : budgetUsedPct >= 80 ? 'yellow' : 'green'
 
   const pendingPayments = payments.filter(p => p.approval_status === 'pending').length
+
+  // ── Spend by category ──────────────────────────────────────
+  const categorySpend = approvedPayments.reduce<Record<string, number>>((acc, p) => {
+    const cat = p.category?.trim() || 'Uncategorised'
+    acc[cat] = (acc[cat] ?? 0) + p.amount
+    return acc
+  }, {})
+  const categoryEntries = Object.entries(categorySpend)
+    .sort((a, b) => b[1] - a[1])
+
   const expiring = documents.filter(d => {
     if (!d.expiry_date) return false
     const exp = new Date(d.expiry_date)
@@ -243,6 +253,30 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
             <div className="text-[10px] text-[#5a5a7a]">{formatCurrency(totalLiabilitiesPaid)} paid · {formatCurrency(totalLiabilitiesOutstanding)} outstanding</div>
           </div>
         </div>
+
+        {/* Spend by category */}
+        {categoryEntries.length > 0 && (
+          <div className="pt-3 border-t border-[#2a2a3a]">
+            <div className="text-[11px] text-[#8888aa] font-medium uppercase tracking-wider mb-3">Spend by Category</div>
+            <div className="space-y-2.5">
+              {categoryEntries.map(([cat, amount]) => {
+                const pct = totalPaymentsSpent > 0 ? Math.round((amount / totalPaymentsSpent) * 100) : 0
+                return (
+                  <div key={cat}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-[#8888aa]">{cat}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-[#5a5a7a]">{pct}%</span>
+                        <span className="text-xs font-medium text-white tabular-nums">{formatCurrency(amount)}</span>
+                      </div>
+                    </div>
+                    <ProgressBar value={amount} max={totalPaymentsSpent || 1} showLabel={false} size="sm" />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Quick stats */}

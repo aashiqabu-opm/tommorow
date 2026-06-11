@@ -22,7 +22,7 @@ interface Props {
   role: string
 }
 
-type ReportType = 'cash' | 'liability' | 'liability_payments' | 'payments' | 'documents' | 'expiring'
+type ReportType = 'cash' | 'liability' | 'liability_payments' | 'payments' | 'documents' | 'expiring' | 'tds_register'
 
 // ─── CSV helpers (audit-friendly: clean headers, raw numbers, totals row) ───
 
@@ -150,6 +150,28 @@ export function ReportsClient({ cashEntries, liabilities, liabilityPayments, pay
     )
   }
 
+  function exportTdsRegister() {
+    const tdsPayments = paymentRegister.filter(p => (p.tds_amount ?? 0) > 0)
+    const totalTds = tdsPayments.reduce((s, p) => s + (p.tds_amount ?? 0), 0)
+    const totalNet = tdsPayments.reduce((s, p) => s + (p.net_payable ?? p.amount ?? 0), 0)
+    downloadCSV(
+      ['Date', 'Payee', 'PAN', 'Amount', 'TDS %', 'TDS Amount', 'Net Paid'],
+      [
+        ...tdsPayments.map(p => [
+          ddmmyyyy(p.created_at),
+          p.payee,
+          p.vendor?.pan ?? '',
+          num(p.amount),
+          num(p.tds_percent),
+          num(p.tds_amount),
+          num(p.net_payable ?? p.amount),
+        ]),
+        ['TOTAL', '', '', '', '', num(totalTds), num(totalNet)],
+      ],
+      'OPM_tds_register'
+    )
+  }
+
   function exportAuditPackage() {
     // Summary sheet first, then each register, staggered so the browser allows all downloads
     downloadCSV(
@@ -192,6 +214,7 @@ export function ReportsClient({ cashEntries, liabilities, liabilityPayments, pay
     { key: 'payments', label: 'Payment Register' },
     { key: 'documents', label: 'Documents' },
     { key: 'expiring', label: 'Expiring Agreements' },
+    { key: 'tds_register', label: 'TDS Register' },
   ]
   const availableTabs = TABS.filter(t => !t.finance || isFinance)
 
@@ -447,6 +470,47 @@ export function ReportsClient({ cashEntries, liabilities, liabilityPayments, pay
               {expiring.length === 0 && expired.length === 0 && (
                 <div className="py-8 text-center text-[#8888aa] text-sm">No expiring agreements</div>
               )}
+            </div>
+          </>
+        )}
+
+        {active === 'tds_register' && (
+          <>
+            <ReportHeader title={`TDS Register (${paymentRegister.filter(p => (p.tds_amount ?? 0) > 0).length} entries)`} onExport={exportTdsRegister} />
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-[#2a2a3a]">
+                  {['Date', 'Payee', 'PAN', 'Amount', 'TDS %', 'TDS Amount', 'Net Paid'].map(h => (
+                    <th key={h} className="px-5 py-3 text-left text-[11px] font-medium text-[#8888aa] uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody className="divide-y divide-[#2a2a3a]">
+                  {paymentRegister.filter(p => (p.tds_amount ?? 0) > 0).map((p, i) => (
+                    <tr key={i} className="hover:bg-[#1a1a24]">
+                      <td className="px-5 py-3 text-[#8888aa]">{formatDate(p.created_at)}</td>
+                      <td className="px-5 py-3 text-white">{p.payee}</td>
+                      <td className="px-5 py-3 text-[#8888aa]">{p.vendor?.pan ?? '—'}</td>
+                      <td className="px-5 py-3 text-white tabular-nums">{formatCurrency(p.amount)}</td>
+                      <td className="px-5 py-3 text-[#8888aa]">{p.tds_percent ?? 0}%</td>
+                      <td className="px-5 py-3 text-red-400 tabular-nums">{formatCurrency(p.tds_amount ?? 0)}</td>
+                      <td className="px-5 py-3 text-emerald-400 tabular-nums">{formatCurrency(p.net_payable ?? p.amount)}</td>
+                    </tr>
+                  ))}
+                  {paymentRegister.filter(p => (p.tds_amount ?? 0) > 0).length > 0 && (() => {
+                    const tdsPayments = paymentRegister.filter(p => (p.tds_amount ?? 0) > 0)
+                    return (
+                      <tr className="bg-[#1a1a24] font-semibold">
+                        <td className="px-5 py-3 text-white" colSpan={5}>TOTAL</td>
+                        <td className="px-5 py-3 text-red-400 tabular-nums">{formatCurrency(tdsPayments.reduce((s, p) => s + (p.tds_amount ?? 0), 0))}</td>
+                        <td className="px-5 py-3 text-emerald-400 tabular-nums">{formatCurrency(tdsPayments.reduce((s, p) => s + (p.net_payable ?? p.amount ?? 0), 0))}</td>
+                      </tr>
+                    )
+                  })()}
+                  {paymentRegister.filter(p => (p.tds_amount ?? 0) > 0).length === 0 && (
+                    <tr><td colSpan={7} className="px-5 py-8 text-center text-[#8888aa]">No TDS deductions in this period</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </>
         )}

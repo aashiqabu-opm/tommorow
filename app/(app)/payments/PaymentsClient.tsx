@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send, Printer } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge, getPaymentStatusBadge } from '@/components/ui/StatusBadge'
@@ -12,7 +12,7 @@ import { MoneyInput } from '@/components/ui/MoneyInput'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { FilePicker } from '@/components/ui/FilePicker'
 import { useToast } from '@/components/ui/Toast'
-import { formatCurrency, formatDate, PAYMENT_CATEGORY_OPTIONS } from '@/lib/utils'
+import { formatCurrency, formatDate, PAYMENT_CATEGORY_OPTIONS, numberToWordsIndian } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { notifyUsers, notifyFinance } from '@/lib/notifications'
@@ -26,19 +26,23 @@ interface Props {
   comments: Comment[]
   userId: string
   role: string
+  vendors: { id: string; name: string }[]
 }
 
 const INITIAL_FORM = {
   project_id: '',
   payee: '',
+  payee_vendor_id: '',
   amount: '',
+  gst_amount: '',
+  tds_percent: '0',
   purpose: '',
   category: '',
   due_date: '',
   notes: '',
 }
 
-export function PaymentsClient({ requests, projects, comments, userId, role }: Props) {
+export function PaymentsClient({ requests, projects, comments, vendors, userId, role }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [open, setOpen] = useState(false)
@@ -89,6 +93,12 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
     setSaving(true)
     const supabase = createClient()
 
+    const baseAmount = parseFloat(form.amount) || 0
+    const gstAmt = parseFloat(form.gst_amount) || 0
+    const tdsPct = parseFloat(form.tds_percent) || 0
+    const tdsAmt = tdsPct > 0 ? Math.round(baseAmount * tdsPct / 100 * 100) / 100 : 0
+    const netPayable = baseAmount + gstAmt - tdsAmt
+
     let billUrl: string | undefined
     let billName: string | undefined
 
@@ -112,7 +122,12 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
       project_id: form.project_id,
       requested_by: userId,
       payee: form.payee,
+      payee_vendor_id: form.payee_vendor_id || null,
       amount: parseFloat(form.amount) || 0,
+      gst_amount: gstAmt || null,
+      tds_percent: tdsPct || null,
+      tds_amount: tdsAmt || null,
+      net_payable: (gstAmt > 0 || tdsPct > 0) ? netPayable : null,
       purpose: form.purpose,
       category: form.category,
       due_date: form.due_date || null,
@@ -243,6 +258,73 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
     router.refresh()
   }
 
+  function openVoucher(req: PaymentRequest) {
+    const win = window.open('', '_blank', 'width=800,height=600')
+    if (!win) return
+    const net = req.net_payable ?? req.amount
+    const amountWords = numberToWordsIndian(net)
+    const voucherNo = req.id.replace(/-/g, '').slice(0, 8).toUpperCase()
+    const paidDate = req.paid_at ? new Date(req.paid_at).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const projectName = (req.project as { name?: string } | null)?.name ?? '—'
+
+    win.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payment Voucher — ${voucherNo}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #000; background: #fff; padding: 32px; }
+    .header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #000; padding-bottom: 16px; }
+    .header h1 { font-size: 22px; font-weight: bold; letter-spacing: 2px; }
+    .header h2 { font-size: 14px; letter-spacing: 4px; color: #444; margin-top: 4px; }
+    .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 12px; }
+    .meta span { color: #555; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; font-size: 12px; }
+    th { background: #f0f0f0; font-weight: bold; width: 35%; color: #333; }
+    td { color: #000; }
+    .amount-row td { font-weight: bold; font-size: 14px; }
+    .words { background: #f9f9f9; border: 1px solid #ccc; border-radius: 4px; padding: 10px 14px; margin-bottom: 24px; font-style: italic; color: #333; font-size: 12px; }
+    .words strong { color: #000; font-style: normal; }
+    .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-top: 40px; }
+    .sig-box { border-top: 1px solid #000; padding-top: 8px; text-align: center; font-size: 11px; color: #444; }
+    @media print { body { padding: 16px; } @page { size: A4; margin: 16mm; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>OPM CINEMAS</h1>
+    <h2>PAYMENT VOUCHER</h2>
+  </div>
+  <div class="meta">
+    <span><strong>Voucher No:</strong> ${voucherNo}</span>
+    <span><strong>Date:</strong> ${paidDate}</span>
+  </div>
+  <table>
+    <tr><th>Payee</th><td>${req.payee}</td></tr>
+    <tr><th>Purpose</th><td>${req.purpose}</td></tr>
+    <tr><th>Project</th><td>${projectName}</td></tr>
+    <tr><th>Category</th><td>${req.category || '—'}</td></tr>
+    <tr class="amount-row"><th>Base Amount</th><td>₹${req.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>
+    ${req.gst_amount ? `<tr><th>GST Amount</th><td>₹${req.gst_amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>` : ''}
+    ${req.tds_amount ? `<tr><th>TDS (${req.tds_percent ?? 0}%)</th><td>- ₹${req.tds_amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>` : ''}
+    ${req.net_payable != null ? `<tr class="amount-row"><th>Net Payable</th><td>₹${req.net_payable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td></tr>` : ''}
+  </table>
+  <div class="words">
+    <strong>Amount in Words:</strong> ${amountWords} Rupees Only
+  </div>
+  <div class="signatures">
+    <div class="sig-box">Prepared by</div>
+    <div class="sig-box">Approved by</div>
+    <div class="sig-box">Received by</div>
+  </div>
+</body>
+</html>`)
+    win.document.close()
+    win.print()
+  }
+
   async function handlePostComment(req: PaymentRequest) {
     const content = commentText.trim()
     if (!content) return
@@ -332,6 +414,9 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-lg font-bold text-white tabular-nums">{formatCurrency(req.amount)}</div>
+                      {req.net_payable != null && req.net_payable !== req.amount && (
+                        <div className="text-[11px] text-[#5a5a7a] mt-0.5">Net: {formatCurrency(req.net_payable)}</div>
+                      )}
                       <div className="text-[11px] text-[#8888aa] mt-1">{formatDate(req.created_at)}</div>
                     </div>
                   </div>
@@ -355,6 +440,9 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
                     )}
                     {canVerify && req.approval_status === 'approved' && req.payment_status === 'unpaid' && (
                       <button onClick={() => handleMarkPaid(req)} className="text-xs text-white/70 hover:text-white flex items-center gap-1"><CheckCircle size={12} /> Mark Paid</button>
+                    )}
+                    {req.payment_status === 'paid' && (
+                      <button onClick={() => openVoucher(req)} className="text-xs text-[#8888aa] hover:text-white flex items-center gap-1"><Printer size={12} /> Voucher</button>
                     )}
                     <button
                       onClick={() => { setCommentsFor(commentsFor === req.id ? null : req.id); setCommentText('') }}
@@ -422,10 +510,64 @@ export function PaymentsClient({ requests, projects, comments, userId, role }: P
             options={projects.map(p => ({ value: p.id, label: p.name }))}
             placeholder="— Select project —"
           />
+          <Select
+            label="Link to Vendor (optional)"
+            value={form.payee_vendor_id}
+            onChange={e => {
+              const vendorId = e.target.value
+              const vendor = vendors.find(v => v.id === vendorId)
+              setForm({
+                ...form,
+                payee_vendor_id: vendorId,
+                payee: vendor ? vendor.name : form.payee,
+              })
+            }}
+            options={vendors.map(v => ({ value: v.id, label: v.name }))}
+            placeholder="— No vendor link —"
+          />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Payee *" value={form.payee} onChange={e => setForm({ ...form, payee: e.target.value })} required placeholder="Person / company to pay" />
             <MoneyInput label="Amount *" value={form.amount} onChange={v => setForm({ ...form, amount: v })} required />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <MoneyInput label="GST Amount (₹)" value={form.gst_amount} onChange={v => setForm({ ...form, gst_amount: v })} />
+            <Select label="TDS %" value={form.tds_percent} onChange={e => setForm({ ...form, tds_percent: e.target.value })}
+              options={[
+                { value: '0', label: 'No TDS' },
+                { value: '1', label: '1%' },
+                { value: '2', label: '2% (194C)' },
+                { value: '5', label: '5%' },
+                { value: '10', label: '10%' },
+              ]} />
+          </div>
+          {(parseFloat(form.gst_amount) > 0 || parseFloat(form.tds_percent) > 0) && (
+            <div className="bg-[#1a1a24] border border-[#2a2a3a] rounded-xl p-4 text-xs space-y-1.5">
+              <div className="flex justify-between text-[#8888aa]">
+                <span>Base Amount:</span>
+                <span className="tabular-nums text-white">{formatCurrency(parseFloat(form.amount) || 0)}</span>
+              </div>
+              {parseFloat(form.gst_amount) > 0 && (
+                <div className="flex justify-between text-[#8888aa]">
+                  <span>+ GST:</span>
+                  <span className="tabular-nums text-white">+{formatCurrency(parseFloat(form.gst_amount) || 0)}</span>
+                </div>
+              )}
+              {parseFloat(form.tds_percent) > 0 && (
+                <div className="flex justify-between text-[#8888aa]">
+                  <span>- TDS ({form.tds_percent}%):</span>
+                  <span className="tabular-nums text-red-300">-{formatCurrency(Math.round((parseFloat(form.amount) || 0) * (parseFloat(form.tds_percent) || 0) / 100 * 100) / 100)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-[#2a2a3a] pt-1.5 font-semibold">
+                <span className="text-white">Net Payable:</span>
+                <span className="tabular-nums text-emerald-300">{formatCurrency(
+                  (parseFloat(form.amount) || 0) +
+                  (parseFloat(form.gst_amount) || 0) -
+                  Math.round((parseFloat(form.amount) || 0) * (parseFloat(form.tds_percent) || 0) / 100 * 100) / 100
+                )}</span>
+              </div>
+            </div>
+          )}
           <Input label="Purpose *" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} required placeholder="What is this payment for?" />
           <div className="grid grid-cols-2 gap-3">
             <Select label="Category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Menu, LogOut, ChevronDown } from 'lucide-react'
+import { Menu, LogOut, ChevronDown, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { NotificationsBell } from './NotificationsBell'
 import type { Profile } from '@/lib/types'
 
@@ -46,6 +47,9 @@ export function Header({ profile, onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
+        <Link href="/search" className="p-2 text-[#8888aa] hover:text-white rounded-lg hover:bg-[#1a1a24]">
+          <Search size={18} />
+        </Link>
         <NotificationsBell />
 
         <div className="relative">

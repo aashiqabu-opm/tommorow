@@ -14,6 +14,9 @@ import {
   Clapperboard,
   ScrollText,
   X,
+  Building2,
+  Landmark,
+  HandCoins,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -29,7 +32,10 @@ interface SidebarProps {
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/cash', label: 'Cash in Hand', icon: Wallet, roles: ['founder', 'accountant'] },
+  { href: '/vendors', label: 'Vendors', icon: Building2, roles: ['founder', 'accountant', 'general_manager'] },
+  { href: '/accounts', label: 'Accounts', icon: Landmark, roles: ['founder', 'accountant'] },
   { href: '/liabilities', label: 'Liabilities', icon: AlertTriangle, roles: ['founder', 'accountant'] },
+  { href: '/payroll', label: 'Payroll', icon: HandCoins, roles: ['founder', 'accountant'] },
   { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
   { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
@@ -37,7 +43,7 @@ const navItems = [
   { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
   { href: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['founder'] },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['founder', 'accountant'] },
-] as const
+]
 
 export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()

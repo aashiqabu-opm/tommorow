@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Bell, CheckCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification } from '@/lib/types'
+import { runReminderSweep } from '@/lib/reminders'
 
 const ENTITY_ROUTES: Record<string, string> = {
   payment_requests: '/payments',
@@ -32,6 +33,7 @@ export function NotificationsBell() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
 
   const fetchNotifications = useCallback(async () => {
     const supabase = createClient()
@@ -48,6 +50,48 @@ export function NotificationsBell() {
     const interval = setInterval(fetchNotifications, 60000)
     return () => clearInterval(interval)
   }, [fetchNotifications])
+
+  useEffect(() => {
+    async function doReminderSweep() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setUserId(user.id)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      if (!profile?.role) return
+      await runReminderSweep(supabase, profile.role)
+      // Refresh notifications after sweep in case new ones were inserted
+      fetchNotifications()
+    }
+    doReminderSweep()
+  }, [fetchNotifications])
+
+  useEffect(() => {
+    if (!userId) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel('user-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          setNotifications(prev => [payload.new as Notification, ...prev])
+        }
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId])
 
   const unread = notifications.filter((n) => !n.is_read)
 

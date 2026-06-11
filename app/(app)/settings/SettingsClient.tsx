@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Shield, Clock } from 'lucide-react'
+import { Shield, Clock, BellRing } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -28,6 +28,27 @@ export function SettingsClient({ profile, auditLogs }: Props) {
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState((profile.full_name as string) ?? '')
   const [saved, setSaved] = useState(false)
+  const [emailAlerts, setEmailAlerts] = useState(Boolean(profile.email_alerts ?? true))
+  const [whatsappAlerts, setWhatsappAlerts] = useState(Boolean(profile.whatsapp_alerts ?? false))
+  const [whatsappNumber, setWhatsappNumber] = useState((profile.whatsapp_number as string) ?? '')
+  const [alertsSaving, setAlertsSaving] = useState(false)
+  const [alertsSaved, setAlertsSaved] = useState(false)
+
+  async function handleSaveAlerts(e: React.FormEvent) {
+    e.preventDefault()
+    setAlertsSaving(true)
+    const supabase = createClient()
+    await supabase.from('profiles').update({
+      email_alerts: emailAlerts,
+      whatsapp_alerts: whatsappAlerts,
+      whatsapp_number: whatsappNumber.trim() || null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', profile.id as string)
+    setAlertsSaving(false)
+    setAlertsSaved(true)
+    setTimeout(() => setAlertsSaved(false), 2000)
+    router.refresh()
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -68,6 +89,49 @@ export function SettingsClient({ profile, auditLogs }: Props) {
           </div>
           <Button type="submit" loading={saving}>
             {saved ? '✓ Saved' : 'Save Changes'}
+          </Button>
+        </form>
+      </div>
+
+      {/* Alerts */}
+      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <BellRing size={16} className="text-white/70" />
+          <h3 className="text-sm font-semibold text-white">Alerts</h3>
+        </div>
+        <form onSubmit={handleSaveAlerts} className="space-y-4 max-w-md">
+          <label className="flex items-center justify-between gap-4 cursor-pointer">
+            <div>
+              <div className="text-sm text-white">Email alerts</div>
+              <div className="text-xs text-[#8888aa]">Payment requests, approvals and the daily digest, sent to {profile.email as string}</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={emailAlerts}
+              onChange={e => setEmailAlerts(e.target.checked)}
+              className="h-4 w-4 accent-white shrink-0"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4 cursor-pointer">
+            <div>
+              <div className="text-sm text-white">WhatsApp alerts</div>
+              <div className="text-xs text-[#8888aa]">Same alerts on WhatsApp (requires number below)</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={whatsappAlerts}
+              onChange={e => setWhatsappAlerts(e.target.checked)}
+              className="h-4 w-4 accent-white shrink-0"
+            />
+          </label>
+          <Input
+            label="WhatsApp Number"
+            placeholder="+91XXXXXXXXXX"
+            value={whatsappNumber}
+            onChange={e => setWhatsappNumber(e.target.value)}
+          />
+          <Button type="submit" loading={alertsSaving}>
+            {alertsSaved ? '✓ Saved' : 'Save Alert Preferences'}
           </Button>
         </form>
       </div>

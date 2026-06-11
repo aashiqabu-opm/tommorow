@@ -18,6 +18,17 @@ export async function notifyUsers(
       entity_id: entityId ?? null,
     }))
   )
+  // Fire-and-forget outbound email/WhatsApp — never blocks or breaks the UI
+  try {
+    void fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userIds, title, body }),
+      keepalive: true,
+    })
+  } catch {
+    // ignore
+  }
 }
 
 // Notify all active founder + accountant users (optionally excluding the actor)

@@ -21,7 +21,8 @@ Internal office operating system for OPM Cinemas. A founder-first visual dashboa
 | **Projects** | Per-project pages with documents, payments, liabilities |
 | **Reports** | Cash, liability, payment, document reports with CSV export |
 | **User Management** | Role-based access control with 5 roles |
-| **Settings** | Profile management + append-only audit log |
+| **Settings** | Profile management + alert preferences + append-only audit log |
+| **Email/WhatsApp Alerts** | Instant alerts for payment events + daily 8 AM digest (pending approvals, due liabilities, expiring agreements) |
 
 ## Roles & Access
 
@@ -32,6 +33,18 @@ Internal office operating system for OPM Cinemas. A founder-first visual dashboa
 | **General Manager** | Payments, documents, projects, reports (no cash/liabilities) |
 | **Executive Producer** | Upload bills/documents, create payment requests, projects |
 | **Legal / CA Viewer** | Read-only documents and reports |
+
+---
+
+## Outbound Alerts Setup (email / WhatsApp)
+
+Alerts are optional — without these env vars the app simply skips them.
+
+1. Run `supabase/migration-alerts.sql` in the Supabase SQL Editor (adds alert preference columns to profiles).
+2. **Email:** create a free account at [resend.com](https://resend.com), get an API key, and set `RESEND_API_KEY` (and `RESEND_FROM` once you verify a domain) in Vercel → Project → Settings → Environment Variables.
+3. **Daily digest:** set `CRON_SECRET` (any long random string) and `SUPABASE_SERVICE_ROLE_KEY` in Vercel. The digest goes to founder + accountant at 8:00 AM IST (configured in `vercel.json`).
+4. **WhatsApp (optional):** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_WHATSAPP_FROM` from a Twilio WhatsApp sender.
+5. Each user controls their own alerts in **Settings → Alerts**.
 
 ---
 

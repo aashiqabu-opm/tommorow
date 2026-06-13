@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Download, FileCode, Table, BookOpen } from 'lucide-react'
-import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
@@ -138,8 +137,6 @@ export function TallyClient() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Tally Export" subtitle="Three simple steps to move your books into Tally" />
-
       {/* STEP 1 — Chart of Accounts (one-time setup) */}
       <Step n={1} title="Set up Tally once — Chart of Accounts"
         desc="Sends every ledger (with opening balances) into Tally so it's ready to receive vouchers. Do this once, or again whenever you add new ledgers.">

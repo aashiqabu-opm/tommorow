@@ -27,6 +27,7 @@ import { CrewLedgerSection } from './CrewLedgerSection'
 import { ProductionReportSection } from './ProductionReportSection'
 import { ProjectTeamSection } from './ProjectTeamSection'
 import { ProjectCheckinSection } from './ProjectCheckinSection'
+import { ProjectDocsSection } from './ProjectDocsSection'
 import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
@@ -431,6 +432,9 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
           releaseDate={project.release_date ?? null} status={project.status} aiStatusAt={project.ai_status_at ?? null}
           canManage={canManageTeam} />
       )}
+
+      {/* Documents & Formats — OPM-branded, pre-filled legal/finance formats */}
+      <ProjectDocsSection projectName={project.name} />
 
       {/* Daily Check-ins — team reports to the producer */}
       <ProjectCheckinSection

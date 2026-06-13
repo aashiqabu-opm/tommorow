@@ -9,6 +9,7 @@ import { formatRelative } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ALERT_CATEGORIES, CATEGORY_LABELS } from '@/lib/alerts/categories'
+import { WhatsAppJoinBox } from '@/components/ui/WhatsAppJoinBox'
 
 import type { Profile } from '@/lib/types'
 
@@ -139,6 +140,7 @@ export function SettingsClient({ profile, auditLogs }: Props) {
             value={whatsappNumber}
             onChange={e => setWhatsappNumber(e.target.value)}
           />
+          {whatsappAlerts && whatsappNumber.trim() && <WhatsAppJoinBox />}
           <div className="space-y-2">
             <div className="text-xs font-medium text-[#8888aa]">Alert categories</div>
             <div className="grid grid-cols-2 gap-2">

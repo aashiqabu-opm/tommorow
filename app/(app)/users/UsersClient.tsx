@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, UserCheck, UserX, MessageCircle } from 'lucide-react'
+import { Users, UserCheck, UserX, MessageCircle, Copy } from 'lucide-react'
+import { SANDBOX_ACTIVE, SANDBOX_NUMBER, SANDBOX_JOIN_CODE } from '@/lib/alerts/sandbox'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -228,6 +229,20 @@ export function UsersClient({ profiles, currentUserId }: Props) {
               />
               Send WhatsApp alerts to this number
             </label>
+            {SANDBOX_ACTIVE && waNumber.trim() && (
+              <div className="bg-[#1a1a24] border border-emerald-500/20 rounded-xl p-3 text-xs text-[#c8c8da] leading-relaxed">
+                <span className="font-medium text-emerald-400">One-time step for {waEdit.full_name}:</span>{' '}
+                they must send <span className="font-semibold text-white">{SANDBOX_JOIN_CODE}</span> to{' '}
+                <span className="font-semibold text-white">{SANDBOX_NUMBER}</span> from this WhatsApp number before alerts can reach them.
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(`To get OPM Office alerts on WhatsApp, send this message to ${SANDBOX_NUMBER}:\n\n${SANDBOX_JOIN_CODE}`)}
+                  className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 hover:text-emerald-300"
+                >
+                  <Copy size={11} /> Copy instructions to send them
+                </button>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setWaEdit(null)}>Cancel</Button>
               <Button onClick={saveWa} loading={waSaving}>Save</Button>

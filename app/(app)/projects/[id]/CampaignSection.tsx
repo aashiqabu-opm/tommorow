@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { formatDate } from '@/lib/utils'
+import { WEB_SEARCH_ENABLED } from '@/lib/flags'
 import type { CampaignAsset } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -52,7 +53,7 @@ export function CampaignSection({ projectId, assets, userId, canManage }: Props)
       toast.error(`Couldn't add — ${String(hint).slice(0, 80)}`); setSaving(false); return
     }
     if (data) await logAction('create', 'campaign_assets', data.id, undefined, data)
-    toast.success('Asset added — hit “Track buzz” to pull its reception')
+    toast.success(WEB_SEARCH_ENABLED ? 'Asset added — hit “Track buzz” to pull its reception' : 'Asset added')
     setSaving(false); setOpen(false); setForm({ asset_type: 'trailer', title: '', url: '', released_on: new Date().toISOString().split('T')[0] })
     router.refresh()
   }
@@ -121,9 +122,11 @@ export function CampaignSection({ projectId, assets, userId, canManage }: Props)
                 </div>
                 {canManage && (
                   <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => trackBuzz(a)} title="Track buzz" className="text-indigo-300 hover:text-indigo-200">
-                      <RefreshCw size={14} className={refreshing === a.id ? 'animate-spin' : ''} />
-                    </button>
+                    {WEB_SEARCH_ENABLED && (
+                      <button onClick={() => trackBuzz(a)} title="Track buzz" className="text-indigo-300 hover:text-indigo-200">
+                        <RefreshCw size={14} className={refreshing === a.id ? 'animate-spin' : ''} />
+                      </button>
+                    )}
                     <button onClick={() => remove(a)} className="text-[#3a3a4a] hover:text-red-400"><Trash2 size={13} /></button>
                   </div>
                 )}
@@ -141,7 +144,7 @@ export function CampaignSection({ projectId, assets, userId, canManage }: Props)
           <Input label="Released on" type="date" value={form.released_on} onChange={e => setForm({ ...form, released_on: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving} icon={Sparkles}>Add & track</Button>
+            <Button type="submit" loading={saving} icon={WEB_SEARCH_ENABLED ? Sparkles : Plus}>{WEB_SEARCH_ENABLED ? 'Add & track' : 'Add'}</Button>
           </div>
         </form>
       </Modal>

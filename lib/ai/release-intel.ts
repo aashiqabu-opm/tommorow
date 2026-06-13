@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { WEB_SEARCH_ENABLED } from '@/lib/flags'
 
 // Release intelligence: box-office auto-fetch, trend analysis, and online
 // piracy / reputation monitoring. The fetch + scan use Claude's server-side
@@ -29,6 +30,8 @@ export interface TrendAnalysis {
 const WEB_TOOL = { type: 'web_search_20250305', name: 'web_search', max_uses: 12 } as const
 
 export const intelConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY)
+// Web-search features are additionally gated by the flag (cost control).
+export const webSearchOn = () => WEB_SEARCH_ENABLED && Boolean(process.env.ANTHROPIC_API_KEY)
 
 // Pull all text from a (possibly tool-using) response and extract the JSON blob.
 function extractJson<T>(content: Anthropic.Messages.ContentBlock[]): T | null {
@@ -43,7 +46,7 @@ function client() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY
 
 // ── Auto-fetch the latest box-office number via web search ──────────────
 export async function fetchCollectionEstimate(film: string, context?: string): Promise<CollectionEstimate | null> {
-  if (!intelConfigured()) return null
+  if (!webSearchOn()) return null
   try {
     const res = await client().messages.create({
       model: 'claude-opus-4-8',
@@ -59,7 +62,7 @@ export async function fetchCollectionEstimate(film: string, context?: string): P
 
 // ── Scan the web for piracy + reputation threats ────────────────────────
 export async function scanOnline(film: string, context?: string): Promise<Finding[]> {
-  if (!intelConfigured()) return []
+  if (!webSearchOn()) return []
   try {
     const res = await client().messages.create({
       model: 'claude-opus-4-8',
@@ -83,7 +86,7 @@ export interface AssetBuzz {
 export async function trackCampaignAsset(
   film: string, assetType: string, title: string, url?: string | null,
 ): Promise<AssetBuzz | null> {
-  if (!intelConfigured()) return null
+  if (!webSearchOn()) return null
   try {
     const res = await client().messages.create({
       model: 'claude-opus-4-8',
@@ -154,6 +157,7 @@ If you truly find nothing, return {"films": []}.`
 // model text, so we can tell search failures from parsing failures.
 export async function trackMalayalamReleasesDebug(todayISO: string): Promise<{ films: TrackedFilm[]; debug: WebSearchDebug }> {
   const debug: WebSearchDebug = { configured: intelConfigured(), stop_reason: null, searches: [], result_blocks: 0, total_results: 0, search_errors: [], text_preview: '', parsed: false, films_count: 0 }
+  if (!WEB_SEARCH_ENABLED) { debug.error = 'Web search is turned off (lib/flags.ts).'; return { films: [], debug } }
   if (!intelConfigured()) { debug.error = 'ANTHROPIC_API_KEY not set'; return { films: [], debug } }
   try {
     const res = await client().messages.create({

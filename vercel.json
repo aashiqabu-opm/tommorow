@@ -11,14 +11,6 @@
     {
       "path": "/api/cron/project-stages",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/release-watch",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/industry-tracker",
-      "schedule": "0 5 * * *"
     }
   ]
 }

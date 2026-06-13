@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { formatDate } from '@/lib/utils'
 import { SEVERITY_VARIANT, releaseWindow } from '@/lib/phases'
+import { WEB_SEARCH_ENABLED } from '@/lib/flags'
 import type { MonitoringFinding } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -99,8 +100,10 @@ export function ReleaseWatchSection({ projectId, findings, releaseDate, status, 
           <span className="text-xs text-[#8888aa]">· piracy & reputation</span>
         </div>
         <div className="flex items-center gap-2">
-          <StatusBadge label={win.active ? `Monitoring on · ${win.reason}` : `Paused · ${win.reason}`} variant={win.active ? 'green' : 'gray'} />
-          {canManage && <Button size="sm" variant="secondary" icon={Sparkles} loading={scanning} onClick={scan}>Scan now</Button>}
+          {WEB_SEARCH_ENABLED
+            ? <StatusBadge label={win.active ? `Monitoring on · ${win.reason}` : `Paused · ${win.reason}`} variant={win.active ? 'green' : 'gray'} />
+            : <StatusBadge label="Web monitoring off" variant="gray" />}
+          {WEB_SEARCH_ENABLED && canManage && <Button size="sm" variant="secondary" icon={Sparkles} loading={scanning} onClick={scan}>Scan now</Button>}
         </div>
       </div>
 
@@ -124,7 +127,9 @@ export function ReleaseWatchSection({ projectId, findings, releaseDate, status, 
           )}
         </div>
         <p className="text-[11px] text-[#5a5a7a]">
-          The daily AI scan runs only during the release window (release day −3 to +30) to save cost — it&apos;s {win.active ? 'active now' : 'paused outside that window'}. Use “Scan now” anytime. {lastScan ? `Last scan ${formatDate(lastScan)}.` : 'No scan yet.'} Findings are leads to verify, not verdicts.
+          {WEB_SEARCH_ENABLED
+            ? <>The daily AI scan runs only during the release window (release day −3 to +30) to save cost — it&apos;s {win.active ? 'active now' : 'paused outside that window'}. Use “Scan now” anytime. {lastScan ? `Last scan ${formatDate(lastScan)}.` : 'No scan yet.'} Findings are leads to verify, not verdicts.</>
+            : <>Online piracy &amp; reputation monitoring is paused (web search is off for now). Existing findings stay below; turn it back on to resume scans. {lastScan ? `Last scan ${formatDate(lastScan)}.` : ''}</>}
         </p>
         <Group title="Piracy & leaks" icon={Film} items={piracy} />
         <Group title="Reputation & hate campaigns" icon={MessageSquareWarning} items={reputation} />

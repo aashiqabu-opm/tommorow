@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { BarChart } from '@/components/ui/BarChart'
 import { useToast } from '@/components/ui/Toast'
 import { formatDate } from '@/lib/utils'
+import { WEB_SEARCH_ENABLED } from '@/lib/flags'
 import type { IndustryFilm } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -103,12 +104,18 @@ export function MarketClient({ films, canRefresh }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader title="Market" subtitle="Every new Malayalam release, tracked day 1–7"
-        action={canRefresh ? (
+        action={canRefresh && WEB_SEARCH_ENABLED ? (
           <div className="flex items-center gap-2">
             <Button variant="secondary" icon={Activity} loading={diagnosing} onClick={diagnose}>Diagnose</Button>
             <Button icon={Sparkles} loading={busy} onClick={refresh}>Refresh now</Button>
           </div>
         ) : undefined} />
+
+      {!WEB_SEARCH_ENABLED && (
+        <div className="bg-[#1a1a24] border border-[#2a2a3a] rounded-xl px-4 py-3 text-xs text-[#8888aa]">
+          Auto-tracking of other Malayalam films is paused (web search is off for now). Existing data stays below; turn web search back on to resume the daily updates.
+        </div>
+      )}
 
       {/* Web-search diagnostics — confirms whether the search tool actually fired */}
       {debug && (

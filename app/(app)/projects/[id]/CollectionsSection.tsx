@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { WEB_SEARCH_ENABLED } from '@/lib/flags'
 import type { BoxOfficeCollection } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -113,7 +114,7 @@ export function CollectionsSection({ projectId, released, rows, userId, canManag
         </div>
         {canManage && (
           <div className="flex items-center gap-2 flex-wrap">
-            {released && <Button size="sm" variant="secondary" icon={Sparkles} loading={fetching} onClick={aiFetch}>AI fetch</Button>}
+            {WEB_SEARCH_ENABLED && released && <Button size="sm" variant="secondary" icon={Sparkles} loading={fetching} onClick={aiFetch}>AI fetch</Button>}
             <Button size="sm" variant="secondary" icon={Sparkles} loading={analyzing} onClick={aiTrend} disabled={rows.length === 0}>AI trend</Button>
             {rows.length > 0 && <Button size="sm" variant="secondary" icon={Download} onClick={exportCsv}>CSV</Button>}
             <Button size="sm" icon={Plus} onClick={() => setOpen(true)}>Add day</Button>

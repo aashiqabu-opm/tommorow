@@ -27,6 +27,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     phaseTasks,
     collections,
     findings,
+    campaignAssets,
   ] = await Promise.all([
     supabase.from('projects').select('*').eq('id', id).single(),
     supabase.from('documents').select('*').eq('project_id', id).order('created_at', { ascending: false }),
@@ -73,6 +74,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     isManagement
       ? supabase.from('monitoring_findings').select('*').eq('project_id', id).order('scan_date', { ascending: false }).limit(60).then(r => r.data ?? [])
       : Promise.resolve([]),
+    supabase.from('campaign_assets').select('*').eq('project_id', id).order('released_on', { ascending: false }).then(r => r.data ?? []),
   ])
 
   if (!project) notFound()
@@ -114,6 +116,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       phaseTasks={phaseTasks ?? []}
       collections={collections ?? []}
       findings={findings ?? []}
+      campaignAssets={campaignAssets ?? []}
       extraSpentByLine={extraSpentByLine}
       userId={profile.id}
       role={profile.role}

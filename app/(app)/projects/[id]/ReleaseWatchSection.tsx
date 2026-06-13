@@ -1,26 +1,44 @@
 'use client'
 
 import { useState } from 'react'
-import { ShieldAlert, Sparkles, ExternalLink, X, Film, MessageSquareWarning } from 'lucide-react'
+import { ShieldAlert, Sparkles, ExternalLink, X, Film, MessageSquareWarning, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
+import { logAction } from '@/lib/audit'
 import { formatDate } from '@/lib/utils'
-import { SEVERITY_VARIANT } from '@/lib/phases'
+import { SEVERITY_VARIANT, releaseWindow } from '@/lib/phases'
 import type { MonitoringFinding } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
 interface Props {
   projectId: string
   findings: MonitoringFinding[]
+  releaseDate: string | null
+  status: string
+  aiStatusAt: string | null
   canManage: boolean
 }
 
-export function ReleaseWatchSection({ projectId, findings, canManage }: Props) {
+export function ReleaseWatchSection({ projectId, findings, releaseDate, status, aiStatusAt, canManage }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [scanning, setScanning] = useState(false)
+  const [editDate, setEditDate] = useState(false)
+  const [dateVal, setDateVal] = useState(releaseDate ?? '')
+  const win = releaseWindow({ release_date: releaseDate, status, ai_status_at: aiStatusAt })
+
+  async function saveDate() {
+    const supabase = createClient()
+    const v = dateVal || null
+    const { error } = await supabase.from('projects').update({ release_date: v }).eq('id', projectId)
+    if (error) { toast.error("Couldn't save — check migration-release-date.sql is run"); return }
+    await logAction('update', 'projects', projectId, { release_date: releaseDate }, { release_date: v })
+    toast.success('Release date saved')
+    setEditDate(false); router.refresh()
+  }
 
   const active = findings.filter(f => !f.dismissed)
   const piracy = active.filter(f => f.category === 'piracy')
@@ -80,12 +98,33 @@ export function ReleaseWatchSection({ projectId, findings, canManage }: Props) {
           <h3 className="text-sm font-semibold text-white">Release Watch</h3>
           <span className="text-xs text-[#8888aa]">· piracy & reputation</span>
         </div>
-        {canManage && <Button size="sm" variant="secondary" icon={Sparkles} loading={scanning} onClick={scan}>Scan now</Button>}
+        <div className="flex items-center gap-2">
+          <StatusBadge label={win.active ? `Monitoring on · ${win.reason}` : `Paused · ${win.reason}`} variant={win.active ? 'green' : 'gray'} />
+          {canManage && <Button size="sm" variant="secondary" icon={Sparkles} loading={scanning} onClick={scan}>Scan now</Button>}
+        </div>
       </div>
 
       <div className="p-5 space-y-4">
+        {/* Release date + window explanation */}
+        <div className="flex items-center justify-between gap-2 bg-[#1a1a24] rounded-xl px-3.5 py-2.5">
+          <div className="flex items-center gap-2 text-xs text-[#c8c8da]">
+            <Calendar size={13} className="text-white/60" />
+            {editDate ? (
+              <div className="flex items-center gap-2">
+                <Input type="date" value={dateVal} onChange={e => setDateVal(e.target.value)} />
+                <Button size="sm" onClick={saveDate}>Save</Button>
+                <Button size="sm" variant="secondary" onClick={() => { setEditDate(false); setDateVal(releaseDate ?? '') }}>Cancel</Button>
+              </div>
+            ) : (
+              <span>Release date: <span className="text-white font-medium">{releaseDate ? formatDate(releaseDate) : 'not set'}</span></span>
+            )}
+          </div>
+          {canManage && !editDate && (
+            <button onClick={() => setEditDate(true)} className="text-xs text-indigo-300 hover:text-indigo-200">{releaseDate ? 'Change' : 'Set date'}</button>
+          )}
+        </div>
         <p className="text-[11px] text-[#5a5a7a]">
-          AI scans the web daily for leaked/pirated copies and coordinated hate campaigns. {lastScan ? `Last scan ${formatDate(lastScan)}.` : 'No scan yet — run one or wait for the daily check.'} Findings are leads to verify, not verdicts.
+          The daily AI scan runs only during the release window (release day −3 to +30) to save cost — it&apos;s {win.active ? 'active now' : 'paused outside that window'}. Use “Scan now” anytime. {lastScan ? `Last scan ${formatDate(lastScan)}.` : 'No scan yet.'} Findings are leads to verify, not verdicts.
         </p>
         <Group title="Piracy & leaks" icon={Film} items={piracy} />
         <Group title="Reputation & hate campaigns" icon={MessageSquareWarning} items={reputation} />

@@ -72,6 +72,47 @@ export async function scanOnline(film: string, context?: string): Promise<Findin
   } catch { return [] }
 }
 
+// ── Track one campaign asset's online reception (trailer/song/poster…) ──
+export interface AssetBuzz {
+  summary: string
+  sentiment: 'positive' | 'mixed' | 'negative' | 'unknown'
+  metrics: { views?: string; likes?: string; comments?: string; trending?: string }
+}
+
+export async function trackCampaignAsset(
+  film: string, assetType: string, title: string, url?: string | null,
+): Promise<AssetBuzz | null> {
+  if (!intelConfigured()) return null
+  try {
+    const res = await client().messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 2000,
+      tools: [WEB_TOOL],
+      system: `You track how a film's marketing asset (teaser, trailer, poster, song, promo) is performing online for an Indian (Malayalam) film producer. Use web search to find concrete signals: YouTube view/like counts, whether it's trending, social media reception, and overall sentiment. Be specific with numbers when you find them; say "unknown" when you don't. Respond with ONLY JSON: {"summary": string (2-3 sentences, specific), "sentiment": "positive"|"mixed"|"negative"|"unknown", "metrics": {"views": string|null, "likes": string|null, "comments": string|null, "trending": string|null}}.`,
+      messages: [{ role: 'user', content: `Film "${film}" — ${assetType} titled "${title}"${url ? ` (${url})` : ''}. How is it performing / being received online? Return the JSON.` }],
+    })
+    return extractJson<AssetBuzz>(res.content)
+  } catch { return null }
+}
+
+// ── Weekly Malayalam industry brief (other films, market info) ──────────
+export interface IndustryItem { film: string; collection: string | null; trend: string | null; note: string; url: string | null }
+export interface IndustryBrief { headline: string; summary: string; items: IndustryItem[] }
+
+export async function compileIndustryBrief(): Promise<IndustryBrief | null> {
+  if (!intelConfigured()) return null
+  try {
+    const res = await client().messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 4000,
+      tools: [WEB_TOOL],
+      system: `You compile a weekly Malayalam film industry brief for a producer and his core team. Use web search (Malayalam box-office trackers like Sacnilk, trade pages, entertainment news) to cover: (1) Malayalam films that RELEASED in the past ~7-10 days with their latest collection and how the run is trending; (2) notable upcoming Malayalam releases; (3) major industry news (deals, OTT/satellite, controversies) relevant to a producer. Keep it brief and market-useful — a few crisp lines each, real numbers where available (₹, plain not "crore" only). Respond with ONLY JSON: {"headline": string (one line summarizing the week), "summary": string (3-5 sentence overview), "items": [{"film": string, "collection": string|null, "trend": string|null, "note": string, "url": string|null}]}.`,
+      messages: [{ role: 'user', content: `Compile this week's Malayalam film industry brief — recent releases & collections, upcoming films, and key industry news. Return the JSON.` }],
+    })
+    return extractJson<IndustryBrief>(res.content)
+  } catch { return null }
+}
+
 // ── Trend commentary over the collected day-wise numbers (no web) ───────
 export async function analyzeCollectionTrend(
   film: string,

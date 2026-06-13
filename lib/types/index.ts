@@ -65,6 +65,28 @@ export interface MonitoringFinding {
   created_at: string
 }
 
+export interface CampaignAsset {
+  id: string
+  project_id: string
+  asset_type: 'teaser' | 'trailer' | 'first_look' | 'poster' | 'song' | 'promo' | 'other'
+  title: string
+  url: string | null
+  released_on: string | null
+  ai_summary: string | null
+  ai_metrics: { views?: string; likes?: string; comments?: string; trending?: string; sentiment?: string } | null
+  last_checked: string | null
+  created_at: string
+}
+
+export interface IndustryBriefRecord {
+  id: string
+  week_of: string
+  headline: string | null
+  summary: string | null
+  items: { film: string; collection: string | null; trend: string | null; note: string; url: string | null }[] | null
+  created_at: string
+}
+
 export interface ProjectCheckin {
   id: string
   project_id: string
@@ -131,6 +153,7 @@ export interface Project {
   start_date?: string
   end_date?: string
   budget?: number
+  release_date?: string | null
   ai_status_reason?: string | null
   ai_status_at?: string | null
   created_by: string

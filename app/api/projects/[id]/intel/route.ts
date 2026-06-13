@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { analyzeCollectionTrend, fetchCollectionEstimate, scanOnline, intelConfigured } from '@/lib/ai/release-intel'
+import { analyzeCollectionTrend, fetchCollectionEstimate, scanOnline, trackCampaignAsset, intelConfigured } from '@/lib/ai/release-intel'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -26,8 +26,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { data: project } = await supabase.from('projects').select('id, name, status, start_date').eq('id', id).single()
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
-  let action = ''
-  try { action = (await request.json())?.action ?? '' } catch { /* noop */ }
+  let body: { action?: string; assetId?: string } = {}
+  try { body = await request.json() } catch { /* noop */ }
+  const action = body.action ?? ''
   const ctx = project.start_date ? `OPM Cinemas film, ${project.status}, started ${project.start_date}` : `OPM Cinemas film, ${project.status}`
   const admin = createAdminClient()
 
@@ -66,6 +67,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       })))
     }
     return NextResponse.json({ ok: true, count: findings.length, findings })
+  }
+
+  if (action === 'asset') {
+    if (!body.assetId) return NextResponse.json({ error: 'assetId required' }, { status: 400 })
+    const { data: asset } = await supabase.from('campaign_assets').select('*').eq('id', body.assetId).eq('project_id', id).single()
+    if (!asset) return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
+    const buzz = await trackCampaignAsset(project.name, asset.asset_type, asset.title, asset.url)
+    if (!buzz) return NextResponse.json({ error: 'Could not pull buzz right now.' }, { status: 422 })
+    const db = admin ?? supabase
+    await db.from('campaign_assets').update({
+      ai_summary: buzz.summary,
+      ai_metrics: { ...buzz.metrics, sentiment: buzz.sentiment },
+      last_checked: new Date().toISOString(),
+    }).eq('id', asset.id)
+    return NextResponse.json({ ok: true, buzz })
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })

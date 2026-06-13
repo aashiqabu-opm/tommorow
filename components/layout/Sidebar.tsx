@@ -22,6 +22,7 @@ import {
   Receipt,
   Car,
   FileBox,
+  Newspaper,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -49,6 +50,7 @@ const navItems = [
   { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
+  { href: '/market', label: 'Market', icon: Newspaper, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
   { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
   { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
   { href: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['founder'] },

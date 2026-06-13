@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
-import { fetchCollectionEstimate, scanOnline, intelConfigured } from '@/lib/ai/release-intel'
+import { fetchCollectionEstimate, scanOnline, trackCampaignAsset, intelConfigured } from '@/lib/ai/release-intel'
+import { releaseWindow } from '@/lib/phases'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -22,13 +23,15 @@ export async function GET(request: Request) {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  // Watch films that are in release or close to it (post-production onward) +
-  // anything actively shooting (early piracy of footage happens too).
-  const { data: projects } = await admin.from('projects')
-    .select('id, name, status, start_date')
-    .in('status', ['active', 'post_production', 'released'])
+  // Only scan films inside their release window (release day −3 to +30) to keep
+  // web-search cost down. Window is driven by release_date, or "recently
+  // flipped to Released" when no date is set.
+  const { data: all } = await admin.from('projects')
+    .select('id, name, status, start_date, release_date, ai_status_at')
+    .in('status', ['post_production', 'released'])
 
-  if (!projects?.length) return NextResponse.json({ ok: true, projects: 0 })
+  const projects = (all ?? []).filter(p => releaseWindow(p).active)
+  if (!projects.length) return NextResponse.json({ ok: true, projects: 0, skipped: (all ?? []).length, note: 'no films in release window' })
 
   const { data: founders } = await admin.from('profiles')
     .select('id, full_name, email, email_alerts, whatsapp_alerts, whatsapp_number')
@@ -55,7 +58,18 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Online piracy + reputation scan
+    // 2. Refresh campaign-asset buzz (aggressive while in the release window)
+    const { data: assets } = await admin.from('campaign_assets').select('id, asset_type, title, url').eq('project_id', p.id)
+    for (const a of (assets ?? []) as { id: string; asset_type: string; title: string; url: string | null }[]) {
+      const buzz = await trackCampaignAsset(p.name, a.asset_type, a.title, a.url)
+      if (buzz) {
+        await admin.from('campaign_assets').update({
+          ai_summary: buzz.summary, ai_metrics: { ...buzz.metrics, sentiment: buzz.sentiment }, last_checked: new Date().toISOString(),
+        }).eq('id', a.id)
+      }
+    }
+
+    // 3. Online piracy + reputation scan
     const findings = await scanOnline(p.name, ctx)
     for (const f of findings) {
       const { error } = await admin.from('monitoring_findings').insert({

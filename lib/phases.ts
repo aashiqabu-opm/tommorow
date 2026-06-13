@@ -48,3 +48,25 @@ export const DEFAULT_MILESTONES: Record<ProjectPhase, string[]> = {
 export const SEVERITY_VARIANT: Record<string, 'red' | 'yellow' | 'gray'> = {
   high: 'red', medium: 'yellow', low: 'gray',
 }
+
+// Release-window gating — the expensive daily web scans only run while a film
+// is actually releasing (release day −3 to +30 days). Outside it, no cost.
+const PRE = 3, POST = 30
+export function releaseWindow(
+  p: { release_date?: string | null; status?: string; ai_status_at?: string | null },
+  now: Date = new Date(),
+): { active: boolean; reason: string } {
+  const today = now.toISOString().slice(0, 10)
+  const days = (a: string, b: string) => Math.round((new Date(a).getTime() - new Date(b).getTime()) / 86400000)
+  if (p.release_date) {
+    const fromRel = days(today, p.release_date) // negative = before release
+    if (fromRel >= -PRE && fromRel <= POST) return { active: true, reason: fromRel < 0 ? `${-fromRel}d to release` : `day ${fromRel + 1} of release` }
+    return { active: false, reason: fromRel < 0 ? `releases in ${-fromRel}d` : `released ${fromRel}d ago` }
+  }
+  // No date set — fall back to "recently flipped to Released".
+  if (p.status === 'released' && p.ai_status_at) {
+    const since = days(today, p.ai_status_at.slice(0, 10))
+    if (since <= POST) return { active: true, reason: 'recently released' }
+  }
+  return { active: false, reason: 'no release date set' }
+}

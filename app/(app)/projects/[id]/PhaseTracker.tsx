@@ -38,12 +38,17 @@ export function PhaseTracker({ projectId, status, tasks, userId, canManage }: Pr
     router.refresh()
   }
 
+  // Seed or top-up: adds only the standard milestones not already present
+  // (case-insensitive), so existing ticks are never wiped.
   async function seed(ph: ProjectPhase) {
     setBusy(true)
+    const existingItems = byPhase(ph)
+    const have = new Set(existingItems.map(t => t.title.trim().toLowerCase()))
+    const missing = DEFAULT_MILESTONES[ph].filter(t => !have.has(t.trim().toLowerCase()))
+    if (missing.length === 0) { toast.success('Already up to date'); setBusy(false); return }
     const supabase = createClient()
-    const existing = byPhase(ph).length
-    const rows = DEFAULT_MILESTONES[ph].map((title, i) => ({
-      project_id: projectId, phase: ph, title, sort_order: existing + i, created_by: userId,
+    const rows = missing.map((title, i) => ({
+      project_id: projectId, phase: ph, title, sort_order: existingItems.length + i, created_by: userId,
     }))
     const { error } = await supabase.from('phase_tasks').insert(rows)
     if (error) {
@@ -51,7 +56,7 @@ export function PhaseTracker({ projectId, status, tasks, userId, canManage }: Pr
       toast.error(`Couldn't add — ${String(hint).slice(0, 80)}`); setBusy(false); return
     }
     await logAction('create', 'phase_tasks', projectId, undefined, { phase: ph, seeded: rows.length })
-    toast.success('Standard milestones added')
+    toast.success(`Added ${missing.length} standard milestone${missing.length > 1 ? 's' : ''}`)
     setBusy(false); router.refresh()
   }
 
@@ -114,8 +119,10 @@ export function PhaseTracker({ projectId, status, tasks, userId, canManage }: Pr
               <div className="text-sm font-medium text-white">{p.label}
                 {p.key === active && <span className="ml-2 text-[10px] uppercase tracking-wide text-emerald-400">current</span>}
               </div>
-              {canManage && items.length === 0 && (
-                <Button size="sm" variant="secondary" loading={busy} onClick={() => seed(p.key)}>Add standard milestones</Button>
+              {canManage && (
+                <Button size="sm" variant="secondary" loading={busy} onClick={() => seed(p.key)}>
+                  {items.length === 0 ? 'Add standard milestones' : 'Add missing standard items'}
+                </Button>
               )}
             </div>
 

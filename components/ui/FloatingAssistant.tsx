@@ -5,15 +5,22 @@ import { Sparkles, Send, User, X } from 'lucide-react'
 
 interface Msg { role: 'user' | 'assistant'; content: string }
 
-const SUGGESTIONS = [
+const FINANCE_SUGGESTIONS = [
   "What's our cash position?",
   'Payments awaiting my approval?',
   'Which liabilities are overdue?',
   'What revenue is still receivable?',
 ]
+const STAFF_SUGGESTIONS = [
+  'What payment requests are pending?',
+  'Which projects are active?',
+  'Payments for Aja Sundari?',
+  'Has my bill been approved?',
+]
 
 // App-wide floating chat. Read-only — talks to /api/assistant.
-export function FloatingAssistant({ firstName }: { firstName: string }) {
+export function FloatingAssistant({ firstName, finance }: { firstName: string; finance: boolean }) {
+  const SUGGESTIONS = finance ? FINANCE_SUGGESTIONS : STAFF_SUGGESTIONS
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')

@@ -178,7 +178,16 @@ async function runTool(name: string, input: Json, sb: SupabaseClient): Promise<u
   return { error: 'Unknown tool' }
 }
 
-const SYSTEM = `You are "Ask OPM", a financial assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Answer the user's questions about the company's finances using ONLY data returned by your tools — never invent or estimate numbers. If the tools return nothing relevant, say so plainly. Be concise and specific; use ₹ formatting and name the parties/projects. You are READ-ONLY: you cannot create, edit, approve, pay, or delete anything. If asked to take such an action, explain that you can only look things up, and point them to the relevant page (Payments, Liabilities, Revenue, etc.). Today's date is ${new Date().toISOString().slice(0, 10)}.`
+const FINANCE_TOOLS = ['list_projects', 'search_payments'] // available to every role
+const today = () => new Date().toISOString().slice(0, 10)
+
+function systemPrompt(isFinance: boolean): string {
+  const base = `You are "Ask OPM", an assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Answer using ONLY data returned by your tools — never invent or estimate numbers. If the tools return nothing relevant, say so plainly. Be concise and specific; use ₹ formatting and name the parties/projects. You are READ-ONLY: you cannot create, edit, approve, pay, or delete anything. If asked to take such an action, explain that you can only look things up, and point them to the relevant page. Today's date is ${today()}.`
+  if (isFinance) {
+    return `${base} The user is on the finance team (founder/accountant) and may ask about cash, bank balances, payroll, liabilities, payments, revenue and project P&L.`
+  }
+  return `${base} The user is a non-finance team member. You can help with projects and payment requests only. You do NOT have access to company cash, bank balances, payroll, liabilities, or revenue/P&L figures — if asked about those, say that information is restricted to the finance team and you can't see it. Do not guess.`
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -186,12 +195,18 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase.from('profiles').select('role, is_active').eq('id', user.id).single()
-  if (!profile?.is_active || !['founder', 'accountant'].includes(profile.role)) {
-    return NextResponse.json({ error: 'Ask OPM is available to founders and accountants.' }, { status: 403 })
+  if (!profile?.is_active) {
+    return NextResponse.json({ error: 'Inactive account' }, { status: 403 })
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'not_configured' }, { status: 503 })
   }
+
+  // Finance roles get the full toolset; other roles only get projects + payment
+  // requests (data they're already permitted to see). Defense-in-depth on top of RLS.
+  const isFinance = ['founder', 'accountant'].includes(profile.role)
+  const tools = isFinance ? TOOLS : TOOLS.filter(t => FINANCE_TOOLS.includes(t.name))
+  const system = systemPrompt(isFinance)
 
   let body: { messages?: unknown }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
@@ -208,7 +223,7 @@ export async function POST(request: Request) {
 
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    let response = await client.messages.create({ model: 'claude-opus-4-8', max_tokens: 1500, system: SYSTEM, tools: TOOLS, messages })
+    let response = await client.messages.create({ model: 'claude-opus-4-8', max_tokens: 1500, system, tools, messages })
 
     let guard = 0
     while (response.stop_reason === 'tool_use' && guard < 6) {
@@ -224,7 +239,7 @@ export async function POST(request: Request) {
         }
       }
       messages.push({ role: 'user', content: results })
-      response = await client.messages.create({ model: 'claude-opus-4-8', max_tokens: 1500, system: SYSTEM, tools: TOOLS, messages })
+      response = await client.messages.create({ model: 'claude-opus-4-8', max_tokens: 1500, system, tools, messages })
     }
 
     const answer = response.content.filter(b => b.type === 'text').map(b => (b as { text: string }).text).join('\n').trim()

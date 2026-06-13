@@ -552,3 +552,15 @@ export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
   car: 'Car', van: 'Van', bus: 'Bus', truck: 'Truck',
   camera_vehicle: 'Camera Vehicle', generator: 'Generator', bike: 'Bike', other: 'Other',
 }
+
+export interface Template {
+  id: string
+  name: string
+  category: 'voucher' | 'agreement' | 'form' | 'hr' | 'other'
+  description?: string | null
+  file_url: string
+  file_name?: string | null
+  file_size?: number | null
+  created_by?: string
+  created_at: string
+}

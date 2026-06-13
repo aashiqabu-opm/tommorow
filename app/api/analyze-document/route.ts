@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { analyzeDocument, documentAnalysisConfigured } from '@/lib/ai/analyze-document'
+import { noteAiResult, isCreditError } from '@/lib/ai/health'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -52,7 +53,11 @@ export async function POST(request: Request) {
   }
 
   const { data: analysis, error } = await analyzeDocument(base64, mediaType, doc.title)
-  if (!analysis) return NextResponse.json({ error: 'Analysis failed', detail: error ?? null }, { status: 422 })
+  await noteAiResult(analysis ? null : error)
+  if (!analysis) {
+    const credit = isCreditError(error)
+    return NextResponse.json({ error: credit ? 'AI is paused — Anthropic API credits are exhausted. Top up to resume.' : 'Analysis failed', detail: error ?? null }, { status: 422 })
+  }
 
   await supabase.from('documents').update({
     ai_summary: analysis.summary,

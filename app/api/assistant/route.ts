@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { askOpm } from '@/lib/ai/assistant'
+import { noteAiResult, isCreditError } from '@/lib/ai/health'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -30,8 +31,13 @@ export async function POST(request: Request) {
 
   try {
     const answer = await askOpm(history, supabase, isFinance)
+    await noteAiResult(null)
     return NextResponse.json({ answer: answer || 'I could not find an answer to that.' })
-  } catch {
-    return NextResponse.json({ error: 'The assistant had trouble — please try again.' }, { status: 500 })
+  } catch (e) {
+    await noteAiResult(e)
+    const credit = isCreditError(e)
+    return NextResponse.json({
+      error: credit ? 'AI is paused — Anthropic API credits are exhausted. Top up to resume.' : 'The assistant had trouble — please try again.',
+    }, { status: credit ? 503 : 500 })
   }
 }

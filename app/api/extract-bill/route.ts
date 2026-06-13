@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { extractBill, billExtractionConfigured } from '@/lib/ai/extract-bill'
+import { noteAiResult, isCreditError } from '@/lib/ai/health'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -35,8 +36,14 @@ export async function POST(request: Request) {
   }
 
   const { data: extracted, error } = await extractBill(base64, mediaType)
+  // Record AI health so the team sees a banner if credits are exhausted.
+  await noteAiResult(extracted ? null : error)
   if (!extracted) {
-    return NextResponse.json({ error: 'Could not read the bill', detail: error ?? null }, { status: 422 })
+    const credit = isCreditError(error)
+    return NextResponse.json({
+      error: credit ? 'AI is paused — Anthropic API credits are exhausted. Top up to resume.' : 'Could not read the bill',
+      detail: error ?? null,
+    }, { status: 422 })
   }
   return NextResponse.json({ ok: true, extracted })
 }

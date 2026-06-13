@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/layout/AppShell'
 import { WhatsAppNudge } from '@/components/ui/WhatsAppNudge'
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant'
+import { AiHealthBanner } from '@/components/ui/AiHealthBanner'
 import { requireProfile } from '@/lib/auth'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -10,6 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AppShell profile={profile}>
       {!profile.whatsapp_number && <WhatsAppNudge />}
+      <AiHealthBanner />
       <div className="p-4 lg:p-6">
         {children}
       </div>

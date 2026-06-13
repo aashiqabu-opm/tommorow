@@ -374,3 +374,20 @@ export const FUNDING_TXN_LABELS: Record<FundingTxnType, string> = {
   principal_repaid: 'Principal Repaid',
   other: 'Other',
 }
+
+export type BudgetSection = 'above_line' | 'below_line' | 'post' | 'other'
+export type BudgetPhase = 'development' | 'pre' | 'production' | 'post' | 'release'
+
+export interface BudgetLine {
+  id: string
+  project_id: string
+  section: BudgetSection
+  phase: BudgetPhase
+  head: string
+  estimated: number
+  notes?: string | null
+  sort_order: number
+  created_by?: string
+  created_at: string
+  updated_at: string
+}

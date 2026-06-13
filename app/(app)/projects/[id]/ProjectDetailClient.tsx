@@ -15,8 +15,9 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, DOCUMENT_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { Project, Document, Liability, ProjectIncome, ProjectFunding } from '@/lib/types'
+import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine } from '@/lib/types'
 import { FundingSection } from './FundingSection'
+import { ProjectBudgetSection, type CodedPayment } from './ProjectBudgetSection'
 import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
@@ -31,6 +32,7 @@ interface Props {
   liabilities: Liability[]
   income: ProjectIncome[]
   funding: ProjectFunding[]
+  budgetLines: BudgetLine[]
   userId: string
   role: string
 }
@@ -54,7 +56,7 @@ const INCOME_SOURCES = [
   { value: 'other', label: 'Other' },
 ]
 
-export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, userId, role }: Props) {
+export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, userId, role }: Props) {
   const isFinance = ['founder', 'accountant'].includes(role)
   const router = useRouter()
   const toast = useToast()
@@ -289,6 +291,17 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
         <StatCard title="Liabilities Outstanding" value={formatCurrency(totalLiabilitiesOutstanding)} icon={AlertTriangle} status={totalLiabilitiesOutstanding > 0 ? 'red' : 'green'} />
         <StatCard title="Expiring Docs" value={expiring.length} status={expiring.length > 0 ? 'yellow' : 'green'} subtitle="Within 30 days" />
       </div>
+
+      {/* Film Budget & Cost Report (finance only) */}
+      {isFinance && (
+        <ProjectBudgetSection
+          projectId={project.id}
+          budgetLines={budgetLines}
+          payments={payments as unknown as CodedPayment[]}
+          userId={userId}
+          canManage={isFinance}
+        />
+      )}
 
       {/* Funding & Capital Stack (finance only) */}
       {isFinance && (

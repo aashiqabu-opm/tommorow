@@ -32,7 +32,7 @@ const SCHEMA = {
     due_date: { type: ['string', 'null'], description: 'Payment due date as YYYY-MM-DD, or null' },
     pan: { type: ['string', 'null'], description: 'Vendor PAN (10 chars) if printed, else null' },
     gst_number: { type: ['string', 'null'], description: 'Vendor GSTIN (15 chars) if printed, else null' },
-    category: { type: ['string', 'null'], enum: [...PAYMENT_CATEGORY_OPTIONS, null], description: 'Best-fit expense category from the allowed list' },
+    category: { type: ['string', 'null'], description: `Best-fit expense category. MUST be exactly one of: ${PAYMENT_CATEGORY_OPTIONS.join(', ')}. Use null if none fit.` },
     purpose: { type: ['string', 'null'], description: 'One short line describing what the bill is for' },
   },
   required: ['vendor_name', 'amount', 'gst_amount', 'invoice_date', 'due_date', 'pan', 'gst_number', 'category', 'purpose'],
@@ -78,7 +78,13 @@ export async function extractBill(base64: string, mediaType: string): Promise<Ex
     })
     const text = response.content.find((b) => b.type === 'text')
     if (!text || text.type !== 'text') return { data: null, error: 'No text in model response' }
-    return { data: JSON.parse(text.text) as ExtractedBill }
+    const parsed = JSON.parse(text.text) as ExtractedBill
+    // Normalize category to a known option (drop anything the model invented)
+    if (parsed.category) {
+      const match = PAYMENT_CATEGORY_OPTIONS.find(c => c.toLowerCase() === String(parsed.category).toLowerCase())
+      parsed.category = match ?? null
+    }
+    return { data: parsed }
   } catch (e) {
     const err = e as { status?: number; message?: string; error?: { error?: { message?: string } } }
     const msg = err?.error?.error?.message || err?.message || 'Unknown error'

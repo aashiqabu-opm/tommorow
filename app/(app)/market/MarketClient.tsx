@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Newspaper, Sparkles, Film, Clock } from 'lucide-react'
+import { Newspaper, Sparkles, Film, Clock, Activity } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { BarChart } from '@/components/ui/BarChart'
@@ -11,6 +11,15 @@ import type { IndustryFilm } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
 interface Props { films: IndustryFilm[]; canRefresh: boolean }
+
+function Stat({ label, value, bad }: { label: string; value: string | number; bad?: boolean }) {
+  return (
+    <div className="bg-[#1a1a24] rounded-lg px-2.5 py-1.5">
+      <div className="text-[9px] text-[#8888aa] uppercase tracking-wide">{label}</div>
+      <div className={`text-sm font-semibold tabular-nums ${bad ? 'text-amber-400' : 'text-white'}`}>{value}</div>
+    </div>
+  )
+}
 
 const crore = (n: number | null) => n == null ? '—' : `₹${(n / 10000000).toFixed(2)} Cr`
 
@@ -23,17 +32,31 @@ export function MarketClient({ films, canRefresh }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
+  const [diagnosing, setDiagnosing] = useState(false)
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const [debug, setDebug] = useState<any | null>(null)
 
   async function refresh() {
     setBusy(true)
     try {
-      const res = await fetch('/api/market/refresh', { method: 'POST' })
+      const res = await fetch('/api/market/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Could not refresh'); setBusy(false); return }
       toast.success(`Updated — ${data.added} new, ${data.updated} refreshed`)
       router.refresh()
     } catch { toast.error('Could not refresh') }
     setBusy(false)
+  }
+
+  async function diagnose() {
+    setDiagnosing(true); setDebug(null)
+    try {
+      const res = await fetch('/api/market/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ debug: true }) })
+      const data = await res.json()
+      setDebug(data.debug ?? { error: data.error ?? 'no debug returned' })
+      router.refresh()
+    } catch { setDebug({ error: 'request failed' }) }
+    setDiagnosing(false)
   }
 
   // Films still inside their first week show first
@@ -80,7 +103,42 @@ export function MarketClient({ films, canRefresh }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader title="Market" subtitle="Every new Malayalam release, tracked day 1–7"
-        action={canRefresh ? <Button icon={Sparkles} loading={busy} onClick={refresh}>Refresh now</Button> : undefined} />
+        action={canRefresh ? (
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" icon={Activity} loading={diagnosing} onClick={diagnose}>Diagnose</Button>
+            <Button icon={Sparkles} loading={busy} onClick={refresh}>Refresh now</Button>
+          </div>
+        ) : undefined} />
+
+      {/* Web-search diagnostics — confirms whether the search tool actually fired */}
+      {debug && (
+        <div className="bg-[#0e1726] border border-indigo-500/20 rounded-2xl p-5 space-y-2 text-xs">
+          <div className="flex items-center gap-2 text-indigo-200 font-semibold"><Activity size={14} /> Web-search diagnostics</div>
+          {debug.error && <div className="text-red-400">Error: {debug.error}</div>}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <Stat label="Key configured" value={String(debug.configured ?? '—')} />
+            <Stat label="Searches fired" value={debug.searches?.length ?? 0} bad={(debug.searches?.length ?? 0) === 0} />
+            <Stat label="Result blocks" value={debug.result_blocks ?? 0} />
+            <Stat label="Total results" value={debug.total_results ?? 0} bad={(debug.total_results ?? 0) === 0} />
+            <Stat label="JSON parsed" value={String(debug.parsed ?? false)} bad={debug.parsed === false} />
+            <Stat label="Films found" value={debug.films_count ?? 0} bad={(debug.films_count ?? 0) === 0} />
+            <Stat label="Stop reason" value={debug.stop_reason ?? '—'} />
+            <Stat label="Search errors" value={debug.search_errors?.length ?? 0} bad={(debug.search_errors?.length ?? 0) > 0} />
+          </div>
+          {debug.searches?.length > 0 && (
+            <div><div className="text-[#8888aa] mb-1">Queries issued:</div>
+              <div className="flex flex-wrap gap-1">{debug.searches.map((q: string, i: number) => <span key={i} className="bg-[#1a1a24] border border-[#2a2a3a] rounded px-1.5 py-0.5 text-[#c8c8da]">{q}</span>)}</div>
+            </div>
+          )}
+          {debug.search_errors?.length > 0 && <div className="text-amber-400">Tool errors: {debug.search_errors.join(', ')}</div>}
+          {debug.text_preview && (
+            <details>
+              <summary className="text-[#8888aa] cursor-pointer">Model output preview</summary>
+              <pre className="mt-1 whitespace-pre-wrap text-[10px] text-[#8888aa] bg-[#0a0a0f] rounded-lg p-2 max-h-48 overflow-auto">{debug.text_preview}</pre>
+            </details>
+          )}
+        </div>
+      )}
 
       {films.length === 0 ? (
         <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl py-12 text-center">

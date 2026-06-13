@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { trackMalayalamReleases, intelConfigured } from '@/lib/ai/release-intel'
+import { trackMalayalamReleasesDebug, intelConfigured } from '@/lib/ai/release-intel'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -21,7 +21,8 @@ function mergeDays(existing: Day[], incoming: Day[]): Day[] {
 
 // On-demand Malayalam release refresh — one aggressive web-search pass that
 // discovers recent releases and pulls each one's day-wise collection.
-export async function POST() {
+// POST {debug:true} returns web-search diagnostics instead of just counts.
+export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -31,10 +32,13 @@ export async function POST() {
   }
   if (!intelConfigured()) return NextResponse.json({ error: 'AI not configured (ANTHROPIC_API_KEY missing).' }, { status: 503 })
 
+  let wantDebug = false
+  try { wantDebug = (await request.json())?.debug === true } catch { /* noop */ }
+
   const db = createAdminClient() ?? supabase
   const todayStr = new Date().toISOString().slice(0, 10)
-  const films = await trackMalayalamReleases(todayStr)
-  if (!films.length) return NextResponse.json({ ok: true, found: 0, added: 0, updated: 0, note: 'No releases found right now — try again shortly.' })
+  const { films, debug } = await trackMalayalamReleasesDebug(todayStr)
+  if (!films.length) return NextResponse.json({ ok: true, found: 0, added: 0, updated: 0, note: 'No releases found right now — try again shortly.', ...(wantDebug ? { debug } : {}) })
 
   let added = 0, updated = 0
   for (const f of films) {
@@ -50,5 +54,5 @@ export async function POST() {
     else { await db.from('industry_films').insert(payload); added++ }
   }
 
-  return NextResponse.json({ ok: true, found: films.length, added, updated })
+  return NextResponse.json({ ok: true, found: films.length, added, updated, ...(wantDebug ? { debug } : {}) })
 }

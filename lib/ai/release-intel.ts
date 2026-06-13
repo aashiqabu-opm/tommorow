@@ -108,15 +108,31 @@ export interface TrackedFilm {
   note: string
 }
 
-export async function trackMalayalamReleases(todayISO: string): Promise<TrackedFilm[]> {
-  if (!intelConfigured()) return []
-  try {
-    const res = await client().messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 8000,
-      thinking: { type: 'adaptive' },
-      tools: [WEB_TOOL],
-      system: `You are a box-office data analyst for a Malayalam film producer. Today is ${todayISO}. Your job: find EVERY Malayalam film that released in theatres in the last ~10 days and pull its DAY-BY-DAY India net box-office collection.
+export interface WebSearchDebug {
+  configured: boolean
+  stop_reason: string | null
+  searches: string[]        // the queries the model actually issued
+  result_blocks: number     // # of web_search_tool_result blocks
+  total_results: number     // # of results returned across them
+  search_errors: string[]   // any tool-level errors
+  text_preview: string      // first part of the final text (to inspect JSON)
+  parsed: boolean
+  films_count: number
+  error?: string
+}
+
+function normalizeTrackedFilms(out: { films?: TrackedFilm[] } | null): TrackedFilm[] {
+  return (out?.films ?? [])
+    .filter(f => f && f.title)
+    .map(f => {
+      const days = (Array.isArray(f.days) ? f.days : []).filter(d => d && typeof d.day === 'number').sort((a, b) => a.day - b.day)
+      const total = days.reduce((s, d) => s + (Number(d.india_net) || 0), 0)
+      return { ...f, days, total_india: total > 0 ? total : (f.total_india ?? null) }
+    })
+    .slice(0, 30)
+}
+
+const TRACKER_SYSTEM = (todayISO: string) => `You are a box-office data analyst for a Malayalam film producer. Today is ${todayISO}. Your job: find EVERY Malayalam film that released in theatres in the last ~10 days and pull its DAY-BY-DAY India net box-office collection.
 
 Be thorough and aggressive — make as many web searches as you need (you have up to 12). Work like this:
 1. Search for recent Malayalam theatrical releases (e.g. "Malayalam movies released this week", "<this month> Malayalam releases", entertainment news).
@@ -131,19 +147,50 @@ Rules:
 
 Respond with ONLY JSON (no prose):
 {"films": [{"title": string, "release_date": string|null, "days": [{"day": int, "india_net": number|null, "worldwide": number|null, "source": string|null}], "note": string (one line: cast/verdict/how it's trending)}]}
-If you truly find nothing, return {"films": []}.`,
+If you truly find nothing, return {"films": []}.`
+
+// Tracker with full web-search diagnostics — surfaces whether the search tool
+// actually fired, what it searched, how many results came back, and the raw
+// model text, so we can tell search failures from parsing failures.
+export async function trackMalayalamReleasesDebug(todayISO: string): Promise<{ films: TrackedFilm[]; debug: WebSearchDebug }> {
+  const debug: WebSearchDebug = { configured: intelConfigured(), stop_reason: null, searches: [], result_blocks: 0, total_results: 0, search_errors: [], text_preview: '', parsed: false, films_count: 0 }
+  if (!intelConfigured()) { debug.error = 'ANTHROPIC_API_KEY not set'; return { films: [], debug } }
+  try {
+    const res = await client().messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 8000,
+      thinking: { type: 'adaptive' },
+      tools: [WEB_TOOL],
+      system: TRACKER_SYSTEM(todayISO),
       messages: [{ role: 'user', content: `Find all Malayalam theatrical releases from the last ~10 days and their day-wise India net collections (use Sacnilk and trade trackers). Return the JSON.` }],
     })
+    debug.stop_reason = res.stop_reason ?? null
+    for (const b of res.content) {
+      if (b.type === 'server_tool_use') {
+        const q = (b as { input?: { query?: string } }).input?.query
+        if (q) debug.searches.push(q)
+      } else if (b.type === 'web_search_tool_result') {
+        debug.result_blocks++
+        const c = (b as { content?: unknown }).content
+        if (Array.isArray(c)) debug.total_results += c.length
+        else if (c && typeof c === 'object' && 'error_code' in (c as object)) debug.search_errors.push(String((c as { error_code?: string }).error_code))
+      }
+    }
+    const text = res.content.filter(b => b.type === 'text').map(b => (b as { text: string }).text).join('\n')
+    debug.text_preview = text.slice(0, 2000)
     const out = extractJson<{ films?: TrackedFilm[] }>(res.content)
-    return (out?.films ?? [])
-      .filter(f => f && f.title)
-      .map(f => {
-        const days = (Array.isArray(f.days) ? f.days : []).filter(d => d && typeof d.day === 'number').sort((a, b) => a.day - b.day)
-        const total = days.reduce((s, d) => s + (Number(d.india_net) || 0), 0)
-        return { ...f, days, total_india: total > 0 ? total : (f.total_india ?? null) }
-      })
-      .slice(0, 30)
-  } catch { return [] }
+    debug.parsed = Boolean(out)
+    const films = normalizeTrackedFilms(out)
+    debug.films_count = films.length
+    return { films, debug }
+  } catch (e) {
+    debug.error = (e as { message?: string })?.message ?? 'unknown error'
+    return { films: [], debug }
+  }
+}
+
+export async function trackMalayalamReleases(todayISO: string): Promise<TrackedFilm[]> {
+  return (await trackMalayalamReleasesDebug(todayISO)).films
 }
 
 // ── Trend commentary over the collected day-wise numbers (no web) ───────

@@ -15,11 +15,12 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, DOCUMENT_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew } from '@/lib/types'
+import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew, ProductionReport } from '@/lib/types'
 import { FundingSection } from './FundingSection'
 import { ProjectBudgetSection, type CodedPayment } from './ProjectBudgetSection'
 import { PettyCashSection } from './PettyCashSection'
 import { CrewLedgerSection } from './CrewLedgerSection'
+import { ProductionReportSection } from './ProductionReportSection'
 import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
@@ -37,6 +38,7 @@ interface Props {
   budgetLines: BudgetLine[]
   pettyFloats: PettyCashFloat[]
   crew: ProjectCrew[]
+  dprs: ProductionReport[]
   extraSpentByLine: Record<string, number>
   userId: string
   role: string
@@ -61,8 +63,9 @@ const INCOME_SOURCES = [
   { value: 'other', label: 'Other' },
 ]
 
-export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, extraSpentByLine, userId, role }: Props) {
+export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, dprs, extraSpentByLine, userId, role }: Props) {
   const isFinance = ['founder', 'accountant'].includes(role)
+  const isManagement = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
   const budgetHeads = budgetLines.map(l => ({ id: l.id, section: l.section, head: l.head }))
   const router = useRouter()
   const toast = useToast()
@@ -330,6 +333,17 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
           budgetLines={budgetHeads}
           userId={userId}
           canManage={isFinance}
+        />
+      )}
+
+      {/* Daily Production Reports (management) */}
+      {isManagement && (
+        <ProductionReportSection
+          projectId={project.id}
+          reports={dprs}
+          userId={userId}
+          canManage={isManagement}
+          canDelete={role === 'founder'}
         />
       )}
 

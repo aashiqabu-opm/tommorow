@@ -9,6 +9,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const profile = await requireProfile()
 
   const isFinance = ['founder', 'accountant'].includes(profile.role)
+  const isManagement = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(profile.role)
 
   const [
     { data: project },
@@ -20,6 +21,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     budgetLines,
     pettyFloats,
     crew,
+    dprs,
   ] = await Promise.all([
     supabase.from('projects').select('*').eq('id', id).single(),
     supabase.from('documents').select('*').eq('project_id', id).order('created_at', { ascending: false }),
@@ -43,6 +45,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       : Promise.resolve([]),
     isFinance
       ? supabase.from('project_crew').select('*, payments:crew_payments(*)').eq('project_id', id).order('created_at', { ascending: true }).then(r => r.data ?? [])
+      : Promise.resolve([]),
+    isManagement
+      ? supabase.from('production_reports').select('*').eq('project_id', id).order('report_date', { ascending: false }).then(r => r.data ?? [])
       : Promise.resolve([]),
   ])
 
@@ -72,6 +77,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       budgetLines={budgetLines ?? []}
       pettyFloats={pettyFloats ?? []}
       crew={crew ?? []}
+      dprs={dprs ?? []}
       extraSpentByLine={extraSpentByLine}
       userId={profile.id}
       role={profile.role}

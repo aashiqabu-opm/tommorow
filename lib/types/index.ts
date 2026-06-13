@@ -453,3 +453,26 @@ export interface CrewPayment {
   created_by?: string
   created_at: string
 }
+
+export type DPRStatus = 'on_schedule' | 'ahead' | 'behind'
+
+export interface ProductionReport {
+  id: string
+  project_id: string
+  report_date: string
+  day_number?: number | null
+  location?: string | null
+  call_time?: string | null
+  wrap_time?: string | null
+  scenes_planned: number
+  scenes_completed: number
+  shots_completed?: number | null
+  cast_present?: string | null
+  crew_count?: number | null
+  status: DPRStatus
+  weather?: string | null
+  notes?: string | null
+  created_by?: string
+  created_at: string
+  updated_at: string
+}

@@ -78,9 +78,10 @@ CREATE POLICY "cash_insert_finance" ON cash_entries
 CREATE POLICY "cash_update_finance" ON cash_entries
   FOR UPDATE TO authenticated USING (public.is_finance());
 
--- Only founder can delete cash entries (and they should never really delete)
-CREATE POLICY "cash_delete_founder" ON cash_entries
-  FOR DELETE TO authenticated USING (public.is_founder());
+-- Finance roles (founder + accountant) can delete cash entries; the deletion
+-- is always recorded in audit_logs, so history is preserved either way.
+CREATE POLICY "cash_delete_finance" ON cash_entries
+  FOR DELETE TO authenticated USING (public.is_finance());
 
 -- ─────────────────────────────────────────────
 -- LIABILITIES (Finance only)

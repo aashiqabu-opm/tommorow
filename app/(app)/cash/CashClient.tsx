@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function CashClientPage({ entries, userId, role }: Props) {
-  const canDelete = role === 'founder'
+  const canDelete = role === 'founder' || role === 'accountant'
   const router = useRouter()
   const toast = useToast()
   const [open, setOpen] = useState(false)

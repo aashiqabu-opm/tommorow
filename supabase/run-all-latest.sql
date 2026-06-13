@@ -268,6 +268,48 @@ FROM projects pr CROSS JOIN profiles pf
 WHERE lower(pf.email) IN ('abid@opmcinemas.com','madan@opmcinemas.com')
 ON CONFLICT (project_id, user_id) DO NOTHING;
 
+-- ───────────── 10. CREW TEAMS — contact-based members, groups, channel ─────────────
+-- Supersedes migration-crew-contacts.sql. Contact-only members (name/email/
+-- mobile) grouped into Pre/Production/Post; invited crew match by email; per-
+-- project channel.
+ALTER TABLE project_members ALTER COLUMN user_id DROP NOT NULL;
+ALTER TABLE project_members ADD COLUMN IF NOT EXISTS member_name TEXT;
+ALTER TABLE project_members ADD COLUMN IF NOT EXISTS member_email TEXT;
+ALTER TABLE project_members ADD COLUMN IF NOT EXISTS member_phone TEXT;
+ALTER TABLE project_members ADD COLUMN IF NOT EXISTS team_group TEXT NOT NULL DEFAULT 'production';
+  -- team_group: 'pre_production' | 'production' | 'post_production'
+
+-- Project access also matches the logged-in user's EMAIL (invited crew get
+-- access on first sign-in, no user_id backfill needed).
+CREATE OR REPLACE FUNCTION public.is_project_member(p_project UUID)
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM project_members
+    WHERE project_id = p_project
+      AND (user_id = auth.uid() OR lower(member_email) = lower(auth.email()))
+  );
+$$;
+
+CREATE TABLE IF NOT EXISTS project_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS idx_project_messages ON project_messages(project_id, created_at);
+ALTER TABLE project_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "project_messages_read" ON project_messages;
+CREATE POLICY "project_messages_read" ON project_messages FOR SELECT TO authenticated USING (
+  public.user_role() IN ('founder','accountant','general_manager','executive_producer') OR public.is_project_member(project_id));
+DROP POLICY IF EXISTS "project_messages_insert" ON project_messages;
+CREATE POLICY "project_messages_insert" ON project_messages FOR INSERT TO authenticated WITH CHECK (
+  author_id = auth.uid() AND (public.user_role() IN ('founder','accountant','general_manager','executive_producer') OR public.is_project_member(project_id)));
+DROP POLICY IF EXISTS "project_messages_delete" ON project_messages;
+CREATE POLICY "project_messages_delete" ON project_messages FOR DELETE TO authenticated USING (author_id = auth.uid() OR public.is_founder());
+
+-- ───────────── 11. Abid display name ─────────────
+UPDATE profiles SET full_name = 'Abid Abu' WHERE lower(email) = 'abid@opmcinemas.com';
+
 -- ═══════════════════════════════════════════════════════════════════════
 -- Done. Expect "Success. No rows returned."
 -- ═══════════════════════════════════════════════════════════════════════

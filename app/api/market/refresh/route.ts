@@ -1,15 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { discoverMalayalamReleases, fetchIndustryFilmCollection, intelConfigured } from '@/lib/ai/release-intel'
+import { trackMalayalamReleases, intelConfigured } from '@/lib/ai/release-intel'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-type Day = { day: number; date: string | null; india_net: number | null; worldwide: number | null; source: string | null }
+type Day = { day: number; india_net: number | null; worldwide: number | null; source: string | null }
 
-// On-demand Malayalam release refresh — discover new films + update their day
-// 1–7 collections. Founder / management only.
+function mergeDays(existing: Day[], incoming: Day[]): Day[] {
+  const map = new Map<number, Day>()
+  for (const d of existing) if (d && typeof d.day === 'number') map.set(d.day, d)
+  for (const d of incoming) {
+    if (!d || typeof d.day !== 'number') continue
+    const prev = map.get(d.day)
+    map.set(d.day, { day: d.day, india_net: d.india_net ?? prev?.india_net ?? null, worldwide: d.worldwide ?? prev?.worldwide ?? null, source: d.source ?? prev?.source ?? null })
+  }
+  return [...map.values()].sort((a, b) => a.day - b.day)
+}
+
+// On-demand Malayalam release refresh — one aggressive web-search pass that
+// discovers recent releases and pulls each one's day-wise collection.
 export async function POST() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -21,36 +32,23 @@ export async function POST() {
   if (!intelConfigured()) return NextResponse.json({ error: 'AI not configured (ANTHROPIC_API_KEY missing).' }, { status: 503 })
 
   const db = createAdminClient() ?? supabase
-  const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
-  const daysSince = (d: string) => Math.floor((today.getTime() - new Date(d).getTime()) / 86400000)
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const films = await trackMalayalamReleases(todayStr)
+  if (!films.length) return NextResponse.json({ ok: true, found: 0, added: 0, updated: 0, note: 'No releases found right now — try again shortly.' })
 
-  const discovered = await discoverMalayalamReleases()
-  let added = 0
-  for (const f of discovered) {
-    const { data: existing } = await db.from('industry_films').select('id').eq('title', f.title).eq('release_date', f.release_date ?? null).maybeSingle()
-    if (!existing) { await db.from('industry_films').insert({ title: f.title, release_date: f.release_date, ai_note: f.note?.slice(0, 300) ?? null }); added++ }
+  let added = 0, updated = 0
+  for (const f of films) {
+    const lookup = db.from('industry_films').select('id, days').eq('title', f.title)
+    const { data: existing } = await (f.release_date ? lookup.eq('release_date', f.release_date) : lookup.is('release_date', null)).maybeSingle()
+    const mergedDays = mergeDays((existing?.days as Day[]) ?? [], f.days ?? [])
+    const total = mergedDays.reduce((s, d) => s + (Number(d.india_net) || 0), 0)
+    const payload = {
+      title: f.title, release_date: f.release_date, days: mergedDays,
+      total_india: total > 0 ? total : f.total_india, ai_note: f.note?.slice(0, 300) ?? null, last_checked: new Date().toISOString(),
+    }
+    if (existing) { await db.from('industry_films').update(payload).eq('id', existing.id); updated++ }
+    else { await db.from('industry_films').insert(payload); added++ }
   }
 
-  const { data: films } = await db.from('industry_films').select('id, title, release_date, days')
-    .gte('release_date', new Date(today.getTime() - 8 * 86400000).toISOString().slice(0, 10))
-  let updated = 0
-  for (const film of (films ?? []) as { id: string; title: string; release_date: string | null; days: Day[] }[]) {
-    if (!film.release_date) continue
-    const dayNum = daysSince(film.release_date) + 1
-    if (dayNum < 1 || dayNum > 7) continue
-    const days: Day[] = Array.isArray(film.days) ? film.days : []
-    if (days.some(d => d.day === dayNum)) continue
-    const col = await fetchIndustryFilmCollection(film.title, film.release_date, dayNum)
-    if (!col || (col.india_net == null && col.worldwide_gross == null)) continue
-    days.push({ day: dayNum, date: todayStr, india_net: col.india_net, worldwide: col.worldwide_gross, source: col.source })
-    days.sort((a, b) => a.day - b.day)
-    await db.from('industry_films').update({
-      days, total_india: days.reduce((s, d) => s + (d.india_net ?? 0), 0),
-      ai_note: col.note?.slice(0, 300) ?? null, last_checked: new Date().toISOString(),
-    }).eq('id', film.id)
-    updated++
-  }
-
-  return NextResponse.json({ ok: true, added, updated })
+  return NextResponse.json({ ok: true, found: films.length, added, updated })
 }

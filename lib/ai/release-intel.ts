@@ -26,7 +26,7 @@ export interface TrendAnalysis {
   commentary: string
 }
 
-const WEB_TOOL = { type: 'web_search_20250305', name: 'web_search', max_uses: 6 } as const
+const WEB_TOOL = { type: 'web_search_20250305', name: 'web_search', max_uses: 12 } as const
 
 export const intelConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY)
 
@@ -47,10 +47,11 @@ export async function fetchCollectionEstimate(film: string, context?: string): P
   try {
     const res = await client().messages.create({
       model: 'claude-opus-4-8',
-      max_tokens: 2500,
+      max_tokens: 3000,
+      thinking: { type: 'adaptive' },
       tools: [WEB_TOOL],
-      system: `You research Indian theatrical box-office collections. Use web search to find the most recent publicly reported daily collection for a specific film. Be conservative — only report a number you actually find on a credible source (e.g. Sacnilk, industry trade sites, mainstream news). Report rupees as plain integers (e.g. ₹1.2 crore = 12000000), not "crore". If you cannot find a reliable figure, return nulls with a short note explaining that. Respond with ONLY a JSON object: {"day_number": int|null, "india_net": number|null, "worldwide_gross": number|null, "source": string|null, "note": string}.`,
-      messages: [{ role: 'user', content: `Film: "${film}"${context ? ` (${context})` : ''}. Find its latest reported box-office collection (India net and worldwide gross if available) and which day of release it is. Return the JSON.` }],
+      system: `You research Indian (Malayalam) theatrical box-office collections. Use web search aggressively (up to 12 searches) to find the most recent publicly reported daily collection for a specific film. Search Sacnilk specifically — query "<film> sacnilk box office collection" and open the tracker page (it has day-wise India net for Malayalam films); also try trade sites and "<film> day N collection". Report rupees as plain integers (₹1.2 crore = 12000000), never "crore"/"lakh" strings. Only report a number you actually find on a credible source. If after genuinely trying you find nothing, return nulls with a short note. Respond with ONLY a JSON object: {"day_number": int|null, "india_net": number|null, "worldwide_gross": number|null, "source": string|null, "note": string}.`,
+      messages: [{ role: 'user', content: `Film: "${film}"${context ? ` (${context})` : ''}. Find its latest reported box-office collection (India net + worldwide if available) and which day of release it is, using Sacnilk and trade trackers. Return the JSON.` }],
     })
     return extractJson<CollectionEstimate>(res.content)
   } catch { return null }
@@ -95,39 +96,54 @@ export async function trackCampaignAsset(
   } catch { return null }
 }
 
-// ── Discover new Malayalam releases (films released in the last ~7 days) ─
-export interface DiscoveredFilm { title: string; release_date: string | null; note: string }
+// ── Track ALL recent Malayalam releases day-wise in one agentic pass ─────
+// One rich web-search call that both discovers the films and pulls each one's
+// day-by-day collection — far more reliable than discover-then-fetch, and not
+// dependent on knowing release dates up front.
+export interface TrackedFilm {
+  title: string
+  release_date: string | null            // YYYY-MM-DD
+  days: { day: number; india_net: number | null; worldwide: number | null; source: string | null }[]
+  total_india: number | null
+  note: string
+}
 
-export async function discoverMalayalamReleases(): Promise<DiscoveredFilm[]> {
+export async function trackMalayalamReleases(todayISO: string): Promise<TrackedFilm[]> {
   if (!intelConfigured()) return []
   try {
     const res = await client().messages.create({
       model: 'claude-opus-4-8',
-      max_tokens: 2500,
+      max_tokens: 8000,
+      thinking: { type: 'adaptive' },
       tools: [WEB_TOOL],
-      system: `You track new Malayalam theatrical releases for a producer. Use web search (Sacnilk, trade pages, Malayalam entertainment news) to list Malayalam films that RELEASED in cinemas within the last 7 days. Only real theatrical releases — exclude OTT-only and re-releases unless notable. Give each film's release date (YYYY-MM-DD) if known. Respond with ONLY JSON: {"films": [{"title": string, "release_date": string|null, "note": string (one line — cast/genre/scale)}]}. If none, return {"films": []}.`,
-      messages: [{ role: 'user', content: `List Malayalam films released in the last 7 days. Return the JSON.` }],
+      system: `You are a box-office data analyst for a Malayalam film producer. Today is ${todayISO}. Your job: find EVERY Malayalam film that released in theatres in the last ~10 days and pull its DAY-BY-DAY India net box-office collection.
+
+Be thorough and aggressive — make as many web searches as you need (you have up to 12). Work like this:
+1. Search for recent Malayalam theatrical releases (e.g. "Malayalam movies released this week", "<this month> Malayalam releases", entertainment news).
+2. For EACH film, search Sacnilk specifically — query "<film name> sacnilk box office collection" and open the tracker page. Sacnilk publishes day-wise India net collections for Malayalam films and is the most reliable source. Also try "<film name> day 1 day 2 collection" and trade sites.
+3. Extract the day-wise India net figures (Day 1, Day 2, …) and worldwide gross if reported.
+
+Rules:
+- Report rupees as PLAIN INTEGERS: ₹1.25 crore = 12500000, ₹40 lakh = 4000000. Never output "crore"/"lakh" strings in number fields.
+- Only include real THEATRICAL Malayalam releases (skip OTT-only and re-releases unless clearly notable).
+- Include a film even if you only found Day 1 — partial day data is fine. Use null for days/figures you genuinely can't find, but TRY HARD first.
+- release_date in YYYY-MM-DD.
+
+Respond with ONLY JSON (no prose):
+{"films": [{"title": string, "release_date": string|null, "days": [{"day": int, "india_net": number|null, "worldwide": number|null, "source": string|null}], "note": string (one line: cast/verdict/how it's trending)}]}
+If you truly find nothing, return {"films": []}.`,
+      messages: [{ role: 'user', content: `Find all Malayalam theatrical releases from the last ~10 days and their day-wise India net collections (use Sacnilk and trade trackers). Return the JSON.` }],
     })
-    const out = extractJson<{ films?: DiscoveredFilm[] }>(res.content)
-    return (out?.films ?? []).filter(f => f && f.title).slice(0, 25)
+    const out = extractJson<{ films?: TrackedFilm[] }>(res.content)
+    return (out?.films ?? [])
+      .filter(f => f && f.title)
+      .map(f => {
+        const days = (Array.isArray(f.days) ? f.days : []).filter(d => d && typeof d.day === 'number').sort((a, b) => a.day - b.day)
+        const total = days.reduce((s, d) => s + (Number(d.india_net) || 0), 0)
+        return { ...f, days, total_india: total > 0 ? total : (f.total_india ?? null) }
+      })
+      .slice(0, 30)
   } catch { return [] }
-}
-
-// ── Fetch one industry film's collection for a specific day ─────────────
-export interface DayCollection { day_number: number | null; india_net: number | null; worldwide_gross: number | null; source: string | null; note: string }
-
-export async function fetchIndustryFilmCollection(title: string, releaseDate: string | null, dayNumber: number): Promise<DayCollection | null> {
-  if (!intelConfigured()) return null
-  try {
-    const res = await client().messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 2000,
-      tools: [WEB_TOOL],
-      system: `You research Malayalam theatrical box-office collections. Use web search to find a film's collection for a specific day of its release. Report rupees as plain integers (₹1.2 crore = 12000000), not "crore". Only report a figure you actually find on a credible source. Respond with ONLY JSON: {"day_number": int|null, "india_net": number|null, "worldwide_gross": number|null, "source": string|null, "note": string (one line on how it's trending)}.`,
-      messages: [{ role: 'user', content: `Film "${title}"${releaseDate ? ` (released ${releaseDate})` : ''} — find its day ${dayNumber} box-office collection (India net, worldwide if available). Return the JSON.` }],
-    })
-    return extractJson<DayCollection>(res.content)
-  } catch { return null }
 }
 
 // ── Trend commentary over the collected day-wise numbers (no web) ───────

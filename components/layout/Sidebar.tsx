@@ -24,6 +24,7 @@ import {
   FileBox,
   Newspaper,
   BookText,
+  NotebookPen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WEB_SEARCH_ENABLED } from '@/lib/flags'
@@ -49,6 +50,7 @@ const navItems = [
   { href: '/revenue', label: 'Revenue', icon: TrendingUp, roles: ['founder', 'accountant'] },
   { href: '/forecast', label: 'Forecast', icon: LineChart, roles: ['founder', 'accountant'] },
   { href: '/compliance', label: 'Tax & Compliance', icon: Receipt, roles: ['founder', 'accountant'] },
+  { href: '/vouchers', label: 'Vouchers', icon: NotebookPen, roles: ['founder', 'accountant'] },
   { href: '/tally', label: 'Tally Export', icon: BookText, roles: ['founder', 'accountant'] },
   { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },

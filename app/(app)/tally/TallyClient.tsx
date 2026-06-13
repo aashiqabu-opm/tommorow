@@ -4,10 +4,10 @@ import { useState } from 'react'
 import { Download, FileCode, Table, BookOpen, Info } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
-import { buildVoucherXml, buildLedgerXml, buildVoucherCsv, type TallyVoucher, type TallyLedger } from '@/lib/tally'
+import { buildVoucherXml, buildLedgerXml, buildVoucherCsv, expensePaymentLines, incomeReceiptLines, gstLedgerNames, type TallyVoucher, type TallyLedger, type GstSplit } from '@/lib/tally'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Row = Record<string, any>
@@ -28,6 +28,8 @@ export function TallyClient() {
   const [to, setTo] = useState(today())
   const [company, setCompany] = useState('')
   const [bankLedger, setBankLedger] = useState('Cash')
+  const [gstSplit, setGstSplit] = useState<GstSplit>('cgst_sgst')
+  const [tdsLedger, setTdsLedger] = useState('TDS Payable')
   const [busy, setBusy] = useState(false)
   const [counts, setCounts] = useState<{ payments: number; income: number } | null>(null)
 
@@ -41,6 +43,7 @@ export function TallyClient() {
 
     const vouchers: TallyVoucher[] = []
     const ledgerSet = new Map<string, string>() // name -> parent
+    let usedInputGst = false, usedOutputGst = false, usedTds = false
 
     for (const p of (pay.data ?? []) as Row[]) {
       const settled = p.approval_status === 'approved' || p.payment_status === 'paid' || p.approval_status === 'paid'
@@ -48,13 +51,18 @@ export function TallyClient() {
       const date = (p.paid_at ?? p.created_at ?? '').slice(0, 10)
       if (!date || date < from || date > to) continue
       const party = String(p.payee || 'Sundry Party').trim()
-      const amount = Number(p.net_payable ?? p.amount ?? 0)
-      if (amount <= 0) continue
+      const gross = Number(p.amount ?? 0)
+      if (gross <= 0) continue
+      const gstAmount = Number(p.gst_amount ?? 0)
+      const tdsAmount = Number(p.tds_amount ?? 0)
       vouchers.push({
-        date, type: 'Payment', partyLedger: party, bankLedger, amount,
+        date, type: 'Payment', partyLedger: party,
         narration: [p.category, p.purpose].filter(Boolean).join(' — '),
+        lines: expensePaymentLines({ party, bankLedger, gross, gstAmount, tdsAmount, gstSplit, tdsLedger }),
       })
       ledgerSet.set(party, 'Sundry Creditors')
+      if (gstAmount > 0) usedInputGst = true
+      if (tdsAmount > 0) usedTds = true
     }
 
     for (const i of (inc.data ?? []) as Row[]) {
@@ -63,17 +71,23 @@ export function TallyClient() {
       const date = String(i.income_date || i.created_at || '').slice(0, 10)
       if (!date || date < from || date > to) continue
       const party = String(i.party || i.source || (i.project?.name ? `${i.project.name} Income` : 'Income')).trim()
-      const amount = Number(i.amount ?? 0)
-      if (amount <= 0) continue
+      const gross = Number(i.amount ?? 0)
+      if (gross <= 0) continue
+      const gstAmount = Number(i.gst_amount ?? 0)
       vouchers.push({
-        date, type: 'Receipt', partyLedger: party, bankLedger, amount,
+        date, type: 'Receipt', partyLedger: party,
         narration: [i.source, i.project?.name, i.notes].filter(Boolean).join(' — '),
+        lines: incomeReceiptLines({ party, bankLedger, gross, gstAmount, gstSplit }),
       })
       ledgerSet.set(party, 'Sales Accounts')
+      if (gstAmount > 0) usedOutputGst = true
     }
 
-    // Bank/Cash ledger master
+    // Bank/Cash + tax ledger masters
     ledgerSet.set(bankLedger, /cash/i.test(bankLedger) ? 'Cash-in-Hand' : 'Bank Accounts')
+    if (usedInputGst) for (const n of gstLedgerNames(gstSplit, false)) ledgerSet.set(n, 'Duties & Taxes')
+    if (usedOutputGst) for (const n of gstLedgerNames(gstSplit, true)) ledgerSet.set(n, 'Duties & Taxes')
+    if (usedTds) ledgerSet.set(tdsLedger, 'Duties & Taxes')
     const ledgers: TallyLedger[] = [...ledgerSet.entries()].map(([name, parent]) => ({ name, parent }))
     return { vouchers, ledgers }
   }
@@ -123,6 +137,9 @@ export function TallyClient() {
           <Input label="To" type="date" value={to} onChange={e => setTo(e.target.value)} />
           <Input label="Tally Company Name (optional)" value={company} onChange={e => setCompany(e.target.value)} placeholder="As it appears in Tally" />
           <Input label="Bank / Cash Ledger" value={bankLedger} onChange={e => setBankLedger(e.target.value)} placeholder="e.g. Cash, HDFC Bank" />
+          <Select label="GST split" value={gstSplit} onChange={e => setGstSplit(e.target.value as GstSplit)}
+            options={[{ value: 'cgst_sgst', label: 'CGST + SGST (intra-state)' }, { value: 'igst', label: 'IGST (inter-state)' }, { value: 'single', label: 'Single Input/Output GST' }]} />
+          <Input label="TDS Payable Ledger" value={tdsLedger} onChange={e => setTdsLedger(e.target.value)} placeholder="TDS Payable" />
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -147,7 +164,7 @@ export function TallyClient() {
         </ol>
         <div className="mt-3 flex items-start gap-2 text-[11px] text-[#8888aa] bg-[#1a1a24] rounded-xl p-3">
           <Info size={13} className="mt-0.5 shrink-0 text-amber-400" />
-          <span>Amounts use net payable where available. GST/TDS breakups aren&apos;t split into separate ledgers yet — the accountant applies tax in Tally, or tell me to add GST/TDS ledger lines to the export.</span>
+          <span>Each payment posts the full GST/TDS breakup: base to the party, GST to Input {gstSplit === 'igst' ? 'IGST' : gstSplit === 'single' ? 'GST' : 'CGST/SGST'}, TDS to “{tdsLedger}”, net to {bankLedger || 'bank/cash'}. Income posts base + Output GST. Check the GST split (intra vs inter-state) matches the invoices before importing.</span>
         </div>
       </div>
     </div>

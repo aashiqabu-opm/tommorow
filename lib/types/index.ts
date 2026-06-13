@@ -65,6 +65,33 @@ export interface MonitoringFinding {
   created_at: string
 }
 
+export interface Ledger {
+  id: string
+  name: string
+  parent: string
+  opening_balance: number
+  created_at: string
+}
+
+export interface VoucherEntry {
+  id?: string
+  voucher_id?: string
+  ledger_name: string
+  dr: boolean
+  amount: number
+  sort_order?: number
+}
+
+export interface Voucher {
+  id: string
+  voucher_type: string
+  voucher_date: string
+  voucher_number: string | null
+  narration: string | null
+  created_at: string
+  entries?: VoucherEntry[]
+}
+
 export interface CampaignAsset {
   id: string
   project_id: string

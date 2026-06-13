@@ -7,14 +7,16 @@ interface Msg { role: 'user' | 'assistant'; content: string }
 
 const FINANCE_SUGGESTIONS = [
   "What's our cash position?",
-  'Payments awaiting my approval?',
+  'Cost report for Aja Sundari',
+  'Which contracts renew soon?',
+  'Investors on Aja Sundari?',
+  'Balance due to crew on Kaali',
   'Which liabilities are overdue?',
-  'What revenue is still receivable?',
 ]
 const STAFF_SUGGESTIONS = [
   'What payment requests are pending?',
   'Which projects are active?',
-  'Payments for Aja Sundari?',
+  'What does the Aja Sundari agreement say?',
   'Has my bill been approved?',
 ]
 

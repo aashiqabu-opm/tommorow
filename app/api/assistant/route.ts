@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fundingMetrics } from '@/lib/funding'
+import type { ProjectFunding, DocumentAnalysisData } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -70,6 +72,43 @@ const TOOLS: Anthropic.Tool[] = [
     name: 'list_projects',
     description: 'List all film projects with status and priority.',
     input_schema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'search_documents',
+    description: "Search company documents and AGREEMENTS/CONTRACTS, including the AI-extracted analysis: plain-English summary, parties, key dates (renewals, expiries, payment milestones, delivery deadlines), financial terms (MG, commission, advance, penalties), and risk flags. Use for 'what does the <X> agreement say', 'which contracts renew soon', \"what's our commission on the <Y> deal\", 'any risky clauses', 'contract for <film>'.",
+    input_schema: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        query: { type: 'string', description: 'Text to match in document title or party name' },
+        upcoming_dates_only: { type: 'boolean', description: 'Only documents that have a key date within the next 90 days' },
+      },
+    },
+  },
+  {
+    name: 'project_budget',
+    description: "A film's budget-vs-actual COST REPORT: per head — budget, committed (approved-unpaid), spent (paid payments + petty cash + crew payments), remaining and % used — plus totals and which heads are over/near budget. Use for 'cost report for <film>', 'which heads are over budget', 'how much have we spent on camera for <film>'.",
+    input_schema: {
+      type: 'object', additionalProperties: false,
+      properties: { project: { type: 'string', description: 'Project / film name (partial match)' } },
+      required: ['project'],
+    },
+  },
+  {
+    name: 'list_funding',
+    description: "Project funding / capital stack: investors (with equity %), loans/finance (with rate and monthly interest cost), and OPM's own investment. Use for 'who are the investors on <film>', \"what's our loan interest\", 'how much has OPM invested'. Omit project for all projects.",
+    input_schema: {
+      type: 'object', additionalProperties: false,
+      properties: { project: { type: 'string', description: 'Project / film name (optional, partial match)' } },
+    },
+  },
+  {
+    name: 'crew_ledger',
+    description: "A film's crew & cast ledger: each person's agreed fee, TDS, paid-so-far and BALANCE DUE. Use for 'what do we owe <name>', 'balance due to cast on <film>', 'who is still unpaid on <film>'.",
+    input_schema: {
+      type: 'object', additionalProperties: false,
+      properties: { project: { type: 'string', description: 'Project / film name (partial match)' } },
+      required: ['project'],
+    },
   },
 ]
 
@@ -175,18 +214,113 @@ async function runTool(name: string, input: Json, sb: SupabaseClient): Promise<u
     return (data ?? []).map(p => ({ name: p.name, status: p.status, priority: !!p.is_priority }))
   }
 
+  if (name === 'search_documents') {
+    let q = sb.from('documents').select('title, document_type, party_name, expiry_date, ai_summary, ai_analysis, project:projects(name)').order('created_at', { ascending: false }).limit(40)
+    if (typeof input.query === 'string' && input.query) q = q.or(`title.ilike.%${input.query}%,party_name.ilike.%${input.query}%`)
+    const { data } = await q
+    let rows = (data ?? []) as { title: string; document_type: string; party_name: string | null; expiry_date: string | null; ai_summary: string | null; ai_analysis: DocumentAnalysisData | null; project: { name?: string } | null }[]
+    const in90 = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10)
+    if (input.upcoming_dates_only) {
+      rows = rows.filter(d => (d.ai_analysis?.key_dates ?? []).some(k => k.date >= today && k.date <= in90))
+    }
+    return rows.slice(0, 12).map(d => {
+      const a = d.ai_analysis
+      return {
+        title: d.title, type: d.document_type, party: d.party_name,
+        project: d.project?.name ?? null, expiry: d.expiry_date,
+        summary: d.ai_summary ?? null,
+        key_dates: a?.key_dates?.map(k => ({ label: k.label, date: k.date })) ?? null,
+        financial_terms: a?.financial_terms?.map(f => ({ label: f.label, amount: f.amount != null ? inr(f.amount) : null, note: f.note })) ?? null,
+        risk_flags: a?.flags?.map(f => `${f.severity}: ${f.note}`) ?? null,
+        ai_analyzed: !!a,
+      }
+    })
+  }
+
+  if (name === 'project_budget') {
+    const term = String(input.project ?? '')
+    const { data: projects } = await sb.from('projects').select('id, name').ilike('name', `%${term}%`).limit(1)
+    const project = projects?.[0]
+    if (!project) return { error: `No project matching "${term}"` }
+    const [lines, pays, floats, crew] = await Promise.all([
+      sb.from('budget_lines').select('id, head, section, estimated').eq('project_id', project.id),
+      sb.from('payment_requests').select('amount, net_payable, payment_status, approval_status, budget_line_id').eq('project_id', project.id).not('budget_line_id', 'is', null),
+      sb.from('petty_cash_floats').select('txns:petty_cash_txns(type, amount, budget_line_id)').eq('project_id', project.id),
+      sb.from('project_crew').select('budget_line_id, payments:crew_payments(amount)').eq('project_id', project.id).not('budget_line_id', 'is', null),
+    ])
+    const lineRows = (lines.data ?? []) as { id: string; head: string; section: string; estimated: number }[]
+    if (!lineRows.length) return { project: project.name, note: 'No budget has been set for this project yet.' }
+    const spent: Record<string, number> = {}
+    const committed: Record<string, number> = {}
+    for (const p of (pays.data ?? []) as { amount: number; net_payable: number | null; payment_status: string; approval_status: string; budget_line_id: string }[]) {
+      const v = Number(p.net_payable ?? p.amount ?? 0)
+      if (p.payment_status === 'paid') spent[p.budget_line_id] = (spent[p.budget_line_id] ?? 0) + v
+      else if (p.approval_status === 'approved') committed[p.budget_line_id] = (committed[p.budget_line_id] ?? 0) + v
+    }
+    for (const f of (floats.data ?? []) as { txns: { type: string; amount: number; budget_line_id: string | null }[] }[]) {
+      for (const t of f.txns ?? []) if (t.type === 'expense' && t.budget_line_id) spent[t.budget_line_id] = (spent[t.budget_line_id] ?? 0) + Number(t.amount || 0)
+    }
+    for (const c of (crew.data ?? []) as { budget_line_id: string; payments: { amount: number }[] }[]) {
+      const paid = (c.payments ?? []).reduce((s, x) => s + Number(x.amount || 0), 0)
+      spent[c.budget_line_id] = (spent[c.budget_line_id] ?? 0) + paid
+    }
+    let tB = 0, tS = 0, tC = 0
+    const heads = lineRows.map(l => {
+      const b = Number(l.estimated || 0), s = spent[l.id] ?? 0, c = committed[l.id] ?? 0
+      tB += b; tS += s; tC += c
+      return { head: l.head, section: l.section, budget: inr(b), committed: inr(c), spent: inr(s), remaining: inr(b - s - c), pct_used: b > 0 ? Math.round((s + c) / b * 100) : 0, over_budget: b > 0 && (s + c) > b }
+    })
+    return { project: project.name, total_budget: inr(tB), total_spent: inr(tS), total_committed: inr(tC), total_remaining: inr(tB - tS - tC), heads }
+  }
+
+  if (name === 'list_funding') {
+    const { data } = await sb.from('project_funding').select('kind, name, amount, equity_percent, interest_rate, interest_basis, start_date, status, transactions:funding_transactions(type, amount), project:projects(name)').order('created_at', { ascending: true }).limit(60)
+    let rows = (data ?? []) as unknown as (ProjectFunding & { project: { name?: string } | null })[]
+    if (typeof input.project === 'string' && input.project) {
+      const p = input.project.toLowerCase()
+      rows = rows.filter(r => r.project?.name?.toLowerCase().includes(p))
+    }
+    return rows.map(r => {
+      const m = fundingMetrics(r)
+      return {
+        kind: r.kind, name: r.name, project: r.project?.name ?? null, amount: inr(r.amount),
+        equity_percent: r.equity_percent ?? null,
+        interest: r.kind === 'loan' && r.interest_rate ? `${r.interest_rate}% / ${r.interest_basis === 'annual' ? 'yr' : 'mo'}` : null,
+        monthly_interest: r.kind === 'loan' ? inr(m.monthlyInterest) : null,
+        outstanding_interest: r.kind === 'loan' ? inr(m.outstandingInterest) : null,
+        status: r.status,
+      }
+    })
+  }
+
+  if (name === 'crew_ledger') {
+    const term = String(input.project ?? '')
+    const { data: projects } = await sb.from('projects').select('id, name').ilike('name', `%${term}%`).limit(1)
+    const project = projects?.[0]
+    if (!project) return { error: `No project matching "${term}"` }
+    const { data } = await sb.from('project_crew').select('name, role_title, agreed_fee, tds_percent, status, payments:crew_payments(amount)').eq('project_id', project.id)
+    let totalBalance = 0
+    const people = ((data ?? []) as { name: string; role_title: string | null; agreed_fee: number; tds_percent: number; status: string; payments: { amount: number }[] }[]).map(c => {
+      const fee = Number(c.agreed_fee || 0), tds = fee * Number(c.tds_percent || 0) / 100, net = fee - tds
+      const paid = (c.payments ?? []).reduce((s, x) => s + Number(x.amount || 0), 0)
+      const bal = net - paid; totalBalance += bal
+      return { name: c.name, role: c.role_title, agreed_fee: inr(fee), tds: inr(tds), net_payable: inr(net), paid: inr(paid), balance_due: inr(bal), status: c.status }
+    })
+    return { project: project.name, total_balance_due: inr(totalBalance), people }
+  }
+
   return { error: 'Unknown tool' }
 }
 
-const FINANCE_TOOLS = ['list_projects', 'search_payments'] // available to every role
+const ALL_ROLE_TOOLS = ['list_projects', 'search_payments', 'search_documents'] // available to every role
 const today = () => new Date().toISOString().slice(0, 10)
 
 function systemPrompt(isFinance: boolean): string {
   const base = `You are "Ask OPM", an assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Answer using ONLY data returned by your tools — never invent or estimate numbers. If the tools return nothing relevant, say so plainly. Be concise and specific; use ₹ formatting and name the parties/projects. You are READ-ONLY: you cannot create, edit, approve, pay, or delete anything. If asked to take such an action, explain that you can only look things up, and point them to the relevant page. Today's date is ${today()}.`
   if (isFinance) {
-    return `${base} The user is on the finance team (founder/accountant) and may ask about cash, bank balances, payroll, liabilities, payments, revenue and project P&L.`
+    return `${base} The user is on the finance team (founder/accountant). You can answer about: cash & bank balances, payroll, liabilities, payments, revenue & project P&L; film BUDGETS & cost reports (budget vs actual per head, over-budget heads); project FUNDING (investors, loans with interest, OPM investment); the CREW & CAST ledger (fees, advances, balance due); and company DOCUMENTS/CONTRACTS — including AI-extracted summaries, key dates (renewals, payment milestones), financial terms and risk flags. Reach for the right tool; you can call several to answer one question.`
   }
-  return `${base} The user is a non-finance team member. You can help with projects and payment requests only. You do NOT have access to company cash, bank balances, payroll, liabilities, or revenue/P&L figures — if asked about those, say that information is restricted to the finance team and you can't see it. Do not guess.`
+  return `${base} The user is a non-finance team member. You can help with projects, payment requests, and company documents/contracts they're permitted to see (use search_documents). You do NOT have access to company cash, bank balances, payroll, liabilities, revenue/P&L, budgets, funding or crew pay — if asked about those, say that information is restricted to the finance team and you can't see it. Do not guess.`
 }
 
 export async function POST(request: Request) {
@@ -205,7 +339,7 @@ export async function POST(request: Request) {
   // Finance roles get the full toolset; other roles only get projects + payment
   // requests (data they're already permitted to see). Defense-in-depth on top of RLS.
   const isFinance = ['founder', 'accountant'].includes(profile.role)
-  const tools = isFinance ? TOOLS : TOOLS.filter(t => FINANCE_TOOLS.includes(t.name))
+  const tools = isFinance ? TOOLS : TOOLS.filter(t => ALL_ROLE_TOOLS.includes(t.name))
   const system = systemPrompt(isFinance)
 
   let body: { messages?: unknown }

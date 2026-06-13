@@ -15,7 +15,8 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, DOCUMENT_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { Project, Document, Liability, ProjectIncome } from '@/lib/types'
+import type { Project, Document, Liability, ProjectIncome, ProjectFunding } from '@/lib/types'
+import { FundingSection } from './FundingSection'
 import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
@@ -29,6 +30,7 @@ interface Props {
   payments: PaymentRequest[]
   liabilities: Liability[]
   income: ProjectIncome[]
+  funding: ProjectFunding[]
   userId: string
   role: string
 }
@@ -52,7 +54,8 @@ const INCOME_SOURCES = [
   { value: 'other', label: 'Other' },
 ]
 
-export function ProjectDetailClient({ project, documents, payments, liabilities, income, userId, role }: Props) {
+export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, userId, role }: Props) {
+  const isFinance = ['founder', 'accountant'].includes(role)
   const router = useRouter()
   const toast = useToast()
   const [incomeOpen, setIncomeOpen] = useState(false)
@@ -286,6 +289,11 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
         <StatCard title="Liabilities Outstanding" value={formatCurrency(totalLiabilitiesOutstanding)} icon={AlertTriangle} status={totalLiabilitiesOutstanding > 0 ? 'red' : 'green'} />
         <StatCard title="Expiring Docs" value={expiring.length} status={expiring.length > 0 ? 'yellow' : 'green'} subtitle="Within 30 days" />
       </div>
+
+      {/* Funding & Capital Stack (finance only) */}
+      {isFinance && (
+        <FundingSection projectId={project.id} funding={funding} userId={userId} canManage={isFinance} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Income history */}

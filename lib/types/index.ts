@@ -316,3 +316,48 @@ export interface ProjectHealthCard {
   total_liabilities: number
   health: 'green' | 'yellow' | 'red'
 }
+
+export type FundingKind = 'investor' | 'loan' | 'opm'
+export type FundingTxnType = 'capital_in' | 'payout' | 'interest_paid' | 'principal_repaid' | 'other'
+
+export interface ProjectFunding {
+  id: string
+  project_id: string
+  kind: FundingKind
+  name: string
+  amount: number
+  equity_percent?: number | null
+  interest_rate?: number | null
+  interest_basis?: 'monthly' | 'annual'
+  interest_method?: 'simple' | 'reducing'
+  start_date?: string | null
+  tenure_months?: number | null
+  status: 'active' | 'closed'
+  contact_person?: string | null
+  contact_phone?: string | null
+  contact_email?: string | null
+  notes?: string | null
+  created_by?: string
+  created_at: string
+  updated_at: string
+  transactions?: FundingTransaction[]
+}
+
+export interface FundingTransaction {
+  id: string
+  funding_id: string
+  txn_date: string
+  type: FundingTxnType
+  amount: number
+  notes?: string | null
+  created_by?: string
+  created_at: string
+}
+
+export const FUNDING_TXN_LABELS: Record<FundingTxnType, string> = {
+  capital_in: 'Capital In',
+  payout: 'Payout / Return',
+  interest_paid: 'Interest Paid',
+  principal_repaid: 'Principal Repaid',
+  other: 'Other',
+}

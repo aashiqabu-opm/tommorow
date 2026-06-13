@@ -1,9 +1,25 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, Send, User, X } from 'lucide-react'
+import { Sparkles, Send, User, X, HelpCircle, ChevronLeft } from 'lucide-react'
 
 interface Msg { role: 'user' | 'assistant'; content: string }
+
+interface Capability { icon: string; title: string; ex: string[] }
+const CAPABILITIES_FINANCE: Capability[] = [
+  { icon: '💰', title: 'Money & cash', ex: ["What's our cash position?", 'Payments awaiting approval', 'Which liabilities are overdue?'] },
+  { icon: '🎬', title: 'Projects & P&L', ex: ['P&L for Aja Sundari', 'Which projects are active?'] },
+  { icon: '📊', title: 'Budgets & cost reports', ex: ['Cost report for Aja Sundari', 'Which heads are over budget?'] },
+  { icon: '🏦', title: 'Funding', ex: ['Investors on Aja Sundari?', "What's our loan interest?"] },
+  { icon: '👥', title: 'Crew & cast', ex: ['Balance due to crew on Kaali'] },
+  { icon: '📄', title: 'Documents & contracts', ex: ['What does the Aja Sundari agreement say?', 'Which contracts renew soon?'] },
+  { icon: '🎥', title: 'Shoot progress', ex: ['How is the Kaali shoot going?'] },
+]
+const CAPABILITIES_STAFF: Capability[] = [
+  { icon: '🎬', title: 'Projects', ex: ['Which projects are active?'] },
+  { icon: '💳', title: 'Payments', ex: ['Pending payment requests?', 'Has my bill been approved?'] },
+  { icon: '📄', title: 'Documents', ex: ['What does the Aja Sundari agreement say?'] },
+]
 
 const FINANCE_SUGGESTIONS = [
   "What's our cash position?",
@@ -23,7 +39,9 @@ const STAFF_SUGGESTIONS = [
 // App-wide floating chat. Read-only — talks to /api/assistant.
 export function FloatingAssistant({ firstName, finance }: { firstName: string; finance: boolean }) {
   const SUGGESTIONS = finance ? FINANCE_SUGGESTIONS : STAFF_SUGGESTIONS
+  const CAPABILITIES = finance ? CAPABILITIES_FINANCE : CAPABILITIES_STAFF
   const [open, setOpen] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -98,7 +116,7 @@ export function FloatingAssistant({ firstName, finance }: { firstName: string; f
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {messages.length === 0 && (
+            {messages.length === 0 && !showHelp && (
               <div className="h-full flex flex-col items-center justify-center text-center gap-3 px-2">
                 <p className="text-sm text-white font-medium">Hi {firstName} 👋</p>
                 <p className="text-xs text-[#8888aa]">Ask me anything about the books. I read your live data and answer in plain English.</p>
@@ -110,6 +128,35 @@ export function FloatingAssistant({ firstName, finance }: { firstName: string; f
                     </button>
                   ))}
                 </div>
+                <button onClick={() => setShowHelp(true)}
+                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-[#8888aa] hover:text-white">
+                  <HelpCircle size={12} /> What can I ask?
+                </button>
+              </div>
+            )}
+
+            {messages.length === 0 && showHelp && (
+              <div className="space-y-3">
+                <button onClick={() => setShowHelp(false)} className="inline-flex items-center gap-1 text-[11px] text-[#8888aa] hover:text-white">
+                  <ChevronLeft size={13} /> Back
+                </button>
+                <p className="text-xs text-[#8888aa]">I read your live data and answer in plain English. I&apos;m <strong className="text-[#c8c8da]">read-only</strong> — I look things up, I never change anything. Tap an example to try it.</p>
+                <div className="space-y-2.5">
+                  {CAPABILITIES.map(c => (
+                    <div key={c.title}>
+                      <div className="text-[11px] font-semibold text-white mb-1">{c.icon} {c.title}</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {c.ex.map(q => (
+                          <button key={q} onClick={() => { setShowHelp(false); send(q) }}
+                            className="text-[11px] text-[#c8c8da] bg-[#1a1a24] border border-[#2a2a3a] hover:border-white/30 rounded-full px-2.5 py-1 text-left">
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {finance && <p className="text-[10px] text-[#5a5a7a] pt-1">You can ask me the same things on WhatsApp, and send a bill photo to draft a payment.</p>}
               </div>
             )}
 

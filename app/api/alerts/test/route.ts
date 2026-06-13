@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { emailTemplate, whatsappConfigured } from '@/lib/alerts/channels'
+import { emailTemplate, whatsappConfigured, normalizeWhatsApp } from '@/lib/alerts/channels'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,7 +72,7 @@ export async function GET() {
         headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           From: process.env.TWILIO_WHATSAPP_FROM!,
-          To: `whatsapp:${profile.whatsapp_number}`,
+          To: `whatsapp:${normalizeWhatsApp(profile.whatsapp_number)}`,
           Body: '*OPM Office* — Test alert ✓ WhatsApp alerts are working.',
         }),
       })

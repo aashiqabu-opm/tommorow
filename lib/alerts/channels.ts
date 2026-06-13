@@ -37,6 +37,13 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   }
 }
 
+// Strip spaces, dashes, parens etc. → E.164 (leading + then digits only),
+// so staff can enter numbers in whatever format feels natural.
+export function normalizeWhatsApp(num: string): string {
+  const cleaned = num.replace(/[^\d+]/g, '')
+  return cleaned.startsWith('+') ? cleaned : `+${cleaned}`
+}
+
 export async function sendWhatsApp(toNumber: string, text: string): Promise<boolean> {
   if (!whatsappConfigured()) return false
   try {
@@ -44,7 +51,7 @@ export async function sendWhatsApp(toNumber: string, text: string): Promise<bool
     const auth = Buffer.from(`${sid}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')
     const body = new URLSearchParams({
       From: process.env.TWILIO_WHATSAPP_FROM!,
-      To: `whatsapp:${toNumber}`,
+      To: `whatsapp:${normalizeWhatsApp(toNumber)}`,
       Body: text,
     })
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {

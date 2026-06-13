@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send, Printer, Sparkles } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send, Printer, Sparkles, AlertTriangle } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge, getPaymentStatusBadge } from '@/components/ui/StatusBadge'
@@ -26,7 +26,7 @@ interface Props {
   comments: Comment[]
   userId: string
   role: string
-  vendors: { id: string; name: string }[]
+  vendors: { id: string; name: string; pan?: string | null }[]
 }
 
 const INITIAL_FORM = {
@@ -79,6 +79,44 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
   const pendingCount = requests.filter(r => r.approval_status === 'pending').length
   const approvedUnpaid = requests.filter(r => r.approval_status === 'approved' && r.payment_status === 'unpaid').length
   const totalPending = requests.filter(r => r.approval_status === 'pending').reduce((s, r) => s + r.amount, 0)
+
+  // ── Smart guardrails: catch double-payments, odd amounts, missing PAN ──
+  const guard = useMemo(() => {
+    const amt = parseFloat(form.amount) || 0
+    const tds = parseFloat(form.tds_percent) || 0
+    const payeeKey = form.payee.trim().toLowerCase()
+    const vendorId = form.payee_vendor_id
+
+    // Prior non-rejected requests to the same vendor (by id) or payee (by name)
+    const prior = requests.filter(r => r.approval_status !== 'rejected' && (
+      vendorId ? r.payee_vendor_id === vendorId
+        : (payeeKey ? r.payee.trim().toLowerCase() === payeeKey : false)
+    ))
+
+    // Duplicate: same amount (±0.5%) to the same party within 30 days
+    const now = Date.now()
+    const dup = amt > 0
+      ? prior.find(r => Math.abs(r.amount - amt) <= Math.max(1, amt * 0.005) &&
+          (now - new Date(r.created_at).getTime()) < 30 * 86400000)
+      : undefined
+
+    // Unusual amount: > 3× the median of past payments to this party (≥3 samples)
+    let typical = 0
+    if (amt > 0 && prior.length >= 3) {
+      const amts = prior.map(r => r.amount).filter(a => a > 0).sort((a, b) => a - b)
+      const median = amts[Math.floor(amts.length / 2)]
+      if (median > 0 && amt > median * 3) typical = median
+    }
+
+    // TDS deducted but no PAN on file → 20% rate applies
+    let tdsNoPan = false
+    if (tds > 0) {
+      if (vendorId) { const v = vendors.find(x => x.id === vendorId); tdsNoPan = !v?.pan }
+      else tdsNoPan = payeeKey.length > 0
+    }
+
+    return { dup, typical, tdsNoPan }
+  }, [form.amount, form.tds_percent, form.payee, form.payee_vendor_id, requests, vendors])
 
   function openNewRequest() {
     // Pre-select the project used last time
@@ -145,6 +183,10 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.project_id) return toast.error('Please select a project')
+    // Possible double-payment — make the user confirm before creating it
+    if (guard.dup && !window.confirm(
+      `A ${formatCurrency(guard.dup.amount)} payment to ${form.payee || 'this party'} was already recorded on ${formatDate(guard.dup.created_at)} (${guard.dup.approval_status}). Submit this one anyway?`
+    )) return
     setSaving(true)
     const supabase = createClient()
 
@@ -639,6 +681,27 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
             {!bill && !extracting && <p className="text-[11px] text-amber-400">Attach a bill — AI will auto-fill the form from it</p>}
           </div>
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+
+          {/* Smart guardrails */}
+          {guard.dup && (
+            <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2 text-xs text-red-300">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>Possible duplicate — {formatCurrency(guard.dup.amount)} to this party was already recorded on {formatDate(guard.dup.created_at)} ({guard.dup.approval_status}). You&apos;ll be asked to confirm.</span>
+            </div>
+          )}
+          {!guard.dup && guard.typical > 0 && (
+            <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 text-xs text-amber-300">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>This amount is unusually high for this party — past payments are typically around {formatCurrency(guard.typical)}. Double-check before submitting.</span>
+            </div>
+          )}
+          {guard.tdsNoPan && (
+            <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 text-xs text-amber-300">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>TDS is set but no PAN is on file for this vendor — without a PAN, TDS must be deducted at 20%. Add the vendor&apos;s PAN on the Vendors page.</span>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" loading={saving}>Submit Request</Button>

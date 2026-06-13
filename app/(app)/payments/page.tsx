@@ -20,7 +20,7 @@ export default async function PaymentsPage() {
       .select('*, profile:profiles(full_name)')
       .eq('entity_type', 'payment_requests')
       .order('created_at', { ascending: true }),
-    supabase.from('vendors').select('id, name').order('name'),
+    supabase.from('vendors').select('id, name, pan').order('name'),
   ])
 
   return <PaymentsClient requests={requests ?? []} projects={projects ?? []} comments={comments ?? []} vendors={vendors ?? []} userId={profile.id} role={role} />

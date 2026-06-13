@@ -65,6 +65,18 @@ export interface MonitoringFinding {
   created_at: string
 }
 
+export interface BankTransaction {
+  id: string
+  account_id: string | null
+  txn_date: string
+  description: string | null
+  reference: string | null
+  amount: number              // + deposit, - withdrawal
+  matched_type: 'payment' | 'income' | 'manual' | null
+  matched_id: string | null
+  created_at: string
+}
+
 export interface Ledger {
   id: string
   name: string

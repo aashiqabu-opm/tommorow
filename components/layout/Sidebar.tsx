@@ -26,6 +26,7 @@ import {
   BookText,
   NotebookPen,
   ChevronDown,
+  Scale,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -50,6 +51,7 @@ const NAV: NavSection[] = [
   { section: 'Finance', items: [
     { href: '/cash', label: 'Cash in Hand', icon: Wallet, roles: ['founder', 'accountant'] },
     { href: '/accounts', label: 'Accounts', icon: Landmark, roles: ['founder', 'accountant'] },
+    { href: '/reconcile', label: 'Reconcile', icon: Scale, roles: ['founder', 'accountant'] },
     { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
     { href: '/vendors', label: 'Vendors', icon: Building2, roles: ['founder', 'accountant', 'general_manager'] },
     { href: '/liabilities', label: 'Liabilities', icon: AlertTriangle, roles: ['founder', 'accountant'] },

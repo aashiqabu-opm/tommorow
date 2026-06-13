@@ -43,6 +43,32 @@ export async function GET(request: Request) {
   const liab = liabilities.data ?? []
   const recv = (receivables.data ?? []) as { amount: number; expected_date: string | null; party: string | null; project: { name?: string } | null }[]
 
+  // ── Film budget heads trending over estimate (≥90% used) ──
+  const [budgetLinesAll, codedPays, pettyExp, crewCoded] = await Promise.all([
+    admin.from('budget_lines').select('id, head, estimated, project:projects(name)').then(r => r.data ?? []),
+    admin.from('payment_requests').select('amount, net_payable, payment_status, approval_status, budget_line_id').not('budget_line_id', 'is', null).then(r => r.data ?? []),
+    admin.from('petty_cash_txns').select('amount, budget_line_id').eq('type', 'expense').not('budget_line_id', 'is', null).then(r => r.data ?? []),
+    admin.from('project_crew').select('budget_line_id, payments:crew_payments(amount)').not('budget_line_id', 'is', null).then(r => r.data ?? []),
+  ])
+  const actualByLine: Record<string, number> = {}
+  const bump = (id: string | null, n: number) => { if (id) actualByLine[id] = (actualByLine[id] ?? 0) + n }
+  for (const p of codedPays as { amount: number; net_payable: number | null; payment_status: string; approval_status: string; budget_line_id: string }[]) {
+    if (p.payment_status === 'paid' || p.approval_status === 'approved') bump(p.budget_line_id, Number(p.net_payable ?? p.amount ?? 0))
+  }
+  for (const t of pettyExp as { amount: number; budget_line_id: string }[]) bump(t.budget_line_id, Number(t.amount || 0))
+  for (const c of crewCoded as { budget_line_id: string; payments?: { amount: number }[] }[]) {
+    bump(c.budget_line_id, (c.payments ?? []).reduce((s, p) => s + Number(p.amount || 0), 0))
+  }
+  const budgetAlerts = (budgetLinesAll as { id: string; head: string; estimated: number; project: { name?: string } | null }[])
+    .map(l => {
+      const budget = Number(l.estimated || 0)
+      const actual = actualByLine[l.id] ?? 0
+      return { project: l.project?.name ?? 'Project', head: l.head, budget, actual, pct: budget > 0 ? Math.round((actual / budget) * 100) : 0 }
+    })
+    .filter(b => b.budget > 0 && b.pct >= 90)
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 6)
+
   // From AI-analyzed documents: upcoming key dates (next 45 days) and high-severity flags
   type DocA = { summary: string; key_dates: { label: string; date: string; kind: string }[]; flags: { severity: string; note: string }[] }
   const in45 = iso(new Date(today.getTime() + 45 * 86400000))
@@ -72,6 +98,7 @@ export async function GET(request: Request) {
     expiringDocs: (docs.data ?? []).map(d => ({ title: d.title as string, expiry: d.expiry_date as string })),
     docKeyDates,
     docFlags,
+    budgetAlerts,
   }
 
   const briefing = await generateBriefing(snapshot)

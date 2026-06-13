@@ -19,6 +19,7 @@ export interface BriefingSnapshot {
   expiringDocs: { title: string; expiry: string }[]
   docKeyDates?: { title: string; label: string; date: string }[]
   docFlags?: { title: string; severity: string; note: string }[]
+  budgetAlerts?: { project: string; head: string; budget: number; actual: number; pct: number }[]
 }
 
 export interface Briefing {
@@ -43,10 +44,11 @@ function snapshotToText(s: BriefingSnapshot): string {
   s.expiringDocs.forEach(d => lines.push(`  - agreement expiring: ${d.title} (expires ${d.expiry})`))
   ;(s.docKeyDates ?? []).forEach(d => lines.push(`  - contract date approaching: "${d.title}" — ${d.label} on ${d.date}`))
   ;(s.docFlags ?? []).forEach(f => lines.push(`  - contract risk (${f.severity}) in "${f.title}": ${f.note}`))
+  ;(s.budgetAlerts ?? []).forEach(b => lines.push(`  - budget watch: ${b.project} — "${b.head}" at ${b.pct}% (${inr(b.actual)} of ${inr(b.budget)})`))
   return lines.join('\n')
 }
 
-const SYSTEM = `You are the CFO assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Each morning you read a financial snapshot and write the founder a short briefing: only the things that genuinely need attention today, ordered by urgency and money at risk. Be specific — names and ₹ amounts. Plain and direct, no filler, no greetings. Call out cash-flow risk when upcoming committed outflows (approved-unpaid + overdue dues + near-term payroll) approach available cash. Also surface any time-sensitive contract dates (renewals, payment milestones, delivery deadlines) and high-risk clauses flagged from documents. If something is fine, don't mention it.`
+const SYSTEM = `You are the CFO assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Each morning you read a financial snapshot and write the founder a short briefing: only the things that genuinely need attention today, ordered by urgency and money at risk. Be specific — names and ₹ amounts. Plain and direct, no filler, no greetings. Call out cash-flow risk when upcoming committed outflows (approved-unpaid + overdue dues + near-term payroll) approach available cash. Also surface any time-sensitive contract dates (renewals, payment milestones, delivery deadlines) and high-risk clauses flagged from documents, and any film budget heads trending over their estimate (≥90% used, urgent if over 100%). If something is fine, don't mention it.`
 
 const SCHEMA = {
   type: 'object',
@@ -86,6 +88,7 @@ function deterministicBriefing(s: BriefingSnapshot): Briefing {
   if (s.expiringDocs.length) items.push({ priority: 'fyi', text: `${s.expiringDocs.length} agreement(s) expiring within 30 days.` })
   ;(s.docKeyDates ?? []).slice(0, 3).forEach(d => items.push({ priority: 'watch', text: `Contract date: "${d.title}" — ${d.label} on ${d.date}.` }))
   ;(s.docFlags ?? []).filter(f => f.severity === 'high').slice(0, 3).forEach(f => items.push({ priority: 'watch', text: `Contract risk in "${f.title}": ${f.note}` }))
+  ;(s.budgetAlerts ?? []).slice(0, 4).forEach(b => items.push({ priority: b.pct >= 100 ? 'urgent' : 'watch', text: `Budget: ${b.project} "${b.head}" at ${b.pct}% (${inr(b.actual)} of ${inr(b.budget)}).` }))
 
   const urgent = items.filter(i => i.priority === 'urgent' || i.priority === 'watch')
   return {

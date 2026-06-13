@@ -302,6 +302,7 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
       {isFinance && (
         <ProjectBudgetSection
           projectId={project.id}
+          projectName={project.name}
           budgetLines={budgetLines}
           payments={payments as unknown as CodedPayment[]}
           extraSpentByLine={extraSpentByLine}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Trash2, Wand2, ListTree } from 'lucide-react'
+import { Plus, Pencil, Trash2, Wand2, ListTree, Download } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Modal } from '@/components/ui/Modal'
@@ -23,6 +23,7 @@ export type CodedPayment = {
 
 interface Props {
   projectId: string
+  projectName?: string
   budgetLines: BudgetLine[]
   payments: CodedPayment[]
   extraSpentByLine?: Record<string, number>  // e.g. petty-cash expenses coded to a head
@@ -34,7 +35,7 @@ const outflow = (p: CodedPayment) => Number(p.net_payable ?? p.amount ?? 0)
 
 const EMPTY = { section: 'below_line' as BudgetSection, phase: 'production' as BudgetPhase, head: '', estimated: '', notes: '' }
 
-export function ProjectBudgetSection({ projectId, budgetLines, payments, extraSpentByLine, userId, canManage }: Props) {
+export function ProjectBudgetSection({ projectId, projectName, budgetLines, payments, extraSpentByLine, userId, canManage }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [open, setOpen] = useState(false)
@@ -145,6 +146,30 @@ export function ProjectBudgetSection({ projectId, budgetLines, payments, extraSp
 
   const usedPct = totals.budget > 0 ? Math.round(((totals.spent + totals.committed) / totals.budget) * 100) : 0
 
+  function exportCSV() {
+    const esc = (v: unknown) => {
+      const s = v == null ? '' : String(v)
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const headers = ['Section', 'Phase', 'Head', 'Budget', 'Committed', 'Spent', 'Remaining', '% Used']
+    const rows = SECTION_ORDER.flatMap(section =>
+      budgetLines.filter(l => l.section === section).sort((a, b) => a.sort_order - b.sort_order).map(l => {
+        const m = perLine[l.id] ?? { spent: 0, committed: 0 }
+        const budget = Number(l.estimated || 0)
+        const pct = budget > 0 ? Math.round(((m.spent + m.committed) / budget) * 100) : ''
+        return [SECTION_LABELS[section], PHASE_LABELS[l.phase], l.head, budget, m.committed, m.spent, budget - m.spent - m.committed, pct]
+      })
+    )
+    const total = ['TOTAL', '', '', totals.budget, totals.committed, totals.spent, totals.remaining, usedPct]
+    const csv = '﻿' + [headers, ...rows, total].map(r => r.map(esc).join(',')).join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(projectName ?? 'project').replace(/[^a-z0-9]+/gi, '_')}_cost_report_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -152,14 +177,15 @@ export function ProjectBudgetSection({ projectId, budgetLines, payments, extraSp
           <h3 className="text-sm font-semibold text-white">Film Budget &amp; Cost Report</h3>
           <p className="text-xs text-[#8888aa] mt-0.5">Head-wise budget vs actual — actuals roll up from coded payments</p>
         </div>
-        {canManage && (
-          <div className="flex gap-2">
-            {budgetLines.length === 0 && (
-              <Button variant="secondary" size="sm" icon={Wand2} loading={seeding} onClick={applyTemplate}>Apply Template</Button>
-            )}
-            <Button icon={Plus} size="sm" onClick={openNew}>Add Head</Button>
-          </div>
-        )}
+        <div className="flex gap-2">
+          {budgetLines.length > 0 && (
+            <Button variant="secondary" size="sm" icon={Download} onClick={exportCSV}>Export CSV</Button>
+          )}
+          {canManage && budgetLines.length === 0 && (
+            <Button variant="secondary" size="sm" icon={Wand2} loading={seeding} onClick={applyTemplate}>Apply Template</Button>
+          )}
+          {canManage && <Button icon={Plus} size="sm" onClick={openNew}>Add Head</Button>}
+        </div>
       </div>
 
       {budgetLines.length === 0 ? (

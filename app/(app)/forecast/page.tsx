@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { requireProfile } from '@/lib/auth'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { fundingMetrics } from '@/lib/funding'
+import type { ProjectFunding } from '@/lib/types'
 import { ForecastClient, type ForecastEvent } from './ForecastClient'
 
 const WEEKS = 12
@@ -18,13 +20,18 @@ export default async function ForecastPage() {
   const horizon = new Date(today.getTime() + WEEKS * 7 * DAY)
   const horizonStr = horizon.toISOString().slice(0, 10)
 
-  const [banks, lastCash, payroll, payments, liabilities, receivables] = await Promise.all([
+  const [banks, lastCash, payroll, payments, liabilities, receivables, loans] = await Promise.all([
     supabase.from('bank_accounts').select('current_balance').eq('is_active', true),
     supabase.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(1),
     supabase.from('staff_salaries').select('monthly_salary').eq('is_active', true),
     supabase.from('payment_requests').select('id, payee, amount, due_date, approval_status, payment_status').eq('approval_status', 'approved').eq('payment_status', 'unpaid'),
     supabase.from('liabilities').select('id, party_name, balance_remaining, due_date, status').neq('status', 'cleared').not('due_date', 'is', null),
     supabase.from('project_income').select('id, amount, party, expected_date, status, project:projects(name)').eq('status', 'receivable').not('expected_date', 'is', null),
+    // Active loans (with their transactions) to project monthly interest; empty if not migrated
+    supabase.from('project_funding')
+      .select('*, transactions:funding_transactions(*)')
+      .eq('kind', 'loan').eq('status', 'active')
+      .then(r => r.data ?? []),
   ])
 
   const startBalance =
@@ -47,6 +54,16 @@ export default async function ForecastPage() {
     const cur = new Date(today.getFullYear(), today.getMonth() + 1, 1)
     while (cur <= horizon) {
       events.push({ id: `payroll-${cur.toISOString().slice(0, 10)}`, date: cur.toISOString().slice(0, 10), amount: monthlyPayroll, dir: 'out', label: 'Monthly payroll', deferrable: false })
+      cur.setMonth(cur.getMonth() + 1)
+    }
+  }
+  // Recurring monthly interest on active loans (on the 1st of each month)
+  for (const loan of (loans as ProjectFunding[])) {
+    const monthly = fundingMetrics(loan).monthlyInterest
+    if (monthly <= 0) continue
+    const cur = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+    while (cur <= horizon) {
+      events.push({ id: `loanint-${loan.id}-${cur.toISOString().slice(0, 10)}`, date: cur.toISOString().slice(0, 10), amount: monthly, dir: 'out', label: `Loan interest: ${loan.name}`, deferrable: false })
       cur.setMonth(cur.getMonth() + 1)
     }
   }

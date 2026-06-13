@@ -6,6 +6,9 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { BarChart } from '@/components/ui/BarChart'
 import { formatCurrency, formatDate, paidPercent, cn } from '@/lib/utils'
+import { fundingMetrics } from '@/lib/funding'
+import type { ProjectFunding } from '@/lib/types'
+import { Coins, Percent } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -28,6 +31,7 @@ export default async function DashboardPage() {
     bankAccountsResult,
     monthlySpendResult,
     monthlyIncomeResult,
+    fundingResult,
   ] = await Promise.all([
     isFinance ? supabase.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(1) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('liabilities').select('amount_owed, amount_paid, balance_remaining, status, priority, due_date') : Promise.resolve({ data: null }),
@@ -37,7 +41,14 @@ export default async function DashboardPage() {
     isFinance ? supabase.from('bank_accounts').select('current_balance').eq('is_active', true) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('payment_requests').select('created_at, amount').eq('approval_status', 'approved').gte('created_at', sixMonthsAgo.toISOString()) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('project_income').select('income_date, amount').gte('income_date', sixMonthsAgo.toISOString().split('T')[0]) : Promise.resolve({ data: null }),
+    isFinance ? supabase.from('project_funding').select('*, transactions:funding_transactions(*)').then(r => ({ data: r.data })) : Promise.resolve({ data: null }),
   ])
+
+  const funding = (fundingResult.data ?? []) as ProjectFunding[]
+  const totalCapital = funding.reduce((s, f) => s + Number(f.amount ?? 0), 0)
+  const loanMonthlyInterest = funding
+    .filter(f => f.kind === 'loan' && f.status === 'active')
+    .reduce((s, f) => s + fundingMetrics(f).monthlyInterest, 0)
 
   const cashInHand = cashResult.data?.[0]?.closing_cash ?? 0
   const bankBalance = (bankAccountsResult.data ?? []).reduce((s, a) => s + (a.current_balance ?? 0), 0)
@@ -142,6 +153,24 @@ export default async function DashboardPage() {
               subtitle="Require immediate action"
             />
           </div>
+          {funding.length > 0 && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+              <StatCard
+                title="Capital Deployed"
+                value={formatCurrency(totalCapital)}
+                icon={Coins}
+                status="default"
+                subtitle={`${funding.length} funding source${funding.length === 1 ? '' : 's'}`}
+              />
+              <StatCard
+                title="Loan Interest / mo"
+                value={formatCurrency(loanMonthlyInterest)}
+                icon={Percent}
+                status={loanMonthlyInterest > 0 ? 'yellow' : 'green'}
+                subtitle="Across active loans"
+              />
+            </div>
+          )}
         </section>
       )}
 

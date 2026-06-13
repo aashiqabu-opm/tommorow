@@ -210,9 +210,22 @@ export interface Document {
   access_level: DocumentAccessLevel
   created_at: string
   updated_at: string
+  ai_summary?: string | null
+  ai_analysis?: DocumentAnalysisData | null
+  ai_analyzed_at?: string | null
   project?: Pick<Project, 'name'>
   uploader?: Pick<Profile, 'full_name'>
   files?: DocumentFile[]
+}
+
+export interface DocumentAnalysisData {
+  summary: string
+  doc_type: string
+  parties: string[]
+  key_dates: { label: string; date: string; kind: string }[]
+  financial_terms: { label: string; amount: number | null; note: string }[]
+  obligations: string[]
+  flags: { severity: string; note: string }[]
 }
 
 export interface DocumentFile {

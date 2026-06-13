@@ -17,6 +17,8 @@ export interface BriefingSnapshot {
   dueSoonLiabilities: { party: string; amount: number; due: string }[]
   overdueReceivables: { project: string; party: string; amount: number; expected: string }[]
   expiringDocs: { title: string; expiry: string }[]
+  docKeyDates?: { title: string; label: string; date: string }[]
+  docFlags?: { title: string; severity: string; note: string }[]
 }
 
 export interface Briefing {
@@ -39,10 +41,12 @@ function snapshotToText(s: BriefingSnapshot): string {
   s.dueSoonLiabilities.forEach(l => lines.push(`  - liability due soon: ${l.party} ${inr(l.amount)} (due ${l.due})`))
   s.overdueReceivables.forEach(r => lines.push(`  - OVERDUE receivable: ${r.party} owes ${inr(r.amount)} for ${r.project} (expected ${r.expected})`))
   s.expiringDocs.forEach(d => lines.push(`  - agreement expiring: ${d.title} (expires ${d.expiry})`))
+  ;(s.docKeyDates ?? []).forEach(d => lines.push(`  - contract date approaching: "${d.title}" — ${d.label} on ${d.date}`))
+  ;(s.docFlags ?? []).forEach(f => lines.push(`  - contract risk (${f.severity}) in "${f.title}": ${f.note}`))
   return lines.join('\n')
 }
 
-const SYSTEM = `You are the CFO assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Each morning you read a financial snapshot and write the founder a short briefing: only the things that genuinely need attention today, ordered by urgency and money at risk. Be specific — names and ₹ amounts. Plain and direct, no filler, no greetings. Call out cash-flow risk when upcoming committed outflows (approved-unpaid + overdue dues + near-term payroll) approach available cash. If something is fine, don't mention it.`
+const SYSTEM = `You are the CFO assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Each morning you read a financial snapshot and write the founder a short briefing: only the things that genuinely need attention today, ordered by urgency and money at risk. Be specific — names and ₹ amounts. Plain and direct, no filler, no greetings. Call out cash-flow risk when upcoming committed outflows (approved-unpaid + overdue dues + near-term payroll) approach available cash. Also surface any time-sensitive contract dates (renewals, payment milestones, delivery deadlines) and high-risk clauses flagged from documents. If something is fine, don't mention it.`
 
 const SCHEMA = {
   type: 'object',
@@ -80,6 +84,8 @@ function deterministicBriefing(s: BriefingSnapshot): Briefing {
   if (s.overdueReceivables.length) items.push({ priority: 'watch', text: `${s.overdueReceivables.length} overdue receivable(s): ${s.overdueReceivables.slice(0, 3).map(r => `${r.party} ${inr(r.amount)}`).join(', ')}.` })
   if (s.dueSoonLiabilities.length) items.push({ priority: 'fyi', text: `${s.dueSoonLiabilities.length} liabilit${s.dueSoonLiabilities.length === 1 ? 'y' : 'ies'} due within 2 weeks.` })
   if (s.expiringDocs.length) items.push({ priority: 'fyi', text: `${s.expiringDocs.length} agreement(s) expiring within 30 days.` })
+  ;(s.docKeyDates ?? []).slice(0, 3).forEach(d => items.push({ priority: 'watch', text: `Contract date: "${d.title}" — ${d.label} on ${d.date}.` }))
+  ;(s.docFlags ?? []).filter(f => f.severity === 'high').slice(0, 3).forEach(f => items.push({ priority: 'watch', text: `Contract risk in "${f.title}": ${f.note}` }))
 
   const urgent = items.filter(i => i.priority === 'urgent' || i.priority === 'watch')
   return {

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const in14 = iso(new Date(today.getTime() + 14 * 86400000))
   const in30 = iso(new Date(today.getTime() + 30 * 86400000))
 
-  const [banks, lastCash, payroll, payments, liabilities, receivables, docs, recipients] = await Promise.all([
+  const [banks, lastCash, payroll, payments, liabilities, receivables, docs, recipients, docInsights] = await Promise.all([
     admin.from('bank_accounts').select('current_balance').eq('is_active', true),
     admin.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(1),
     admin.from('staff_salaries').select('monthly_salary').eq('is_active', true),
@@ -36,11 +36,28 @@ export async function GET(request: Request) {
     admin.from('project_income').select('amount, expected_date, status, party, project:projects(name)').eq('status', 'receivable'),
     admin.from('documents').select('title, expiry_date').not('expiry_date', 'is', null).neq('status', 'expired').gte('expiry_date', todayStr).lte('expiry_date', in30),
     admin.from('profiles').select('email, full_name, email_alerts, whatsapp_alerts, whatsapp_number').in('role', ['founder', 'accountant']).eq('is_active', true),
+    admin.from('documents').select('title, ai_analysis').not('ai_analysis', 'is', null),
   ])
 
   const pay = payments.data ?? []
   const liab = liabilities.data ?? []
   const recv = (receivables.data ?? []) as { amount: number; expected_date: string | null; party: string | null; project: { name?: string } | null }[]
+
+  // From AI-analyzed documents: upcoming key dates (next 45 days) and high-severity flags
+  type DocA = { summary: string; key_dates: { label: string; date: string; kind: string }[]; flags: { severity: string; note: string }[] }
+  const in45 = iso(new Date(today.getTime() + 45 * 86400000))
+  const docKeyDates: { title: string; label: string; date: string }[] = []
+  const docFlags: { title: string; severity: string; note: string }[] = []
+  for (const d of (docInsights.data ?? []) as { title: string; ai_analysis: DocA | null }[]) {
+    const a = d.ai_analysis
+    if (!a) continue
+    for (const kd of a.key_dates ?? []) {
+      if (kd.date && kd.date >= todayStr && kd.date <= in45) docKeyDates.push({ title: d.title, label: kd.label, date: kd.date })
+    }
+    for (const f of a.flags ?? []) {
+      if (f.severity === 'high') docFlags.push({ title: d.title, severity: f.severity, note: f.note })
+    }
+  }
 
   const snapshot: BriefingSnapshot = {
     dateStr: today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }),
@@ -53,6 +70,8 @@ export async function GET(request: Request) {
     dueSoonLiabilities: liab.filter(l => (l.due_date as string) >= todayStr && (l.due_date as string) <= in14).map(l => ({ party: l.party_name, amount: Number(l.balance_remaining), due: l.due_date as string })),
     overdueReceivables: recv.filter(r => r.expected_date && r.expected_date < todayStr).map(r => ({ project: r.project?.name ?? '', party: r.party ?? 'a buyer', amount: Number(r.amount), expected: r.expected_date as string })),
     expiringDocs: (docs.data ?? []).map(d => ({ title: d.title as string, expiry: d.expiry_date as string })),
+    docKeyDates,
+    docFlags,
   }
 
   const briefing = await generateBriefing(snapshot)

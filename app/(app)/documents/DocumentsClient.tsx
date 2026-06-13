@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, FileText, AlertTriangle, Clock } from 'lucide-react'
+import { Plus, FileText, AlertTriangle, Clock, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge, getDocumentStatusBadge } from '@/components/ui/StatusBadge'
@@ -14,8 +14,74 @@ import { logAction } from '@/lib/audit'
 import { compressImage } from '@/lib/compressImage'
 import { useToast } from '@/components/ui/Toast'
 import { FilePicker } from '@/components/ui/FilePicker'
-import type { Document } from '@/lib/types'
+import type { Document, DocumentAnalysisData } from '@/lib/types'
 import { useRouter } from 'next/navigation'
+
+const SEVERITY_CLS: Record<string, string> = {
+  high: 'bg-red-500/15 border-red-500/30 text-red-300',
+  medium: 'bg-amber-500/15 border-amber-500/30 text-amber-300',
+  low: 'bg-[#1a1a24] border-[#2a2a3a] text-[#c8c8da]',
+}
+
+function DocInsights({ a }: { a: DocumentAnalysisData }) {
+  return (
+    <div className="mt-3 bg-[#0f0f16] border border-[#2a2a3a] rounded-xl p-4 space-y-3 text-left">
+      <p className="text-xs text-[#c8c8da] leading-relaxed">{a.summary}</p>
+      {a.parties?.length > 0 && (
+        <div className="text-[11px] text-[#8888aa]">Parties: <span className="text-[#c8c8da]">{a.parties.join(', ')}</span></div>
+      )}
+      {a.key_dates?.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-[#8888aa] mb-1">Key dates</div>
+          <div className="space-y-1">
+            {a.key_dates.map((kd, i) => {
+              const days = Math.ceil((new Date(kd.date + 'T00:00:00').getTime() - Date.now()) / 86400000)
+              const cls = isNaN(days) ? 'text-[#c8c8da]' : days < 0 ? 'text-red-400' : days <= 30 ? 'text-amber-400' : 'text-[#c8c8da]'
+              const tag = isNaN(days) ? '' : days < 0 ? 'passed' : days === 0 ? 'today' : days <= 60 ? `in ${days}d` : ''
+              return (
+                <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-[#8888aa] truncate">{kd.label}</span>
+                  <span className={`tabular-nums shrink-0 ${cls}`}>{formatDate(kd.date)}{tag && <span className="text-[10px] ml-1">· {tag}</span>}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {a.financial_terms?.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-[#8888aa] mb-1">Financial terms</div>
+          <div className="space-y-0.5">
+            {a.financial_terms.map((ft, i) => (
+              <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-[#8888aa] truncate">{ft.label}{ft.note ? <span className="text-[#5a5a7a]"> · {ft.note}</span> : ''}</span>
+                {ft.amount != null && <span className="text-emerald-400 tabular-nums shrink-0">{formatCurrency(ft.amount)}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {a.obligations?.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-[#8888aa] mb-1">Obligations</div>
+          <ul className="list-disc list-inside space-y-0.5 text-xs text-[#c8c8da]">
+            {a.obligations.map((o, i) => <li key={i}>{o}</li>)}
+          </ul>
+        </div>
+      )}
+      {a.flags?.length > 0 && (
+        <div className="space-y-1">
+          {a.flags.map((f, i) => (
+            <div key={i} className={`flex items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] ${SEVERITY_CLS[f.severity] ?? SEVERITY_CLS.low}`}>
+              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+              <span>{f.note}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface Props {
   documents: Document[]
@@ -49,6 +115,35 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
   const [file, setFile] = useState<File | null>(null)
   const [filter, setFilter] = useState('')
   const [projectFilter, setProjectFilter] = useState('')
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  async function analyze(documentId: string) {
+    setAnalyzingId(documentId)
+    try {
+      const res = await fetch('/api/analyze-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(
+          data.error === 'not_configured' ? 'AI isn’t configured (ANTHROPIC_API_KEY).'
+            : data.detail ? `Analysis failed: ${String(data.detail).slice(0, 80)}`
+            : (data.error ?? 'Analysis failed')
+        )
+      } else {
+        toast.success('Document analyzed by AI')
+        setExpandedId(documentId)
+        router.refresh()
+      }
+    } catch {
+      toast.error('Network error during analysis')
+    } finally {
+      setAnalyzingId(null)
+    }
+  }
 
   const canUpload = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
 
@@ -123,12 +218,14 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
     }
 
     await logAction('create', 'documents', docId, undefined, payload as unknown as Record<string, unknown>)
-    toast.success('Document saved')
+    toast.success(file ? 'Document saved — AI is analyzing it' : 'Document saved')
     setSaving(false)
     setOpen(false)
     setForm(INITIAL_FORM)
     setFile(null)
     router.refresh()
+    // Kick off AI analysis in the background for the just-uploaded file
+    if (file) void analyze(docId)
   }
 
   return (
@@ -193,6 +290,44 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
                   {doc.expiry_date && <div className={expiryS === 'expired' ? 'text-red-400' : expiryS === 'warning' ? 'text-amber-400' : ''}>Expires: {formatDate(doc.expiry_date)}</div>}
                   {doc.amount_linked && <div>{formatCurrency(doc.amount_linked)}</div>}
                 </div>
+
+                {(() => {
+                  const hasFile = (doc.files?.length ?? 0) > 0
+                  const a = doc.ai_analysis
+                  const flagCount = a?.flags?.length ?? 0
+                  if (!a && !(hasFile && canUpload)) return null
+                  return (
+                    <div className="mt-3 pt-3 border-t border-[#2a2a3a]">
+                      {a ? (
+                        <button onClick={() => setExpandedId(expandedId === doc.id ? null : doc.id)}
+                          className="w-full flex items-center justify-between text-xs text-white/80 hover:text-white">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Sparkles size={12} className="text-indigo-300" /> AI insights
+                            {flagCount > 0 && <span className="text-amber-300">· {flagCount} flag{flagCount > 1 ? 's' : ''}</span>}
+                          </span>
+                          {expandedId === doc.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        </button>
+                      ) : (
+                        <button onClick={() => analyze(doc.id)} disabled={analyzingId === doc.id}
+                          className="inline-flex items-center gap-1.5 text-xs text-indigo-300 hover:text-indigo-200 disabled:opacity-50">
+                          <Sparkles size={12} className={analyzingId === doc.id ? 'animate-pulse' : ''} />
+                          {analyzingId === doc.id ? 'Analyzing…' : 'Analyze with AI'}
+                        </button>
+                      )}
+                      {a && expandedId === doc.id && (
+                        <>
+                          <DocInsights a={a} />
+                          {canUpload && (
+                            <button onClick={() => analyze(doc.id)} disabled={analyzingId === doc.id}
+                              className="mt-2 text-[11px] text-[#8888aa] hover:text-white inline-flex items-center gap-1 disabled:opacity-50">
+                              <Sparkles size={10} className={analyzingId === doc.id ? 'animate-pulse' : ''} /> {analyzingId === doc.id ? 'Re-analyzing…' : 'Re-analyze'}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )
           })}

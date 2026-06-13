@@ -9,7 +9,7 @@ export default async function DocumentsPage() {
 
   const [{ data: documents }, { data: projects }] = await Promise.all([
     supabase.from('documents')
-      .select('*, project:projects(name), uploader:profiles!uploaded_by(full_name)')
+      .select('*, project:projects(name), uploader:profiles!uploaded_by(full_name), files:document_files(id)')
       .order('created_at', { ascending: false }),
     supabase.from('projects').select('id, name'),
   ])

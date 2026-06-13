@@ -23,6 +23,7 @@ Internal office operating system for OPM Cinemas. A founder-first visual dashboa
 | **User Management** | Role-based access control with 5 roles |
 | **Settings** | Profile management + alert preferences + append-only audit log |
 | **Email/WhatsApp Alerts** | Instant alerts for payment events + daily 8 AM digest (pending approvals, due liabilities, expiring agreements) |
+| **AI Bill Extraction** | Attach a bill/invoice to a payment request and Claude auto-fills vendor, amount, GST, date, category & purpose (set `ANTHROPIC_API_KEY`) |
 
 ## Roles & Access
 

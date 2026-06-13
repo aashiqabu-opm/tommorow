@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send, Printer } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send, Printer, Sparkles } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge, getPaymentStatusBadge } from '@/components/ui/StatusBadge'
@@ -49,6 +49,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(INITIAL_FORM)
   const [bill, setBill] = useState<File | null>(null)
+  const [extracting, setExtracting] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'paid'>('all')
   const [commentsFor, setCommentsFor] = useState<string | null>(null)
   const [commentText, setCommentText] = useState('')
@@ -85,6 +86,60 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
     setForm({ ...INITIAL_FORM, project_id: projects.some(p => p.id === lastProject) ? lastProject : '' })
     setBill(null)
     setOpen(true)
+  }
+
+  // When a bill is attached, read it with Claude and pre-fill empty fields.
+  // Never overwrites anything the user already typed.
+  async function handleBillPicked(file: File | null) {
+    setBill(file)
+    if (!file) return
+    const okType = /^image\/(png|jpe?g|gif|webp)$|^application\/pdf$/.test(file.type)
+    if (!okType || file.size > 6_000_000) return // unsupported or too big — skip silently
+
+    setExtracting(true)
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '')
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch('/api/extract-bill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, mediaType: file.type }),
+      })
+      if (!res.ok) {
+        if (res.status !== 503) toast.error("Couldn't read the bill — fill the form manually")
+        return
+      }
+      const { extracted } = await res.json()
+      if (!extracted) return
+
+      setForm(prev => {
+        const next = { ...prev }
+        const set = (k: keyof typeof prev, v: unknown) => {
+          if (v != null && v !== '' && !next[k]) next[k] = String(v)
+        }
+        // Vendor: match an existing vendor, else just set the payee name
+        if (extracted.vendor_name && !next.payee) {
+          const match = vendors.find(v => v.name.toLowerCase() === String(extracted.vendor_name).toLowerCase())
+          if (match) { next.payee_vendor_id = match.id; next.payee = match.name }
+          else next.payee = extracted.vendor_name
+        }
+        set('amount', extracted.amount)
+        set('gst_amount', extracted.gst_amount)
+        set('purpose', extracted.purpose)
+        set('category', extracted.category)
+        set('due_date', extracted.due_date)
+        return next
+      })
+      toast.success('Bill read — review the pre-filled fields')
+    } catch {
+      // network/parse error — silent, user fills manually
+    } finally {
+      setExtracting(false)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -575,8 +630,13 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
             <Input label="Due Date" type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
           </div>
           <div className="space-y-1">
-            <FilePicker label="Bill / Receipt" file={bill} onChange={setBill} />
-            {!bill && <p className="text-[11px] text-amber-400">Uploading a bill is recommended before submission</p>}
+            <FilePicker label="Bill / Receipt" file={bill} onChange={handleBillPicked} />
+            {extracting && (
+              <p className="text-[11px] text-emerald-400 flex items-center gap-1.5">
+                <Sparkles size={11} className="animate-pulse" /> Reading the bill with AI…
+              </p>
+            )}
+            {!bill && !extracting && <p className="text-[11px] text-amber-400">Attach a bill — AI will auto-fill the form from it</p>}
           </div>
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">

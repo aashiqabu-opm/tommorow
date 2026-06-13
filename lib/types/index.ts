@@ -421,3 +421,35 @@ export interface PettyCashTxn {
   created_by?: string
   created_at: string
 }
+
+export type CrewPaymentType = 'advance' | 'payment' | 'final'
+
+export interface ProjectCrew {
+  id: string
+  project_id: string
+  name: string
+  role_title?: string | null
+  agreed_fee: number
+  tds_percent: number
+  budget_line_id?: string | null
+  phone?: string | null
+  email?: string | null
+  pan?: string | null
+  status: 'active' | 'closed'
+  notes?: string | null
+  created_by?: string
+  created_at: string
+  updated_at: string
+  payments?: CrewPayment[]
+}
+
+export interface CrewPayment {
+  id: string
+  crew_id: string
+  amount: number
+  payment_date: string
+  type: CrewPaymentType
+  notes?: string | null
+  created_by?: string
+  created_at: string
+}

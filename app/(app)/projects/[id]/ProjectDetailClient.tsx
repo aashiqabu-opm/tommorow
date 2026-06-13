@@ -15,10 +15,11 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, DOCUMENT_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat } from '@/lib/types'
+import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew } from '@/lib/types'
 import { FundingSection } from './FundingSection'
 import { ProjectBudgetSection, type CodedPayment } from './ProjectBudgetSection'
 import { PettyCashSection } from './PettyCashSection'
+import { CrewLedgerSection } from './CrewLedgerSection'
 import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
@@ -35,6 +36,7 @@ interface Props {
   funding: ProjectFunding[]
   budgetLines: BudgetLine[]
   pettyFloats: PettyCashFloat[]
+  crew: ProjectCrew[]
   extraSpentByLine: Record<string, number>
   userId: string
   role: string
@@ -59,7 +61,7 @@ const INCOME_SOURCES = [
   { value: 'other', label: 'Other' },
 ]
 
-export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, extraSpentByLine, userId, role }: Props) {
+export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, extraSpentByLine, userId, role }: Props) {
   const isFinance = ['founder', 'accountant'].includes(role)
   const budgetHeads = budgetLines.map(l => ({ id: l.id, section: l.section, head: l.head }))
   const router = useRouter()
@@ -313,6 +315,17 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
         <PettyCashSection
           projectId={project.id}
           floats={pettyFloats}
+          budgetLines={budgetHeads}
+          userId={userId}
+          canManage={isFinance}
+        />
+      )}
+
+      {/* Crew & Cast Ledger (finance only) */}
+      {isFinance && (
+        <CrewLedgerSection
+          projectId={project.id}
+          crew={crew}
           budgetLines={budgetHeads}
           userId={userId}
           canManage={isFinance}

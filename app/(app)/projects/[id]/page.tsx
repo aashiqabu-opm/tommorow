@@ -19,6 +19,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     funding,
     budgetLines,
     pettyFloats,
+    crew,
   ] = await Promise.all([
     supabase.from('projects').select('*').eq('id', id).single(),
     supabase.from('documents').select('*').eq('project_id', id).order('created_at', { ascending: false }),
@@ -40,18 +41,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     isFinance
       ? supabase.from('petty_cash_floats').select('*, txns:petty_cash_txns(*)').eq('project_id', id).order('created_at', { ascending: true }).then(r => r.data ?? [])
       : Promise.resolve([]),
+    isFinance
+      ? supabase.from('project_crew').select('*, payments:crew_payments(*)').eq('project_id', id).order('created_at', { ascending: true }).then(r => r.data ?? [])
+      : Promise.resolve([]),
   ])
 
   if (!project) notFound()
 
-  // Petty-cash expenses coded to a budget head feed the cost report's "Spent"
+  // Petty-cash expenses and crew payments coded to a budget head feed the cost report's "Spent"
   const extraSpentByLine: Record<string, number> = {}
+  const addSpent = (lineId: string | null, amt: number) => { if (lineId) extraSpentByLine[lineId] = (extraSpentByLine[lineId] ?? 0) + amt }
   for (const f of (pettyFloats as { txns?: { type: string; amount: number; budget_line_id: string | null }[] }[])) {
     for (const t of f.txns ?? []) {
-      if (t.type === 'expense' && t.budget_line_id) {
-        extraSpentByLine[t.budget_line_id] = (extraSpentByLine[t.budget_line_id] ?? 0) + Number(t.amount || 0)
-      }
+      if (t.type === 'expense') addSpent(t.budget_line_id, Number(t.amount || 0))
     }
+  }
+  for (const c of (crew as { budget_line_id: string | null; payments?: { amount: number }[] }[])) {
+    const paid = (c.payments ?? []).reduce((s, p) => s + Number(p.amount || 0), 0)
+    addSpent(c.budget_line_id, paid)
   }
 
   return (
@@ -64,6 +71,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       funding={funding ?? []}
       budgetLines={budgetLines ?? []}
       pettyFloats={pettyFloats ?? []}
+      crew={crew ?? []}
       extraSpentByLine={extraSpentByLine}
       userId={profile.id}
       role={profile.role}

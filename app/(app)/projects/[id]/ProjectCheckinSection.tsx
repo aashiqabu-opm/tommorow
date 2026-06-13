@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation'
 
 const APP_ROLE_LABELS: Record<string, string> = {
   founder: 'Founder', accountant: 'Accountant', general_manager: 'General Manager',
-  executive_producer: 'Executive Producer', legal_viewer: 'Legal/CA', staff: 'Field Staff',
+  executive_producer: 'Executive Producer', legal_viewer: 'Legal/CA', staff: 'Driver / Office Assistant',
 }
 
 interface Props {

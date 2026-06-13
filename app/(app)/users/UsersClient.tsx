@@ -27,7 +27,7 @@ const ROLE_OPTIONS = [
   { value: 'general_manager', label: 'General Manager' },
   { value: 'executive_producer', label: 'Executive Producer' },
   { value: 'legal_viewer', label: 'Legal / CA Viewer' },
-  { value: 'staff', label: 'Field Staff' },
+  { value: 'staff', label: 'Driver / Office Assistant' },
 ]
 
 // Roles a new invite can be given (no second founder via invite)
@@ -39,7 +39,7 @@ const ROLE_LABELS: Record<Role, string> = {
   general_manager: 'General Manager',
   executive_producer: 'Executive Producer',
   legal_viewer: 'Legal / CA Viewer',
-  staff: 'Field Staff',
+  staff: 'Driver / Office Assistant',
 }
 
 type PendingAction =
@@ -226,7 +226,7 @@ export function UsersClient({ profiles, currentUserId }: Props) {
           <p><span className="text-white font-medium">General Manager</span> — Payments, documents, projects, reports (no cash/liabilities)</p>
           <p><span className="text-white font-medium">Executive Producer</span> — Upload bills, receipts, documents; create payment requests; projects</p>
           <p><span className="text-white font-medium">Legal / CA Viewer</span> — Read-only access to selected documents and reports</p>
-          <p><span className="text-white font-medium">Field Staff</span> — Only the projects they&apos;re assigned to; what they can do is set by their role on each project (cashier, driver, location manager, etc.)</p>
+          <p><span className="text-white font-medium">Driver / Office Assistant</span> — Only the projects they&apos;re assigned to; what they can do is set by their role on each project (cashier, driver, location manager, etc.)</p>
         </div>
       </div>
 
@@ -234,8 +234,8 @@ export function UsersClient({ profiles, currentUserId }: Props) {
       <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite a User">
         <form onSubmit={sendInvite} className="space-y-4">
           <p className="text-xs text-[#8888aa] leading-relaxed">
-            They&apos;ll get an email invite and set their own password. Assign field crew the
-            <span className="text-white"> Field Staff</span> role, then add them to specific projects with a role like cashier, driver or location manager.
+            They&apos;ll get an email invite and set their own password. Use
+            <span className="text-white"> Driver / Office Assistant</span> for company-wide helpers, then add anyone to specific projects with a role like cashier, driver or location manager from the project&apos;s Core Team.
           </p>
           <Input label="Full Name *" placeholder="e.g. Rajeev Kumar"
             value={inviteForm.full_name} onChange={e => setInviteForm({ ...inviteForm, full_name: e.target.value })} required />

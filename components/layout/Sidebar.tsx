@@ -25,7 +25,9 @@ import {
   Newspaper,
   BookText,
   NotebookPen,
+  ChevronDown,
 } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { WEB_SEARCH_ENABLED } from '@/lib/flags'
 import { APP_VERSION } from '@/lib/version'
@@ -38,35 +40,68 @@ interface SidebarProps {
   onClose?: () => void
 }
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
-  { href: '/cash', label: 'Cash in Hand', icon: Wallet, roles: ['founder', 'accountant'] },
-  { href: '/vendors', label: 'Vendors', icon: Building2, roles: ['founder', 'accountant', 'general_manager'] },
-  { href: '/accounts', label: 'Accounts', icon: Landmark, roles: ['founder', 'accountant'] },
-  { href: '/liabilities', label: 'Liabilities', icon: AlertTriangle, roles: ['founder', 'accountant'] },
-  { href: '/payroll', label: 'Payroll', icon: HandCoins, roles: ['founder', 'accountant'] },
-  { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
-  { href: '/vehicles', label: 'Vehicles', icon: Car, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
-  { href: '/revenue', label: 'Revenue', icon: TrendingUp, roles: ['founder', 'accountant'] },
-  { href: '/forecast', label: 'Forecast', icon: LineChart, roles: ['founder', 'accountant'] },
-  { href: '/compliance', label: 'Tax & Compliance', icon: Receipt, roles: ['founder', 'accountant'] },
-  { href: '/vouchers', label: 'Vouchers', icon: NotebookPen, roles: ['founder', 'accountant'] },
-  { href: '/tally', label: 'Tally Export', icon: BookText, roles: ['founder', 'accountant'] },
-  { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
-  { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
-  { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
-  // Market (other-films tracker) is web-search powered — hidden while that's off
-  ...(WEB_SEARCH_ENABLED ? [{ href: '/market', label: 'Market', icon: Newspaper, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] }] : []),
-  { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
-  { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
-  { href: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['founder'] },
-  { href: '/settings', label: 'Settings', icon: Settings, roles: ['founder', 'accountant'] },
+type NavItem = { href: string; label: string; icon: typeof LayoutDashboard; roles: string[] }
+type NavSection = { section: string | null; items: NavItem[] }
+
+const NAV: NavSection[] = [
+  { section: null, items: [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
+  ] },
+  { section: 'Finance', items: [
+    { href: '/cash', label: 'Cash in Hand', icon: Wallet, roles: ['founder', 'accountant'] },
+    { href: '/accounts', label: 'Accounts', icon: Landmark, roles: ['founder', 'accountant'] },
+    { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
+    { href: '/vendors', label: 'Vendors', icon: Building2, roles: ['founder', 'accountant', 'general_manager'] },
+    { href: '/liabilities', label: 'Liabilities', icon: AlertTriangle, roles: ['founder', 'accountant'] },
+    { href: '/payroll', label: 'Payroll', icon: HandCoins, roles: ['founder', 'accountant'] },
+    { href: '/revenue', label: 'Revenue', icon: TrendingUp, roles: ['founder', 'accountant'] },
+    { href: '/forecast', label: 'Forecast', icon: LineChart, roles: ['founder', 'accountant'] },
+    { href: '/compliance', label: 'Tax & Compliance', icon: Receipt, roles: ['founder', 'accountant'] },
+  ] },
+  { section: 'Accounting', items: [
+    { href: '/vouchers', label: 'Vouchers', icon: NotebookPen, roles: ['founder', 'accountant'] },
+    { href: '/tally', label: 'Tally Export', icon: BookText, roles: ['founder', 'accountant'] },
+  ] },
+  { section: 'Production', items: [
+    { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
+    { href: '/vehicles', label: 'Vehicles', icon: Car, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
+    { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
+    { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
+  ] },
+  { section: 'Intelligence', items: [
+    // Market (other-films tracker) is web-search powered — hidden while that's off
+    ...(WEB_SEARCH_ENABLED ? [{ href: '/market', label: 'Market', icon: Newspaper, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] }] : []),
+    { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
+  ] },
+  { section: 'Admin', items: [
+    { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
+    { href: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['founder'] },
+    { href: '/settings', label: 'Settings', icon: Settings, roles: ['founder', 'accountant'] },
+  ] },
 ]
 
 export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
-  const allowed = navItems.filter((item) => item.roles.includes(role as never))
+  useEffect(() => {
+    try { const s = localStorage.getItem('opm-sidebar-collapsed'); if (s) setCollapsed(JSON.parse(s)) } catch { /* noop */ }
+  }, [])
+
+  function toggle(section: string) {
+    setCollapsed(prev => {
+      const next = { ...prev, [section]: !prev[section] }
+      try { localStorage.setItem('opm-sidebar-collapsed', JSON.stringify(next)) } catch { /* noop */ }
+      return next
+    })
+  }
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
+  // Sections with at least one item this role may see
+  const sections = NAV
+    .map(s => ({ ...s, items: s.items.filter(i => i.roles.includes(role as string)) }))
+    .filter(s => s.items.length > 0)
 
   return (
     <>
@@ -101,24 +136,46 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-          {allowed.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + '/')
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+          {sections.map((s, si) => {
+            const hasActive = s.items.some(i => isActive(i.href))
+            // A section is open unless collapsed — but always open if it holds the active page
+            const open = s.section === null || !collapsed[s.section] || hasActive
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  active
-                    ? 'bg-white/10 text-white border border-white/15'
-                    : 'text-[#8888aa] hover:text-white hover:bg-[#1a1a24]'
+              <div key={s.section ?? `top-${si}`} className={s.section ? 'pt-1' : ''}>
+                {s.section && (
+                  <button
+                    onClick={() => toggle(s.section as string)}
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5a5a7a] hover:text-[#8888aa]"
+                  >
+                    {s.section}
+                    <ChevronDown size={13} className={cn('transition-transform', open ? '' : '-rotate-90')} />
+                  </button>
                 )}
-              >
-                <item.icon size={17} className={active ? 'text-white/70' : ''} />
-                {item.label}
-              </Link>
+                {open && (
+                  <div className="space-y-0.5">
+                    {s.items.map((item) => {
+                      const active = isActive(item.href)
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={onClose}
+                          className={cn(
+                            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                            active
+                              ? 'bg-white/10 text-white border border-white/15'
+                              : 'text-[#8888aa] hover:text-white hover:bg-[#1a1a24]'
+                          )}
+                        >
+                          <item.icon size={17} className={active ? 'text-white/70' : ''} />
+                          {item.label}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>

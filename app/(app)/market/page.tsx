@@ -6,9 +6,9 @@ export default async function MarketPage() {
   const supabase = await createClient()
   const profile = await requireProfile()
 
-  const { data: briefs } = await supabase.from('industry_briefs')
-    .select('*').order('week_of', { ascending: false }).limit(26)
+  const { data: films } = await supabase.from('industry_films')
+    .select('*').order('release_date', { ascending: false }).limit(60)
 
   const canRefresh = ['founder', 'general_manager', 'executive_producer'].includes(profile.role)
-  return <MarketClient briefs={briefs ?? []} canRefresh={canRefresh} />
+  return <MarketClient films={films ?? []} canRefresh={canRefresh} />
 }

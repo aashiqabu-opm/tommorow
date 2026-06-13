@@ -95,21 +95,38 @@ export async function trackCampaignAsset(
   } catch { return null }
 }
 
-// ── Weekly Malayalam industry brief (other films, market info) ──────────
-export interface IndustryItem { film: string; collection: string | null; trend: string | null; note: string; url: string | null }
-export interface IndustryBrief { headline: string; summary: string; items: IndustryItem[] }
+// ── Discover new Malayalam releases (films released in the last ~7 days) ─
+export interface DiscoveredFilm { title: string; release_date: string | null; note: string }
 
-export async function compileIndustryBrief(): Promise<IndustryBrief | null> {
+export async function discoverMalayalamReleases(): Promise<DiscoveredFilm[]> {
+  if (!intelConfigured()) return []
+  try {
+    const res = await client().messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 2500,
+      tools: [WEB_TOOL],
+      system: `You track new Malayalam theatrical releases for a producer. Use web search (Sacnilk, trade pages, Malayalam entertainment news) to list Malayalam films that RELEASED in cinemas within the last 7 days. Only real theatrical releases — exclude OTT-only and re-releases unless notable. Give each film's release date (YYYY-MM-DD) if known. Respond with ONLY JSON: {"films": [{"title": string, "release_date": string|null, "note": string (one line — cast/genre/scale)}]}. If none, return {"films": []}.`,
+      messages: [{ role: 'user', content: `List Malayalam films released in the last 7 days. Return the JSON.` }],
+    })
+    const out = extractJson<{ films?: DiscoveredFilm[] }>(res.content)
+    return (out?.films ?? []).filter(f => f && f.title).slice(0, 25)
+  } catch { return [] }
+}
+
+// ── Fetch one industry film's collection for a specific day ─────────────
+export interface DayCollection { day_number: number | null; india_net: number | null; worldwide_gross: number | null; source: string | null; note: string }
+
+export async function fetchIndustryFilmCollection(title: string, releaseDate: string | null, dayNumber: number): Promise<DayCollection | null> {
   if (!intelConfigured()) return null
   try {
     const res = await client().messages.create({
       model: 'claude-opus-4-8',
-      max_tokens: 4000,
+      max_tokens: 2000,
       tools: [WEB_TOOL],
-      system: `You compile a weekly Malayalam film industry brief for a producer and his core team. Use web search (Malayalam box-office trackers like Sacnilk, trade pages, entertainment news) to cover: (1) Malayalam films that RELEASED in the past ~7-10 days with their latest collection and how the run is trending; (2) notable upcoming Malayalam releases; (3) major industry news (deals, OTT/satellite, controversies) relevant to a producer. Keep it brief and market-useful — a few crisp lines each, real numbers where available (₹, plain not "crore" only). Respond with ONLY JSON: {"headline": string (one line summarizing the week), "summary": string (3-5 sentence overview), "items": [{"film": string, "collection": string|null, "trend": string|null, "note": string, "url": string|null}]}.`,
-      messages: [{ role: 'user', content: `Compile this week's Malayalam film industry brief — recent releases & collections, upcoming films, and key industry news. Return the JSON.` }],
+      system: `You research Malayalam theatrical box-office collections. Use web search to find a film's collection for a specific day of its release. Report rupees as plain integers (₹1.2 crore = 12000000), not "crore". Only report a figure you actually find on a credible source. Respond with ONLY JSON: {"day_number": int|null, "india_net": number|null, "worldwide_gross": number|null, "source": string|null, "note": string (one line on how it's trending)}.`,
+      messages: [{ role: 'user', content: `Film "${title}"${releaseDate ? ` (released ${releaseDate})` : ''} — find its day ${dayNumber} box-office collection (India net, worldwide if available). Return the JSON.` }],
     })
-    return extractJson<IndustryBrief>(res.content)
+    return extractJson<DayCollection>(res.content)
   } catch { return null }
 }
 

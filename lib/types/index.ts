@@ -78,12 +78,14 @@ export interface CampaignAsset {
   created_at: string
 }
 
-export interface IndustryBriefRecord {
+export interface IndustryFilm {
   id: string
-  week_of: string
-  headline: string | null
-  summary: string | null
-  items: { film: string; collection: string | null; trend: string | null; note: string; url: string | null }[] | null
+  title: string
+  release_date: string | null
+  days: { day: number; date: string | null; india_net: number | null; worldwide: number | null; source: string | null }[]
+  ai_note: string | null
+  total_india: number | null
+  last_checked: string | null
   created_at: string
 }
 

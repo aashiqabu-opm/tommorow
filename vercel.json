@@ -17,8 +17,8 @@
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/industry-brief",
-      "schedule": "0 5 * * 1"
+      "path": "/api/cron/industry-tracker",
+      "schedule": "0 5 * * *"
     }
   ]
 }

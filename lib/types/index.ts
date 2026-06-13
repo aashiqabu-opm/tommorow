@@ -2,7 +2,12 @@ export type Role = 'founder' | 'accountant' | 'general_manager' | 'executive_pro
 
 // Per-project core-team roles (stored on project_members.project_role)
 export type ProjectRole =
+  | 'director'
+  | 'finance_controller'
+  | 'production_controller'
   | 'chief_ad'
+  | 'screenwriter'
+  | 'production_designer'
   | 'production_executive'
   | 'production_manager'
   | 'cashier'

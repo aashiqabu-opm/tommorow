@@ -72,7 +72,12 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 }
 
 export const PROJECT_ROLE_LABELS: Record<string, string> = {
+  director: 'Director',
+  finance_controller: 'Finance Controller (Head of Finance)',
+  production_controller: 'Production Controller (Head of Production)',
   chief_ad: 'Chief Associate Director',
+  screenwriter: 'Screenwriter',
+  production_designer: 'Production Designer',
   production_executive: 'Production Executive',
   production_manager: 'Production Manager',
   cashier: 'Cashier',
@@ -86,15 +91,20 @@ export const PROJECT_ROLE_LABELS: Record<string, string> = {
 // What each per-project role is allowed to do within a project.
 // Management app-roles (founder/accountant/GM/EP) see everything regardless.
 export const PROJECT_ROLE_CAPS: Record<string, { pettyCash?: boolean; payments?: boolean; dpr?: boolean; vehicles?: boolean; fullView?: boolean }> = {
-  chief_ad:             { dpr: true, fullView: true },
-  production_executive: { payments: true, dpr: true, vehicles: true, fullView: true },
-  production_manager:   { payments: true, dpr: true, vehicles: true, fullView: true },
-  cashier:              { pettyCash: true },
-  purchase_manager:     { payments: true },
-  location_manager:     { dpr: true, vehicles: true },
-  driver:               { vehicles: true },
-  production_assistant: {},
-  member:               {},
+  director:              { dpr: true, fullView: true },
+  finance_controller:    { pettyCash: true, payments: true, fullView: true },
+  production_controller: { payments: true, dpr: true, vehicles: true, fullView: true },
+  chief_ad:              { dpr: true, fullView: true },
+  screenwriter:          { fullView: true },
+  production_designer:   { fullView: true },
+  production_executive:  { payments: true, dpr: true, vehicles: true, fullView: true },
+  production_manager:    { payments: true, dpr: true, vehicles: true, fullView: true },
+  cashier:               { pettyCash: true },
+  purchase_manager:      { payments: true },
+  location_manager:      { dpr: true, vehicles: true },
+  driver:                { vehicles: true },
+  production_assistant:  {},
+  member:                {},
 }
 
 export const LIABILITY_TYPE_LABELS: Record<string, string> = {

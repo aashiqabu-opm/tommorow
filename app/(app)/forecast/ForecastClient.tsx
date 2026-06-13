@@ -53,9 +53,9 @@ function project(events: ForecastEvent[], startBalance: number, todayStr: string
 export function ForecastClient({
   events, startBalance, todayStr, weeks: weeksCount,
 }: { events: ForecastEvent[]; startBalance: number; todayStr: string; weeks: number }) {
-  // deferrals: event id -> days shifted forward
+  // what-if shifts: event id -> days moved (positive = later, negative = earlier)
   const [defer, setDefer] = useState<Record<string, number>>({})
-  const activeDeferrals = Object.values(defer).filter(d => d > 0).length
+  const activeDeferrals = Object.values(defer).filter(d => d !== 0).length
 
   const shifted = useMemo(
     () => events.map(e => (defer[e.id] ? { ...e, date: addDays(e.date, defer[e.id]) } : e)),
@@ -98,7 +98,7 @@ export function ForecastClient({
       {activeDeferrals > 0 && (
         <div className="flex items-center justify-between gap-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-2.5 text-sm">
           <span className="text-indigo-200">
-            What-if: {activeDeferrals} payment{activeDeferrals > 1 ? 's' : ''} deferred ·{' '}
+            What-if: {activeDeferrals} adjustment{activeDeferrals > 1 ? 's' : ''} ·{' '}
             {lowDelta >= 0
               ? <>projected low improves by <strong className="text-emerald-300">{formatCurrency(lowDelta)}</strong></>
               : <>projected low worsens by <strong className="text-red-300">{formatCurrency(-lowDelta)}</strong></>}
@@ -211,16 +211,40 @@ export function ForecastClient({
           </div>
           {inflows.length > 0 && (
             <div className="border-t border-[#2a2a3a]">
-              <div className="px-5 py-2 text-[11px] font-medium text-[#8888aa] uppercase">Expected inflows</div>
-              {inflows.slice(0, 6).map(e => (
-                <div key={e.id} className="px-5 py-2 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm text-white truncate">{e.label}</div>
-                    <div className="text-xs text-[#8888aa]">{formatDate(e.date)}</div>
+              <div className="px-5 py-2 text-[11px] font-medium text-[#8888aa] uppercase">Receivables — try pulling in</div>
+              {inflows.slice(0, 8).map(e => {
+                const d = defer[e.id] ?? 0
+                const daysToNow = Math.round((new Date(todayStr).getTime() - new Date(e.date).getTime()) / DAY)
+                return (
+                  <div key={e.id} className="px-5 py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm text-white truncate">{e.label}</div>
+                        <div className="text-xs text-[#8888aa]">
+                          {formatDate(e.date)}{d ? <span className="text-indigo-300"> → {formatDate(addDays(e.date, d))}</span> : null}
+                        </div>
+                      </div>
+                      <div className="text-sm font-semibold tabular-nums shrink-0 text-emerald-400">+{formatCurrency(e.amount)}</div>
+                    </div>
+                    <div className="flex gap-1 mt-1.5">
+                      {[[-7, '−1w'], [-14, '−2w']].map(([days, lbl]) => (
+                        <button key={days} onClick={() => setShift(e.id, days as number)} disabled={daysToNow >= (days as number)}
+                          className={`text-[11px] rounded-full px-2.5 py-0.5 border transition-colors disabled:opacity-30 ${
+                            d === days ? 'bg-indigo-500/20 border-indigo-400/50 text-indigo-200' : 'border-[#2a2a3a] text-[#8888aa] hover:border-white/30'
+                          }`}>
+                          {lbl}
+                        </button>
+                      ))}
+                      <button onClick={() => setShift(e.id, daysToNow)} disabled={daysToNow >= 0}
+                        className={`text-[11px] rounded-full px-2.5 py-0.5 border transition-colors disabled:opacity-30 ${
+                          d === daysToNow && d !== 0 ? 'bg-indigo-500/20 border-indigo-400/50 text-indigo-200' : 'border-[#2a2a3a] text-[#8888aa] hover:border-white/30'
+                        }`}>
+                        Now
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-sm font-semibold tabular-nums shrink-0 text-emerald-400">+{formatCurrency(e.amount)}</div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

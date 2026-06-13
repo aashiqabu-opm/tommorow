@@ -161,15 +161,11 @@ ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "documents_read" ON documents
   FOR SELECT TO authenticated USING (
-    -- Founder sees all
-    public.is_founder()
+    -- Founder, accountant, GM and EP see all documents
+    public.user_role() IN ('founder', 'accountant', 'general_manager', 'executive_producer')
     OR
-    -- Finance team sees finance-tagged docs
-    (public.user_role() = 'accountant' AND access_level IN ('founder_only', 'finance_team', 'project_team', 'all_staff'))
-    OR
-    -- Others see project_team and all_staff docs
-    (public.user_role() IN ('general_manager', 'executive_producer', 'legal_viewer')
-      AND access_level IN ('project_team', 'all_staff'))
+    -- Legal viewer (and only this restricted role) sees shared docs only
+    (public.user_role() = 'legal_viewer' AND access_level IN ('project_team', 'all_staff'))
   );
 
 CREATE POLICY "documents_insert" ON documents

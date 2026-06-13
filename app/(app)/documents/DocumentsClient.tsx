@@ -53,11 +53,12 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
   const canUpload = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
 
   // Which access levels the uploader's own role can read back (mirrors the RLS read policy)
+  const ALL_LEVELS = ['founder_only', 'finance_team', 'project_team', 'all_staff']
   const VISIBLE_LEVELS: Record<string, string[]> = {
-    founder: ['founder_only', 'finance_team', 'project_team', 'all_staff'],
-    accountant: ['founder_only', 'finance_team', 'project_team', 'all_staff'],
-    general_manager: ['project_team', 'all_staff'],
-    executive_producer: ['project_team', 'all_staff'],
+    founder: ALL_LEVELS,
+    accountant: ALL_LEVELS,
+    general_manager: ALL_LEVELS,
+    executive_producer: ALL_LEVELS,
     legal_viewer: ['project_team', 'all_staff'],
   }
   const willBeHidden = !(VISIBLE_LEVELS[role] ?? ['project_team', 'all_staff']).includes(form.access_level)

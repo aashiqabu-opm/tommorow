@@ -81,7 +81,7 @@ async function runTool(name: string, input: Json, sb: SupabaseClient): Promise<u
   if (name === 'financial_overview') {
     const [banks, cash, payroll, pay, liab, recv] = await Promise.all([
       sb.from('bank_accounts').select('name, current_balance').eq('is_active', true),
-      sb.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).limit(1),
+      sb.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(1),
       sb.from('staff_salaries').select('monthly_salary').eq('is_active', true),
       sb.from('payment_requests').select('amount, approval_status, payment_status'),
       sb.from('liabilities').select('balance_remaining, due_date, status').neq('status', 'cleared'),

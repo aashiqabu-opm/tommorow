@@ -12,6 +12,7 @@ export default async function CashPage() {
     .from('cash_entries')
     .select('*, profile:profiles(full_name)')
     .order('entry_date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(30)
 
   return <CashClientPage entries={entries ?? []} userId={profile.id} />

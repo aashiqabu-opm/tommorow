@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
   const [banks, lastCash, payroll, payments, liabilities, receivables, docs, recipients] = await Promise.all([
     admin.from('bank_accounts').select('current_balance').eq('is_active', true),
-    admin.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).limit(1),
+    admin.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(1),
     admin.from('staff_salaries').select('monthly_salary').eq('is_active', true),
     admin.from('payment_requests').select('payee, amount, purpose, approval_status, payment_status'),
     admin.from('liabilities').select('party_name, balance_remaining, due_date, status').neq('status', 'cleared').not('due_date', 'is', null),

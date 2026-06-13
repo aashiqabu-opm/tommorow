@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     monthlySpendResult,
     monthlyIncomeResult,
   ] = await Promise.all([
-    isFinance ? supabase.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).limit(1) : Promise.resolve({ data: null }),
+    isFinance ? supabase.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(1) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('liabilities').select('amount_owed, amount_paid, balance_remaining, status, priority, due_date') : Promise.resolve({ data: null }),
     supabase.from('payment_requests').select('approval_status, payment_status').eq('approval_status', 'pending'),
     supabase.from('documents').select('status, expiry_date'),

@@ -52,6 +52,16 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
 
   const canUpload = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
 
+  // Which access levels the uploader's own role can read back (mirrors the RLS read policy)
+  const VISIBLE_LEVELS: Record<string, string[]> = {
+    founder: ['founder_only', 'finance_team', 'project_team', 'all_staff'],
+    accountant: ['founder_only', 'finance_team', 'project_team', 'all_staff'],
+    general_manager: ['project_team', 'all_staff'],
+    executive_producer: ['project_team', 'all_staff'],
+    legal_viewer: ['project_team', 'all_staff'],
+  }
+  const willBeHidden = !(VISIBLE_LEVELS[role] ?? ['project_team', 'all_staff']).includes(form.access_level)
+
   const expiring = documents.filter(d => d.expiry_date && isExpiringSoon(d.expiry_date, 30))
   const expired = documents.filter(d => d.expiry_date && isExpired(d.expiry_date))
   const signed = documents.filter(d => d.status === 'signed' || d.status === 'active')
@@ -217,6 +227,12 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
                 { value: 'all_staff', label: 'All Staff' },
               ]} />
           </div>
+          {willBeHidden && (
+            <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2 text-xs text-amber-300">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>With this access level, you won&apos;t be able to see this document after uploading — only {form.access_level === 'founder_only' ? 'founders' : 'founders and the finance team'} can. It still saves correctly.</span>
+            </div>
+          )}
           <FilePicker label="File Upload" file={file} onChange={setFile} accept=".pdf,.doc,.docx,image/*" />
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">

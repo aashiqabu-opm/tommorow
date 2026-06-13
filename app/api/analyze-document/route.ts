@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   const { data: files } = await supabase.from('document_files')
     .select('file_url, file_name').eq('document_id', documentId)
-    .order('created_at', { ascending: false }).limit(1)
+    .order('uploaded_at', { ascending: false }).limit(1)
   const fileRow = files?.[0]
   if (!fileRow?.file_url) return NextResponse.json({ error: 'No file attached to analyze' }, { status: 422 })
 

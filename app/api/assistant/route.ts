@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { askOpm } from '@/lib/ai/assistant'
 import { noteAiResult, isCreditError } from '@/lib/ai/health'
+import { aiUsage, recordAiUse } from '@/lib/ai/usage'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -29,8 +30,12 @@ export async function POST(request: Request) {
   // Runs through the user's RLS-scoped client, so it can only read what they may see.
   const isFinance = ['founder', 'accountant'].includes(profile.role)
 
+  const cap = await aiUsage()
+  if (cap.over) return NextResponse.json({ error: `Monthly AI limit reached (${cap.used}/${cap.cap}). Raise it in Settings to continue.` }, { status: 429 })
+
   try {
     const answer = await askOpm(history, supabase, isFinance)
+    await recordAiUse('ask-opm')
     await noteAiResult(null)
     return NextResponse.json({ answer: answer || 'I could not find an answer to that.' })
   } catch (e) {

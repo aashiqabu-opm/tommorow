@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { extractBill, billExtractionConfigured } from '@/lib/ai/extract-bill'
 import { noteAiResult, isCreditError } from '@/lib/ai/health'
+import { aiUsage, recordAiUse } from '@/lib/ai/usage'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -35,7 +36,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'File too large — use one under ~6MB' }, { status: 413 })
   }
 
+  // Enforce the monthly AI cap before spending.
+  const cap = await aiUsage()
+  if (cap.over) return NextResponse.json({ error: `Monthly AI limit reached (${cap.used}/${cap.cap}). Raise it in Settings to continue.` }, { status: 429 })
+
   const { data: extracted, error } = await extractBill(base64, mediaType)
+  await recordAiUse('extract-bill')
   // Record AI health so the team sees a banner if credits are exhausted.
   await noteAiResult(extracted ? null : error)
   if (!extracted) {

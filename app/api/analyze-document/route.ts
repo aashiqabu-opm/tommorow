@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { analyzeDocument, documentAnalysisConfigured } from '@/lib/ai/analyze-document'
 import { noteAiResult, isCreditError } from '@/lib/ai/health'
+import { aiUsage, recordAiUse } from '@/lib/ai/usage'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -52,7 +53,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Could not fetch the stored file' }, { status: 502 })
   }
 
+  const cap = await aiUsage()
+  if (cap.over) return NextResponse.json({ error: `Monthly AI limit reached (${cap.used}/${cap.cap}). Raise it in Settings to continue.` }, { status: 429 })
+
   const { data: analysis, error } = await analyzeDocument(base64, mediaType, doc.title)
+  await recordAiUse('analyze-document')
   await noteAiResult(analysis ? null : error)
   if (!analysis) {
     const credit = isCreditError(error)

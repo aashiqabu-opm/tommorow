@@ -50,10 +50,11 @@ export function TallyClient() {
       const date = (p.paid_at ?? p.created_at ?? '').slice(0, 10)
       if (!date || date < from || date > to) continue
       const party = String(p.payee || 'Sundry Party').trim()
-      const gross = Number(p.amount ?? 0)
-      if (gross <= 0) continue
       const gstAmount = Number(p.gst_amount ?? 0)
       const tdsAmount = Number(p.tds_amount ?? 0)
+      // payment_requests.amount is the BASE (excl GST); gross = base + GST
+      const gross = Number(p.amount ?? 0) + gstAmount
+      if (gross <= 0) continue
       vouchers.push({
         date, type: 'Payment', partyLedger: party,
         narration: [p.category, p.purpose].filter(Boolean).join(' — '),
@@ -70,9 +71,10 @@ export function TallyClient() {
       const date = String(i.income_date || i.created_at || '').slice(0, 10)
       if (!date || date < from || date > to) continue
       const party = String(i.party || i.source || (i.project?.name ? `${i.project.name} Income` : 'Income')).trim()
-      const gross = Number(i.amount ?? 0)
-      if (gross <= 0) continue
       const gstAmount = Number(i.gst_amount ?? 0)
+      // income amount is the base (excl GST); gross received = base + GST
+      const gross = Number(i.amount ?? 0) + gstAmount
+      if (gross <= 0) continue
       vouchers.push({
         date, type: 'Receipt', partyLedger: party,
         narration: [i.source, i.project?.name, i.notes].filter(Boolean).join(' — '),

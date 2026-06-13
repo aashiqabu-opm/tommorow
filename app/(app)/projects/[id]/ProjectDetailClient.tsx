@@ -15,9 +15,10 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, DOCUMENT_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine } from '@/lib/types'
+import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat } from '@/lib/types'
 import { FundingSection } from './FundingSection'
 import { ProjectBudgetSection, type CodedPayment } from './ProjectBudgetSection'
+import { PettyCashSection } from './PettyCashSection'
 import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
@@ -33,6 +34,8 @@ interface Props {
   income: ProjectIncome[]
   funding: ProjectFunding[]
   budgetLines: BudgetLine[]
+  pettyFloats: PettyCashFloat[]
+  extraSpentByLine: Record<string, number>
   userId: string
   role: string
 }
@@ -56,8 +59,9 @@ const INCOME_SOURCES = [
   { value: 'other', label: 'Other' },
 ]
 
-export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, userId, role }: Props) {
+export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, extraSpentByLine, userId, role }: Props) {
   const isFinance = ['founder', 'accountant'].includes(role)
+  const budgetHeads = budgetLines.map(l => ({ id: l.id, section: l.section, head: l.head }))
   const router = useRouter()
   const toast = useToast()
   const [incomeOpen, setIncomeOpen] = useState(false)
@@ -298,6 +302,18 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
           projectId={project.id}
           budgetLines={budgetLines}
           payments={payments as unknown as CodedPayment[]}
+          extraSpentByLine={extraSpentByLine}
+          userId={userId}
+          canManage={isFinance}
+        />
+      )}
+
+      {/* Petty Cash Floats (finance only) */}
+      {isFinance && (
+        <PettyCashSection
+          projectId={project.id}
+          floats={pettyFloats}
+          budgetLines={budgetHeads}
           userId={userId}
           canManage={isFinance}
         />

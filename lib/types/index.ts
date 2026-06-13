@@ -392,3 +392,32 @@ export interface BudgetLine {
   created_at: string
   updated_at: string
 }
+
+export type PettyCashTxnType = 'issue' | 'expense' | 'return'
+
+export interface PettyCashFloat {
+  id: string
+  project_id: string
+  holder_name: string
+  holder_user_id?: string | null
+  status: 'open' | 'closed'
+  opened_date: string
+  notes?: string | null
+  created_by?: string
+  created_at: string
+  updated_at: string
+  txns?: PettyCashTxn[]
+}
+
+export interface PettyCashTxn {
+  id: string
+  float_id: string
+  txn_date: string
+  type: PettyCashTxnType
+  amount: number
+  head?: string | null
+  budget_line_id?: string | null
+  description?: string | null
+  created_by?: string
+  created_at: string
+}

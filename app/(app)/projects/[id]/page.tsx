@@ -18,6 +18,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     { data: income },
     funding,
     budgetLines,
+    pettyFloats,
   ] = await Promise.all([
     supabase.from('projects').select('*').eq('id', id).single(),
     supabase.from('documents').select('*').eq('project_id', id).order('created_at', { ascending: false }),
@@ -36,9 +37,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     isFinance
       ? supabase.from('budget_lines').select('*').eq('project_id', id).order('sort_order', { ascending: true }).then(r => r.data ?? [])
       : Promise.resolve([]),
+    isFinance
+      ? supabase.from('petty_cash_floats').select('*, txns:petty_cash_txns(*)').eq('project_id', id).order('created_at', { ascending: true }).then(r => r.data ?? [])
+      : Promise.resolve([]),
   ])
 
   if (!project) notFound()
+
+  // Petty-cash expenses coded to a budget head feed the cost report's "Spent"
+  const extraSpentByLine: Record<string, number> = {}
+  for (const f of (pettyFloats as { txns?: { type: string; amount: number; budget_line_id: string | null }[] }[])) {
+    for (const t of f.txns ?? []) {
+      if (t.type === 'expense' && t.budget_line_id) {
+        extraSpentByLine[t.budget_line_id] = (extraSpentByLine[t.budget_line_id] ?? 0) + Number(t.amount || 0)
+      }
+    }
+  }
 
   return (
     <ProjectDetailClient
@@ -49,6 +63,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       income={income ?? []}
       funding={funding ?? []}
       budgetLines={budgetLines ?? []}
+      pettyFloats={pettyFloats ?? []}
+      extraSpentByLine={extraSpentByLine}
       userId={profile.id}
       role={profile.role}
     />

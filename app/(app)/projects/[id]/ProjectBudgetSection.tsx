@@ -25,6 +25,7 @@ interface Props {
   projectId: string
   budgetLines: BudgetLine[]
   payments: CodedPayment[]
+  extraSpentByLine?: Record<string, number>  // e.g. petty-cash expenses coded to a head
   userId: string
   canManage: boolean
 }
@@ -33,7 +34,7 @@ const outflow = (p: CodedPayment) => Number(p.net_payable ?? p.amount ?? 0)
 
 const EMPTY = { section: 'below_line' as BudgetSection, phase: 'production' as BudgetPhase, head: '', estimated: '', notes: '' }
 
-export function ProjectBudgetSection({ projectId, budgetLines, payments, userId, canManage }: Props) {
+export function ProjectBudgetSection({ projectId, budgetLines, payments, extraSpentByLine, userId, canManage }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [open, setOpen] = useState(false)
@@ -53,8 +54,11 @@ export function ProjectBudgetSection({ projectId, budgetLines, payments, userId,
       if (p.payment_status === 'paid') m[p.budget_line_id].spent += outflow(p)
       else if (p.approval_status === 'approved') m[p.budget_line_id].committed += outflow(p)
     }
+    for (const [lineId, amt] of Object.entries(extraSpentByLine ?? {})) {
+      if (m[lineId]) m[lineId].spent += amt
+    }
     return m
-  }, [budgetLines, payments])
+  }, [budgetLines, payments, extraSpentByLine])
 
   const totals = useMemo(() => {
     let budget = 0, spent = 0, committed = 0

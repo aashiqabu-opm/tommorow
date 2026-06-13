@@ -67,7 +67,12 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
     setSaving(true)
     const supabase = createClient()
 
-    const { data: doc, error } = await supabase.from('documents').insert({
+    // Generate the id client-side so we never read the row back: a "Founder
+    // Only" (or finance) document uploaded by a non-founder can't be SELECTed
+    // under the read policy, which would make a successful insert look failed.
+    const docId = crypto.randomUUID()
+    const payload = {
+      id: docId,
       title: form.title,
       document_type: form.document_type,
       project_id: form.project_id || null,
@@ -80,7 +85,8 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
       access_level: form.access_level,
       notes: form.notes || null,
       uploaded_by: userId,
-    }).select().single()
+    }
+    const { error } = await supabase.from('documents').insert(payload)
 
     if (error) {
       toast.error("Couldn't save document — please try again")
@@ -88,15 +94,15 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
       return
     }
 
-    if (doc && file) {
+    if (file) {
       const upload = await compressImage(file)
-      const path = `documents/${doc.id}/${upload.name}`
+      const path = `documents/${docId}/${upload.name}`
       const { data: up, error: upErr } = await supabase.storage.from('documents').upload(path, upload)
       if (upErr) { toast.error('File upload failed — check storage bucket'); setSaving(false); return }
       if (up) {
         const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
         await supabase.from('document_files').insert({
-          document_id: doc.id,
+          document_id: docId,
           file_name: upload.name,
           file_url: urlData.publicUrl,
           file_size: upload.size,
@@ -105,7 +111,7 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
       }
     }
 
-    if (doc) await logAction('create', 'documents', doc.id, undefined, doc)
+    await logAction('create', 'documents', docId, undefined, payload as unknown as Record<string, unknown>)
     toast.success('Document saved')
     setSaving(false)
     setOpen(false)

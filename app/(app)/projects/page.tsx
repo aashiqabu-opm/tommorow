@@ -17,7 +17,7 @@ export default async function ProjectsPage() {
     ? await Promise.all([
         supabase.from('payment_requests').select('project_id, amount, approval_status').in('project_id', projectIds),
         supabase.from('liabilities').select('project_id, amount_owed, amount_paid, balance_remaining, status').in('project_id', projectIds),
-        supabase.from('project_income').select('project_id, amount').in('project_id', projectIds),
+        supabase.from('project_income').select('project_id, amount, status').in('project_id', projectIds),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }]
 

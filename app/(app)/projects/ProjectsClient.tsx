@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation'
 
 interface PaymentRow { project_id: string; amount: number; approval_status: string }
 interface LiabilityRow { project_id: string; amount_owed: number; amount_paid: number; balance_remaining: number; status: string }
-interface IncomeRow { project_id: string; amount: number }
+interface IncomeRow { project_id: string; amount: number; status?: 'received' | 'receivable' }
 
 interface Props {
   projects: Project[]
@@ -65,7 +65,8 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
   )
 
   function plForProject(id: string) {
-    const totalIncome = income.filter(i => i.project_id === id).reduce((s, i) => s + i.amount, 0)
+    // Only realized (received) income counts toward P&L; receivables are pending.
+    const totalIncome = income.filter(i => i.project_id === id && (i.status ?? 'received') === 'received').reduce((s, i) => s + i.amount, 0)
     const spent = payments
       .filter(p => p.project_id === id && (p.approval_status === 'approved' || p.approval_status === 'paid'))
       .reduce((s, p) => s + p.amount, 0)

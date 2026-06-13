@@ -68,7 +68,30 @@ export interface ProjectIncome {
   notes?: string
   recorded_by: string
   created_at: string
+  // Revenue / Collections fields
+  party?: string | null
+  territory?: string | null
+  gross_amount?: number | null
+  commission_amount?: number | null
+  expected_date?: string | null
+  status?: 'received' | 'receivable'
 }
+
+export const REVENUE_SOURCES = [
+  { value: 'theatrical', label: 'Theatrical Collection' },
+  { value: 'distributor_mg', label: 'Distributor MG / Minimum Guarantee' },
+  { value: 'overflow', label: 'Overflow / Profit Share' },
+  { value: 'ott', label: 'OTT / Streaming' },
+  { value: 'satellite', label: 'Satellite Rights' },
+  { value: 'music', label: 'Music Rights' },
+  { value: 'advance', label: 'Producer Advance' },
+  { value: 'investor', label: 'Investor Funding' },
+  { value: 'other', label: 'Other' },
+]
+
+export const REVENUE_SOURCE_LABELS: Record<string, string> = Object.fromEntries(
+  REVENUE_SOURCES.map(s => [s.value, s.label])
+)
 
 export interface CashEntry {
   id: string

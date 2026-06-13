@@ -18,6 +18,7 @@ import {
   Landmark,
   HandCoins,
   TrendingUp,
+  LineChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/payroll', label: 'Payroll', icon: HandCoins, roles: ['founder', 'accountant'] },
   { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
   { href: '/revenue', label: 'Revenue', icon: TrendingUp, roles: ['founder', 'accountant'] },
+  { href: '/forecast', label: 'Forecast', icon: LineChart, roles: ['founder', 'accountant'] },
   { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },

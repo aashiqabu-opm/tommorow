@@ -15,5 +15,5 @@ export default async function CashPage() {
     .order('created_at', { ascending: false })
     .limit(30)
 
-  return <CashClientPage entries={entries ?? []} userId={profile.id} />
+  return <CashClientPage entries={entries ?? []} userId={profile.id} role={profile.role} />
 }

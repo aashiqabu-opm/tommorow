@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Wallet, Plus, TrendingUp, TrendingDown, Paperclip } from 'lucide-react'
+import { Wallet, Plus, TrendingUp, TrendingDown, Paperclip, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
@@ -21,14 +21,18 @@ import { useRouter } from 'next/navigation'
 interface Props {
   entries: CashEntry[]
   userId: string
+  role: string
 }
 
-export function CashClientPage({ entries, userId }: Props) {
+export function CashClientPage({ entries, userId, role }: Props) {
+  const canDelete = role === 'founder'
   const router = useRouter()
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [dupAck, setDupAck] = useState(false)
+  const [editing, setEditing] = useState<CashEntry | null>(null)
   const [form, setForm] = useState({
     entry_date: new Date().toISOString().split('T')[0],
     opening_cash: '',
@@ -51,11 +55,12 @@ export function CashClientPage({ entries, userId }: Props) {
   const otVal = parseFloat(form.cash_out) || 0
   const hasMovement = form.cash_in !== '' || form.cash_out !== '' || form.opening_cash !== ''
   const dupExists = hasMovement && entries.some(e =>
-    e.entry_date === form.entry_date && e.opening_cash === oVal && e.cash_in === iVal && e.cash_out === otVal)
-  const openingMismatch = latest != null && form.opening_cash !== '' && oVal !== latest.closing_cash
+    e.id !== editing?.id && e.entry_date === form.entry_date && e.opening_cash === oVal && e.cash_in === iVal && e.cash_out === otVal)
+  const openingMismatch = !editing && latest != null && form.opening_cash !== '' && oVal !== latest.closing_cash
 
   function openAddEntry() {
     // Carry forward the latest closing balance so cash isn't double-counted
+    setEditing(null)
     setForm({
       entry_date: new Date().toISOString().split('T')[0],
       opening_cash: latest ? String(latest.closing_cash) : '',
@@ -63,8 +68,38 @@ export function CashClientPage({ entries, userId }: Props) {
       cash_out: '',
       notes: '',
     })
+    setFile(null)
     setDupAck(false)
     setOpen(true)
+  }
+
+  function openEdit(entry: CashEntry) {
+    setEditing(entry)
+    setForm({
+      entry_date: entry.entry_date,
+      opening_cash: String(entry.opening_cash),
+      cash_in: String(entry.cash_in),
+      cash_out: String(entry.cash_out),
+      notes: entry.notes ?? '',
+    })
+    setFile(null)
+    setDupAck(false)
+    setOpen(true)
+  }
+
+  async function handleDelete() {
+    if (!editing) return
+    if (!window.confirm(`Delete the cash entry for ${formatDate(editing.entry_date)} (closing ${formatCurrency(editing.closing_cash)})? This cannot be undone.`)) return
+    setDeleting(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('cash_entries').delete().eq('id', editing.id)
+    if (error) { toast.error("Couldn't delete entry — please try again"); setDeleting(false); return }
+    await logAction('delete', 'cash_entries', editing.id, editing as unknown as Record<string, unknown>, undefined)
+    toast.success('Cash entry deleted')
+    setDeleting(false)
+    setOpen(false)
+    setEditing(null)
+    router.refresh()
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -85,8 +120,9 @@ export function CashClientPage({ entries, userId }: Props) {
     const cashOut = parseFloat(form.cash_out) || 0
     const closing = opening + cashIn - cashOut
 
-    let proofUrl: string | undefined
-    let proofName: string | undefined
+    // Keep the existing proof on edit unless a new file is chosen
+    let proofUrl: string | undefined = editing?.proof_file_url
+    let proofName: string | undefined = editing?.proof_file_name
 
     if (file) {
       const upload = await compressImage(file)
@@ -101,29 +137,32 @@ export function CashClientPage({ entries, userId }: Props) {
       }
     }
 
-    const { data, error } = await supabase.from('cash_entries').insert({
+    const payload = {
       entry_date: form.entry_date,
       opening_cash: opening,
       cash_in: cashIn,
       cash_out: cashOut,
       closing_cash: closing,
-      entered_by: userId,
       notes: form.notes || null,
       proof_file_url: proofUrl,
       proof_file_name: proofName,
-    }).select().single()
-
-    if (error) {
-      toast.error("Couldn't save entry — please try again")
-      setSaving(false)
-      return
     }
 
-    if (data) await logAction('create', 'cash_entries', data.id, undefined, data)
-    toast.success('Cash entry saved')
+    if (editing) {
+      const { data, error } = await supabase.from('cash_entries').update(payload).eq('id', editing.id).select().single()
+      if (error) { toast.error("Couldn't update entry — please try again"); setSaving(false); return }
+      if (data) await logAction('update', 'cash_entries', editing.id, editing as unknown as Record<string, unknown>, data)
+      toast.success('Cash entry updated')
+    } else {
+      const { data, error } = await supabase.from('cash_entries').insert({ ...payload, entered_by: userId }).select().single()
+      if (error) { toast.error("Couldn't save entry — please try again"); setSaving(false); return }
+      if (data) await logAction('create', 'cash_entries', data.id, undefined, data)
+      toast.success('Cash entry saved')
+    }
 
     setSaving(false)
     setOpen(false)
+    setEditing(null)
     setForm({ entry_date: new Date().toISOString().split('T')[0], opening_cash: '', cash_in: '', cash_out: '', notes: '' })
     setFile(null)
     router.refresh()
@@ -183,7 +222,7 @@ export function CashClientPage({ entries, userId }: Props) {
           {/* Mobile cards */}
           <div className="sm:hidden divide-y divide-[#2a2a3a]">
             {entries.map((entry) => (
-              <div key={entry.id} className="px-4 py-3.5">
+              <button key={entry.id} onClick={() => openEdit(entry)} className="w-full text-left px-4 py-3.5 active:bg-[#1a1a24]">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-medium text-white">{formatDate(entry.entry_date)}</span>
                   <span className="text-sm font-bold text-white tabular-nums">{formatCurrency(entry.closing_cash)}</span>
@@ -195,12 +234,13 @@ export function CashClientPage({ entries, userId }: Props) {
                     {(entry.profile as { full_name?: string } | null)?.full_name ?? ''}
                   </span>
                   {entry.proof_file_url && (
-                    <a href={entry.proof_file_url} target="_blank" rel="noreferrer" className="text-white/70">
+                    <a href={entry.proof_file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-white/70">
                       <Paperclip size={12} />
                     </a>
                   )}
+                  <Pencil size={12} className="text-[#5a5a7a]" />
                 </div>
-              </div>
+              </button>
             ))}
           </div>
           {/* Desktop table */}
@@ -208,8 +248,8 @@ export function CashClientPage({ entries, userId }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#2a2a3a]">
-                  {['Date', 'Opening', 'Cash In', 'Cash Out', 'Closing', 'By', 'Proof'].map(h => (
-                    <th key={h} className="px-5 py-3 text-left text-[11px] font-medium text-[#8888aa] uppercase tracking-wider">{h}</th>
+                  {['Date', 'Opening', 'Cash In', 'Cash Out', 'Closing', 'By', 'Proof', ''].map((h, i) => (
+                    <th key={i} className="px-5 py-3 text-left text-[11px] font-medium text-[#8888aa] uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -229,6 +269,11 @@ export function CashClientPage({ entries, userId }: Props) {
                         </a>
                       ) : <span className="text-[#5a5a7a]">—</span>}
                     </td>
+                    <td className="px-5 py-3 text-right">
+                      <button onClick={() => openEdit(entry)} className="text-[#8888aa] hover:text-white" title="Edit / correct">
+                        <Pencil size={14} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -239,7 +284,7 @@ export function CashClientPage({ entries, userId }: Props) {
       </div>
 
       {/* Add Entry Modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title="Add Cash Entry">
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Cash Entry' : 'Add Cash Entry'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Date"
@@ -296,11 +341,18 @@ export function CashClientPage({ entries, userId }: Props) {
 
           <FilePicker label="Proof Attachment" file={file} onChange={setFile} />
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving} variant={dupExists && dupAck ? 'danger' : 'primary'}>
-              {dupExists && dupAck ? 'Save Anyway' : 'Save Entry'}
-            </Button>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            {editing && canDelete ? (
+              <Button variant="ghost" type="button" icon={Trash2} loading={deleting} onClick={handleDelete} className="text-red-400 hover:text-red-300">
+                Delete
+              </Button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" loading={saving} variant={dupExists && dupAck ? 'danger' : 'primary'}>
+                {dupExists && dupAck ? 'Save Anyway' : editing ? 'Save Changes' : 'Save Entry'}
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>

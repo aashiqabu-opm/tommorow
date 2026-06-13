@@ -15,12 +15,14 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, DOCUMENT_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew, ProductionReport } from '@/lib/types'
+import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew, ProductionReport, ProjectMember, ProjectCheckin } from '@/lib/types'
 import { FundingSection } from './FundingSection'
 import { ProjectBudgetSection, type CodedPayment } from './ProjectBudgetSection'
 import { PettyCashSection } from './PettyCashSection'
 import { CrewLedgerSection } from './CrewLedgerSection'
 import { ProductionReportSection } from './ProductionReportSection'
+import { ProjectTeamSection } from './ProjectTeamSection'
+import { ProjectCheckinSection } from './ProjectCheckinSection'
 import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
@@ -39,6 +41,9 @@ interface Props {
   pettyFloats: PettyCashFloat[]
   crew: ProjectCrew[]
   dprs: ProductionReport[]
+  members: ProjectMember[]
+  checkins: ProjectCheckin[]
+  allProfiles: { id: string; full_name: string; email: string; role: string }[]
   extraSpentByLine: Record<string, number>
   userId: string
   role: string
@@ -63,9 +68,12 @@ const INCOME_SOURCES = [
   { value: 'other', label: 'Other' },
 ]
 
-export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, dprs, extraSpentByLine, userId, role }: Props) {
+export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, dprs, members, checkins, allProfiles, extraSpentByLine, userId, role }: Props) {
   const isFinance = ['founder', 'accountant'].includes(role)
   const isManagement = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
+  const canManageTeam = ['founder', 'general_manager', 'executive_producer'].includes(role)
+  const isProjectMember = members.some(m => m.user_id === userId)
+  const canCheckin = isManagement || isProjectMember
   const budgetHeads = budgetLines.map(l => ({ id: l.id, section: l.section, head: l.head }))
   const router = useRouter()
   const toast = useToast()
@@ -301,6 +309,15 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
         <StatCard title="Expiring Docs" value={expiring.length} status={expiring.length > 0 ? 'yellow' : 'green'} subtitle="Within 30 days" />
       </div>
 
+      {/* Core Team — visible to everyone on the project */}
+      <ProjectTeamSection
+        projectId={project.id}
+        members={members}
+        candidates={allProfiles}
+        userId={userId}
+        canManage={canManageTeam}
+      />
+
       {/* Film Budget & Cost Report (finance only) */}
       {isFinance && (
         <ProjectBudgetSection
@@ -346,6 +363,15 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
           canDelete={role === 'founder'}
         />
       )}
+
+      {/* Daily Check-ins — team reports to the producer */}
+      <ProjectCheckinSection
+        projectId={project.id}
+        checkins={checkins}
+        userId={userId}
+        role={role}
+        canPost={canCheckin}
+      />
 
       {/* Funding & Capital Stack (finance only) */}
       {isFinance && (

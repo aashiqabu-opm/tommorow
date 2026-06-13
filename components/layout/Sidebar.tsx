@@ -35,7 +35,7 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
   { href: '/cash', label: 'Cash in Hand', icon: Wallet, roles: ['founder', 'accountant'] },
   { href: '/vendors', label: 'Vendors', icon: Building2, roles: ['founder', 'accountant', 'general_manager'] },
   { href: '/accounts', label: 'Accounts', icon: Landmark, roles: ['founder', 'accountant'] },
@@ -48,7 +48,7 @@ const navItems = [
   { href: '/compliance', label: 'Tax & Compliance', icon: Receipt, roles: ['founder', 'accountant'] },
   { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
-  { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
+  { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
   { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
   { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
   { href: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['founder'] },

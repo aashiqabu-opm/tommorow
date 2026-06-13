@@ -22,6 +22,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     pettyFloats,
     crew,
     dprs,
+    members,
+    checkins,
   ] = await Promise.all([
     supabase.from('projects').select('*').eq('id', id).single(),
     supabase.from('documents').select('*').eq('project_id', id).order('created_at', { ascending: false }),
@@ -49,9 +51,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     isManagement
       ? supabase.from('production_reports').select('*').eq('project_id', id).order('report_date', { ascending: false }).then(r => r.data ?? [])
       : Promise.resolve([]),
+    // Core team + daily check-ins — gracefully empty if not migrated yet
+    supabase.from('project_members')
+      .select('*, profile:profiles!user_id(id, full_name, email, role)')
+      .eq('project_id', id)
+      .order('created_at', { ascending: true })
+      .then(r => r.data ?? []),
+    supabase.from('project_checkins')
+      .select('*, author:profiles!author_id(full_name, role)')
+      .eq('project_id', id)
+      .order('checkin_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(60)
+      .then(r => r.data ?? []),
   ])
 
   if (!project) notFound()
+
+  // Roster of users that management can add to the team
+  const canManageTeam = ['founder', 'general_manager', 'executive_producer'].includes(profile.role)
+  const { data: allProfiles } = canManageTeam
+    ? await supabase.from('profiles').select('id, full_name, email, role').eq('is_active', true).order('full_name')
+    : { data: [] }
 
   // Petty-cash expenses and crew payments coded to a budget head feed the cost report's "Spent"
   const extraSpentByLine: Record<string, number> = {}
@@ -78,6 +99,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       pettyFloats={pettyFloats ?? []}
       crew={crew ?? []}
       dprs={dprs ?? []}
+      members={members ?? []}
+      checkins={checkins ?? []}
+      allProfiles={allProfiles ?? []}
       extraSpentByLine={extraSpentByLine}
       userId={profile.id}
       role={profile.role}

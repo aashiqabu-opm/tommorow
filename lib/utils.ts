@@ -71,6 +71,32 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
+export const PROJECT_ROLE_LABELS: Record<string, string> = {
+  chief_ad: 'Chief Associate Director',
+  production_executive: 'Production Executive',
+  production_manager: 'Production Manager',
+  cashier: 'Cashier',
+  purchase_manager: 'Purchase Manager',
+  location_manager: 'Location Manager',
+  driver: 'Driver',
+  production_assistant: 'Production Assistant',
+  member: 'Team Member',
+}
+
+// What each per-project role is allowed to do within a project.
+// Management app-roles (founder/accountant/GM/EP) see everything regardless.
+export const PROJECT_ROLE_CAPS: Record<string, { pettyCash?: boolean; payments?: boolean; dpr?: boolean; vehicles?: boolean; fullView?: boolean }> = {
+  chief_ad:             { dpr: true, fullView: true },
+  production_executive: { payments: true, dpr: true, vehicles: true, fullView: true },
+  production_manager:   { payments: true, dpr: true, vehicles: true, fullView: true },
+  cashier:              { pettyCash: true },
+  purchase_manager:     { payments: true },
+  location_manager:     { dpr: true, vehicles: true },
+  driver:               { vehicles: true },
+  production_assistant: {},
+  member:               {},
+}
+
 export const LIABILITY_TYPE_LABELS: Record<string, string> = {
   loan: 'Loan',
   vendor: 'Vendor',

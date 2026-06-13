@@ -1,4 +1,40 @@
-export type Role = 'founder' | 'accountant' | 'general_manager' | 'executive_producer' | 'legal_viewer'
+export type Role = 'founder' | 'accountant' | 'general_manager' | 'executive_producer' | 'legal_viewer' | 'staff'
+
+// Per-project core-team roles (stored on project_members.project_role)
+export type ProjectRole =
+  | 'chief_ad'
+  | 'production_executive'
+  | 'production_manager'
+  | 'cashier'
+  | 'purchase_manager'
+  | 'location_manager'
+  | 'driver'
+  | 'production_assistant'
+  | 'member'
+
+export interface ProjectMember {
+  id: string
+  project_id: string
+  user_id: string
+  project_role: ProjectRole
+  title?: string | null
+  added_by?: string | null
+  created_at: string
+  // joined
+  profile?: { id: string; full_name: string; email: string; role: Role } | null
+}
+
+export interface ProjectCheckin {
+  id: string
+  project_id: string
+  author_id: string
+  checkin_date: string
+  summary: string
+  blockers?: string | null
+  created_at: string
+  // joined
+  author?: { full_name: string; role: Role } | null
+}
 
 export type ProjectStatus = 'active' | 'development' | 'post_production' | 'released' | 'on_hold' | 'cancelled'
 

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fundingMetrics } from '@/lib/funding'
 import type { ProjectFunding, DocumentAnalysisData } from '@/lib/types'
+import { PROJECT_ROLE_LABELS } from '@/lib/utils'
 
 // ─── "Ask OPM" engine: read-only tools + agentic loop, shared by the web
 //     widget (/api/assistant) and the WhatsApp channel. Every query is a SELECT
@@ -76,10 +77,15 @@ export const ASSISTANT_TOOLS: Anthropic.Tool[] = [
     description: "A film's shoot progress from Daily Production Reports (DPR): total shoot days logged, scenes completed vs planned, how many days ran behind, and the most recent days (date, day number, location, scenes done, status). Use for 'how is the <film> shoot going', 'how many shoot days on <film>', 'are we behind schedule'.",
     input_schema: { type: 'object', additionalProperties: false, properties: { project: { type: 'string', description: 'Project / film name (partial match)' } }, required: ['project'] },
   },
+  {
+    name: 'team_checkins',
+    description: "Recent DAILY CHECK-INS from a film's core team (Chief AD, production managers, cashier, location managers, drivers, etc.) — what each person did that day and any blockers/needs they flagged. Use for 'what did the team report on <film> today', 'any blockers on <film>', 'daily update from the <film> crew', 'what's pending for the producer on <film>'. Also returns the core team roster.",
+    input_schema: { type: 'object', additionalProperties: false, properties: { project: { type: 'string', description: 'Project / film name (partial match)' } }, required: ['project'] },
+  },
 ]
 
 // Tools every role may use (the rest are finance-only). RLS still scopes rows.
-export const ALL_ROLE_TOOLS = ['list_projects', 'search_payments', 'search_documents', 'shoot_progress']
+export const ALL_ROLE_TOOLS = ['list_projects', 'search_payments', 'search_documents', 'shoot_progress', 'team_checkins']
 
 type Json = Record<string, unknown>
 
@@ -285,6 +291,25 @@ export async function runTool(name: string, input: Json, sb: SupabaseClient): Pr
     }
   }
 
+  if (name === 'team_checkins') {
+    const project = await findProject(sb, String(input.project ?? ''))
+    if (!project) return { error: `No project matching "${input.project}"` }
+    const [{ data: roster }, { data: logs }] = await Promise.all([
+      sb.from('project_members').select('project_role, title, profile:profiles!user_id(full_name)').eq('project_id', project.id),
+      sb.from('project_checkins').select('checkin_date, summary, blockers, author:profiles!author_id(full_name)').eq('project_id', project.id).order('checkin_date', { ascending: false }).order('created_at', { ascending: false }).limit(40),
+    ])
+    const team = ((roster ?? []) as { project_role: string; title: string | null; profile: { full_name?: string } | null }[])
+      .map(m => ({ name: m.profile?.full_name ?? 'Unknown', role: m.title || PROJECT_ROLE_LABELS[m.project_role] || m.project_role }))
+    const rows = ((logs ?? []) as { checkin_date: string; summary: string; blockers: string | null; author: { full_name?: string } | null }[])
+    if (!team.length && !rows.length) return { project: project.name, note: 'No core team or check-ins for this project yet.' }
+    return {
+      project: project.name,
+      core_team: team,
+      recent_checkins: rows.map(r => ({ date: r.checkin_date, by: r.author?.full_name ?? 'Unknown', did: r.summary, blocker: r.blockers || null })),
+      open_blockers: rows.filter(r => r.blockers).slice(0, 10).map(r => ({ date: r.checkin_date, by: r.author?.full_name ?? 'Unknown', blocker: r.blockers })),
+    }
+  }
+
   return { error: 'Unknown tool' }
 }
 
@@ -292,9 +317,9 @@ export function assistantSystemPrompt(isFinance: boolean): string {
   const today = new Date().toISOString().slice(0, 10)
   const base = `You are "Ask OPM", an assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Answer using ONLY data returned by your tools — never invent or estimate numbers. If the tools return nothing relevant, say so plainly. Be concise and specific; use ₹ formatting and name the parties/projects. You are READ-ONLY: you cannot create, edit, approve, pay, or delete anything. If asked to take such an action, explain that you can only look things up, and point them to the relevant page. Today's date is ${today}.`
   if (isFinance) {
-    return `${base} The user is on the finance team (founder/accountant). You can answer about: cash & bank balances, payroll, liabilities, payments, revenue & project P&L; film BUDGETS & cost reports (budget vs actual per head, over-budget heads); project FUNDING (investors, loans with interest, OPM investment); the CREW & CAST ledger (fees, advances, balance due); SHOOT progress from daily production reports; and company DOCUMENTS/CONTRACTS — including AI-extracted summaries, key dates, financial terms and risk flags. Reach for the right tool; you can call several to answer one question.`
+    return `${base} The user is on the finance team (founder/accountant). You can answer about: cash & bank balances, payroll, liabilities, payments, revenue & project P&L; film BUDGETS & cost reports (budget vs actual per head, over-budget heads); project FUNDING (investors, loans with interest, OPM investment); the CREW & CAST ledger (fees, advances, balance due); SHOOT progress from daily production reports; the per-project CORE TEAM roster and their DAILY CHECK-INS (what each crew member did and any blockers they flagged for the producer); and company DOCUMENTS/CONTRACTS — including AI-extracted summaries, key dates, financial terms and risk flags. Reach for the right tool; you can call several to answer one question.`
   }
-  return `${base} The user is a non-finance team member. You can help with projects, payment requests, shoot progress, and company documents/contracts they're permitted to see. You do NOT have access to company cash, bank balances, payroll, liabilities, revenue/P&L, budgets, funding or crew pay — if asked about those, say that information is restricted to the finance team and you can't see it. Do not guess.`
+  return `${base} The user is a non-finance team member. You can help with projects, payment requests, shoot progress, the project core team and their daily check-ins/blockers, and company documents/contracts they're permitted to see. You do NOT have access to company cash, bank balances, payroll, liabilities, revenue/P&L, budgets, funding or crew pay — if asked about those, say that information is restricted to the finance team and you can't see it. Do not guess.`
 }
 
 // Run the full read-only agentic loop and return the answer text.

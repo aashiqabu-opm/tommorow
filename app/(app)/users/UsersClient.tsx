@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, UserCheck, UserX, MessageCircle, Copy } from 'lucide-react'
+import { Users, UserCheck, UserX, MessageCircle, Copy, UserPlus, Mail } from 'lucide-react'
 import { SANDBOX_ACTIVE, SANDBOX_NUMBER, SANDBOX_JOIN_CODE } from '@/lib/alerts/sandbox'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
@@ -27,7 +27,11 @@ const ROLE_OPTIONS = [
   { value: 'general_manager', label: 'General Manager' },
   { value: 'executive_producer', label: 'Executive Producer' },
   { value: 'legal_viewer', label: 'Legal / CA Viewer' },
+  { value: 'staff', label: 'Field Staff' },
 ]
+
+// Roles a new invite can be given (no second founder via invite)
+const INVITE_ROLE_OPTIONS = ROLE_OPTIONS.filter(o => o.value !== 'founder')
 
 const ROLE_LABELS: Record<Role, string> = {
   founder: 'Founder',
@@ -35,14 +39,7 @@ const ROLE_LABELS: Record<Role, string> = {
   general_manager: 'General Manager',
   executive_producer: 'Executive Producer',
   legal_viewer: 'Legal / CA Viewer',
-}
-
-const ROLE_VARIANTS: Record<Role, 'green' | 'yellow' | 'red' | 'blue' | 'purple' | 'gray'> = {
-  founder: 'gray',
-  accountant: 'gray',
-  general_manager: 'gray',
-  executive_producer: 'gray',
-  legal_viewer: 'gray',
+  staff: 'Field Staff',
 }
 
 type PendingAction =
@@ -58,6 +55,31 @@ export function UsersClient({ profiles, currentUserId }: Props) {
   const [waNumber, setWaNumber] = useState('')
   const [waEnabled, setWaEnabled] = useState(false)
   const [waSaving, setWaSaving] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviting, setInviting] = useState(false)
+  const [inviteForm, setInviteForm] = useState({ email: '', full_name: '', role: 'staff' })
+
+  async function sendInvite(e: React.FormEvent) {
+    e.preventDefault()
+    setInviting(true)
+    try {
+      const res = await fetch('/api/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inviteForm),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Invite failed'); setInviting(false); return }
+      await logAction('create', 'profiles', data.userId ?? inviteForm.email, undefined, { invited: inviteForm.email, role: inviteForm.role })
+      toast.success(`Invite sent to ${inviteForm.email}`)
+      setInviteOpen(false)
+      setInviteForm({ email: '', full_name: '', role: 'staff' })
+      router.refresh()
+    } catch {
+      toast.error('Invite failed — try again')
+    }
+    setInviting(false)
+  }
 
   function openWaEdit(profile: Profile) {
     setWaEdit(profile)
@@ -114,7 +136,8 @@ export function UsersClient({ profiles, currentUserId }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="User Management" subtitle="Manage team access and roles" />
+      <PageHeader title="User Management" subtitle="Manage team access and roles"
+        action={<Button icon={UserPlus} onClick={() => setInviteOpen(true)}>Invite User</Button>} />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard title="Total Users" value={profiles.length} icon={Users} status="default" />
@@ -203,8 +226,29 @@ export function UsersClient({ profiles, currentUserId }: Props) {
           <p><span className="text-white font-medium">General Manager</span> — Payments, documents, projects, reports (no cash/liabilities)</p>
           <p><span className="text-white font-medium">Executive Producer</span> — Upload bills, receipts, documents; create payment requests; projects</p>
           <p><span className="text-white font-medium">Legal / CA Viewer</span> — Read-only access to selected documents and reports</p>
+          <p><span className="text-white font-medium">Field Staff</span> — Only the projects they&apos;re assigned to; what they can do is set by their role on each project (cashier, driver, location manager, etc.)</p>
         </div>
       </div>
+
+      {/* Invite dialog */}
+      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite a User">
+        <form onSubmit={sendInvite} className="space-y-4">
+          <p className="text-xs text-[#8888aa] leading-relaxed">
+            They&apos;ll get an email invite and set their own password. Assign field crew the
+            <span className="text-white"> Field Staff</span> role, then add them to specific projects with a role like cashier, driver or location manager.
+          </p>
+          <Input label="Full Name *" placeholder="e.g. Rajeev Kumar"
+            value={inviteForm.full_name} onChange={e => setInviteForm({ ...inviteForm, full_name: e.target.value })} required />
+          <Input label="Email *" type="email" placeholder="name@example.com"
+            value={inviteForm.email} onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })} required />
+          <Select label="App Role" value={inviteForm.role} onChange={e => setInviteForm({ ...inviteForm, role: e.target.value })}
+            options={INVITE_ROLE_OPTIONS} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" type="button" onClick={() => setInviteOpen(false)}>Cancel</Button>
+            <Button type="submit" loading={inviting} icon={Mail}>Send Invite</Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* WhatsApp number dialog */}
       <Modal

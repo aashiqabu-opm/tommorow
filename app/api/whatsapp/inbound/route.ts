@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { whatsappConfigured, normalizeWhatsApp, sendWhatsApp, sendEmail, emailTemplate, sleep } from '@/lib/alerts/channels'
 import { validateTwilioSignature, twimlMessage, twimlEmpty, fetchTwilioMedia, pickProject } from '@/lib/whatsapp'
 import { extractBill } from '@/lib/ai/extract-bill'
+import { askOpm } from '@/lib/ai/assistant'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -124,7 +125,7 @@ export async function POST(req: Request) {
   if (!body || cmd === 'help' || cmd === 'hi' || cmd === 'hello') {
     return xml(twimlMessage(
       'OPM Office on WhatsApp:\n• Send a bill photo or PDF → I draft a payment for approval.' +
-      (isFinance ? "\n• Text 'cash' — current cash & bank\n• Text 'pending' — approvals waiting\n• Reply 'REJECT <code>' to decline a draft" : '')
+      (isFinance ? "\n• Ask me anything — e.g. \"cost report for Aja Sundari\", \"which contracts renew soon\", \"what's our cash position\"\n• Reply 'REJECT <code>' to decline a draft" : '')
     ))
   }
 
@@ -178,8 +179,18 @@ export async function POST(req: Request) {
     return xml(twimlMessage(`${n} payment request${n === 1 ? '' : 's'} awaiting approval${n ? `, totalling ${inr(total)}` : ''}.`))
   }
 
+  // Anything else from a finance user → full read-only Ask OPM over WhatsApp.
+  // Uses the admin client, but only for finance roles (who can already see all data).
+  if (isFinance && process.env.ANTHROPIC_API_KEY) {
+    try {
+      const answer = await askOpm([{ role: 'user', content: body }], admin, true)
+      return xml(twimlMessage((answer || "I couldn't find an answer to that.").slice(0, 1500)))
+    } catch {
+      return xml(twimlMessage('Sorry — I had trouble answering that. Please try again.'))
+    }
+  }
+
   return xml(twimlMessage(
-    "Didn't catch that. Send a bill photo to draft a payment" +
-    (isFinance ? ", or text 'cash' or 'pending'." : '.') + " Text 'help' for options."
+    "Didn't catch that. Send a bill photo to draft a payment." + " Text 'help' for options."
   ))
 }

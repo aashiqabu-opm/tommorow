@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus, Car, Pencil, Trash2, ChevronDown, ChevronRight, Fuel, Route, Wrench, FileText, Paperclip, ShieldCheck } from 'lucide-react'
+import { Plus, Car, Pencil, Trash2, ChevronDown, ChevronRight, Fuel, Route, Wrench, FileText, Paperclip, ShieldCheck, Sparkles } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -79,6 +79,7 @@ export function VehiclesClient({ vehicles, projects, userId, canDelete }: Props)
   const [docForm, setDocForm] = useState(DOC_EMPTY)
   const [docFile, setDocFile] = useState<File | null>(null)
   const [savingDoc, setSavingDoc] = useState(false)
+  const [extractingDoc, setExtractingDoc] = useState(false)
   const [ownerFilter, setOwnerFilter] = useState('')
 
   const docsAttention = useMemo(() => vehicles.flatMap(v => v.documents ?? []).filter(d => { const s = expiryStatus(d.expiry_date); return s === 'expired' || s === 'soon' }).length, [vehicles])
@@ -186,6 +187,38 @@ export function VehiclesClient({ vehicles, projects, userId, canDelete }: Props)
   }
 
   function openDoc(v: Vehicle) { setDocVehicle(v); setDocForm(DOC_EMPTY); setDocFile(null) }
+
+  // Attach a scan → AI reads the doc number + dates and pre-fills empty fields
+  async function handleDocFile(file: File | null) {
+    setDocFile(file)
+    if (!file) return
+    if (!/^image\/(png|jpe?g|gif|webp)$|^application\/pdf$/.test(file.type) || file.size > 6_000_000) return
+    setExtractingDoc(true)
+    try {
+      const base64 = await new Promise<string>((res, rej) => {
+        const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] ?? ''); r.onerror = rej; r.readAsDataURL(file)
+      })
+      const resp = await fetch('/api/analyze-vehicle-doc', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, mediaType: file.type, docType: docForm.doc_type }),
+      })
+      if (!resp.ok) {
+        if (resp.status !== 503) { const b = await resp.json().catch(() => ({})); toast.error(b?.detail ? `Read failed: ${String(b.detail).slice(0, 80)}` : "Couldn't read it — fill manually") }
+        return
+      }
+      const { extracted } = await resp.json()
+      if (!extracted) return
+      setDocForm(prev => ({
+        ...prev,
+        doc_number: prev.doc_number || (extracted.doc_number ?? ''),
+        issue_date: prev.issue_date || (extracted.issue_date ?? ''),
+        expiry_date: prev.expiry_date || (extracted.expiry_date ?? ''),
+      }))
+      toast.success('Read by AI — review the dates')
+    } catch { /* network/parse — fill manually */ } finally {
+      setExtractingDoc(false)
+    }
+  }
 
   async function saveDoc(e: React.FormEvent) {
     e.preventDefault()
@@ -463,7 +496,12 @@ export function VehiclesClient({ vehicles, projects, userId, canDelete }: Props)
             <Input label="Issue Date" type="date" value={docForm.issue_date} onChange={e => setDocForm({ ...docForm, issue_date: e.target.value })} />
             <Input label="Expiry Date" type="date" value={docForm.expiry_date} onChange={e => setDocForm({ ...docForm, expiry_date: e.target.value })} />
           </div>
-          <FilePicker label="Scan / Photo" file={docFile} onChange={setDocFile} accept=".pdf,image/*" />
+          <div className="space-y-1">
+            <FilePicker label="Scan / Photo" file={docFile} onChange={handleDocFile} accept=".pdf,image/*" />
+            {extractingDoc
+              ? <p className="text-[11px] text-emerald-400 flex items-center gap-1.5"><Sparkles size={11} className="animate-pulse" /> Reading the document with AI…</p>
+              : <p className="text-[11px] text-[#5a5a7a]">Attach the scan — AI fills the number &amp; dates from it.</p>}
+          </div>
           <Textarea label="Notes" value={docForm.notes} onChange={e => setDocForm({ ...docForm, notes: e.target.value })} rows={2} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setDocVehicle(null)}>Cancel</Button>

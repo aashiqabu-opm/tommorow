@@ -1,22 +1,25 @@
 'use client'
 
 import { useState } from 'react'
-import { Lock, Unlock, Sparkles, AlertCircle } from 'lucide-react'
+import { Lock, Unlock, Sparkles, AlertCircle, NotebookPen } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { formatDate } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
-interface Props { lockedThrough: string; aiCap: string; aiUsed: number; canEdit: boolean }
+interface Props { lockedThrough: string; aiCap: string; aiUsed: number; bankLedger: string; gstSplit: string; tdsLedger: string; canEdit: boolean }
 
-export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, canEdit }: Props) {
+export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, bankLedger, gstSplit, tdsLedger, canEdit }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [lockDate, setLockDate] = useState(lockedThrough)
   const [cap, setCap] = useState(aiCap)
+  const [bank, setBank] = useState(bankLedger)
+  const [split, setSplit] = useState(gstSplit)
+  const [tds, setTds] = useState(tdsLedger)
   const [busy, setBusy] = useState('')
 
   async function setSetting(key: string, value: string, label: string) {
@@ -82,6 +85,34 @@ export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, canEdit }:
             <Button size="sm" loading={busy === 'ai_monthly_cap'} onClick={() => setSetting('ai_monthly_cap', cap, cap ? `Cap set to ${cap}` : 'Cap removed')}>Save</Button>
           </div>
         ) : <p className="text-[11px] text-[#5a5a7a]">Only the founder can change the cap.</p>}
+      </div>
+
+      {/* Auto-voucher defaults (used when payments/income become vouchers) */}
+      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 lg:col-span-2">
+        <div className="flex items-center gap-2 mb-1"><NotebookPen size={15} className="text-white/60" /><h3 className="text-sm font-semibold text-white">Auto-voucher defaults</h3></div>
+        <p className="text-xs text-[#8888aa] leading-relaxed mb-3">
+          When a payment is approved or income recorded, the app posts a balanced Tally voucher. These settings decide which bank/cash ledger and GST treatment it uses.
+        </p>
+        {canEdit ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <Input label="Bank / Cash Ledger" value={bank} onChange={e => setBank(e.target.value)} placeholder="Cash" />
+            <Select label="GST split" value={split} onChange={e => setSplit(e.target.value)}
+              options={[{ value: 'cgst_sgst', label: 'CGST + SGST (local)' }, { value: 'igst', label: 'IGST (other state)' }, { value: 'single', label: 'Single GST' }]} />
+            <Input label="TDS Payable Ledger" value={tds} onChange={e => setTds(e.target.value)} placeholder="TDS Payable" />
+            <div className="sm:col-span-3 flex justify-end">
+              <Button size="sm" loading={busy === 'autovoucher'} onClick={async () => {
+                setBusy('autovoucher')
+                const supabase = createClient()
+                await supabase.from('app_settings').upsert([
+                  { key: 'tally_bank_ledger', value: bank, updated_at: new Date().toISOString() },
+                  { key: 'tally_gst_split', value: split, updated_at: new Date().toISOString() },
+                  { key: 'tally_tds_ledger', value: tds, updated_at: new Date().toISOString() },
+                ], { onConflict: 'key' })
+                toast.success('Auto-voucher defaults saved'); setBusy(''); router.refresh()
+              }}>Save defaults</Button>
+            </div>
+          </div>
+        ) : <p className="text-[11px] text-[#5a5a7a]">Only the founder can change these.</p>}
       </div>
     </div>
   )

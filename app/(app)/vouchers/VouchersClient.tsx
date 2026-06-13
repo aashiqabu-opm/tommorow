@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus, Trash2, BookOpen, FileCode, Check, X } from 'lucide-react'
+import { Plus, Trash2, BookOpen, FileCode, Check, X, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -38,6 +38,21 @@ export function VouchersClient({ ledgers, vouchers, userId }: Props) {
   const [narration, setNarration] = useState('')
   const [lines, setLines] = useState<Line[]>([{ ledger_name: '', dr: true, amount: '' }, { ledger_name: '', dr: false, amount: '' }])
   const [saving, setSaving] = useState(false)
+
+  const [syncing, setSyncing] = useState(false)
+
+  async function syncFromOps() {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/vouchers/sync', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Sync failed'); setSyncing(false); return }
+      const msg = data.created > 0 ? `${data.created} voucher${data.created > 1 ? 's' : ''} generated` : 'Already up to date'
+      toast.success(data.skipped ? `${msg} · ${data.skipped} skipped (locked period)` : msg)
+      router.refresh()
+    } catch { toast.error('Sync failed') }
+    setSyncing(false)
+  }
 
   // ── Ledger master modal ──
   const [ledgerOpen, setLedgerOpen] = useState(false)
@@ -117,6 +132,7 @@ export function VouchersClient({ ledgers, vouchers, userId }: Props) {
     <div className="space-y-6">
       <PageHeader title="Vouchers" subtitle="Tally-style double-entry — Dr/Cr ledger postings, exportable to Tally"
         action={<div className="flex gap-2">
+          <Button variant="secondary" icon={RefreshCw} loading={syncing} onClick={syncFromOps}>Sync from Payments &amp; Income</Button>
           <Button variant="secondary" icon={BookOpen} onClick={() => setLedgerOpen(true)}>Add Ledger</Button>
           <Button variant="secondary" icon={FileCode} onClick={exportXml}>Export to Tally</Button>
         </div>} />
@@ -177,6 +193,7 @@ export function VouchersClient({ ledgers, vouchers, userId }: Props) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] uppercase tracking-wide text-white/80 bg-white/10 border border-white/15 rounded px-1.5 py-0.5">{v.voucher_type}</span>
+                      {v.source_type && <span className="text-[9px] uppercase tracking-wide text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded px-1 py-0.5">auto · {v.source_type}</span>}
                       <span className="text-sm text-white tabular-nums">{formatCurrency(dr)}</span>
                       <span className="text-xs text-[#8888aa]">{formatDate(v.voucher_date)}{v.voucher_number ? ` · #${v.voucher_number}` : ''}</span>
                     </div>

@@ -361,6 +361,8 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
     }
     await supabase.from('payment_requests').update(update).eq('id', req.id)
     await logAction('update', 'payment_requests', req.id, { approval_status: req.approval_status }, update)
+    // Auto-generate the Tally voucher for the now-approved payment (best-effort)
+    fetch('/api/vouchers/sync', { method: 'POST' }).catch(() => {})
     if (req.requested_by !== userId) {
       await notifyUsers([req.requested_by],
         `Payment request approved: ${req.payee}`,

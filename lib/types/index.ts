@@ -88,6 +88,8 @@ export interface Voucher {
   voucher_date: string
   voucher_number: string | null
   narration: string | null
+  source_type?: string | null   // 'payment' | 'income' when auto-generated
+  source_id?: string | null
   created_at: string
   entries?: VoucherEntry[]
 }

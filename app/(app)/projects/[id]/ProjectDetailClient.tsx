@@ -172,6 +172,8 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
     }).select().single()
     if (error) { toast.error("Couldn't save income — try again"); setSaving(false); return }
     if (data) await logAction('create', 'project_income', data.id, undefined, data)
+    // Auto-generate the Tally Receipt voucher for this income (best-effort, finance only)
+    if (isFinance) fetch('/api/vouchers/sync', { method: 'POST' }).catch(() => {})
     toast.success('Income recorded')
     setSaving(false)
     setIncomeOpen(false)

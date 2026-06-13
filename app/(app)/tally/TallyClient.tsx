@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, FileCode, Table, BookOpen, Info } from 'lucide-react'
+import { Download, FileCode, Table, BookOpen } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
@@ -105,13 +105,22 @@ export function TallyClient() {
     setBusy(false)
   }
 
-  async function exportLedgers() {
+  // Step 1: full Chart of Accounts — every ledger in the books (with opening
+  // balances) PLUS any party/tax ledgers the period's vouchers reference, so
+  // one import seeds Tally completely and no voucher import ever fails.
+  async function exportMasters() {
     setBusy(true)
     try {
+      const supabase = createClient()
+      const { data: chart } = await supabase.from('ledgers').select('name, parent, opening_balance').order('name')
+      const map = new Map<string, TallyLedger>()
+      for (const l of (chart ?? []) as Row[]) map.set(l.name, { name: l.name, parent: l.parent, opening: Number(l.opening_balance || 0) })
       const { ledgers } = await buildVouchers()
-      if (!ledgers.length) { toast.error('No ledgers to export for that range'); setBusy(false); return }
-      download(`tally-ledgers-${from}_to_${to}.xml`, buildLedgerXml(ledgers, company.trim()), 'application/xml')
-      toast.success(`Exported ${ledgers.length} ledger masters`)
+      for (const l of ledgers) if (!map.has(l.name)) map.set(l.name, l)
+      const all = [...map.values()]
+      if (!all.length) { toast.error('No ledgers yet — add them on the Vouchers page first'); setBusy(false); return }
+      download(`tally-chart-of-accounts.xml`, buildLedgerXml(all, company.trim()), 'application/xml')
+      toast.success(`Exported ${all.length} ledgers`)
     } catch { toast.error('Export failed') }
     setBusy(false)
   }
@@ -128,45 +137,66 @@ export function TallyClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Tally Export" subtitle="Export vouchers & ledgers as Tally XML for your accountant to import" />
+    <div className="space-y-5">
+      <PageHeader title="Tally Export" subtitle="Three simple steps to move your books into Tally" />
 
-      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 space-y-5">
+      {/* STEP 1 — Chart of Accounts (one-time setup) */}
+      <Step n={1} title="Set up Tally once — Chart of Accounts"
+        desc="Sends every ledger (with opening balances) into Tally so it's ready to receive vouchers. Do this once, or again whenever you add new ledgers.">
+        <Button icon={BookOpen} loading={busy} onClick={exportMasters}>Download Chart of Accounts (XML)</Button>
+        <p className="text-[11px] text-[#5a5a7a] mt-2">In Tally: <span className="text-[#8888aa]">Gateway of Tally → Import → Masters</span>, pick this file.</p>
+      </Step>
+
+      {/* STEP 2 — Settings */}
+      <Step n={2} title="Set your details"
+        desc="These tell Tally which bank/cash account the money moved through and how to treat GST. Set once; they're remembered as you export.">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="From" type="date" value={from} onChange={e => setFrom(e.target.value)} />
           <Input label="To" type="date" value={to} onChange={e => setTo(e.target.value)} />
           <Input label="Tally Company Name (optional)" value={company} onChange={e => setCompany(e.target.value)} placeholder="As it appears in Tally" />
           <Input label="Bank / Cash Ledger" value={bankLedger} onChange={e => setBankLedger(e.target.value)} placeholder="e.g. Cash, HDFC Bank" />
           <Select label="GST split" value={gstSplit} onChange={e => setGstSplit(e.target.value as GstSplit)}
-            options={[{ value: 'cgst_sgst', label: 'CGST + SGST (intra-state)' }, { value: 'igst', label: 'IGST (inter-state)' }, { value: 'single', label: 'Single Input/Output GST' }]} />
+            options={[{ value: 'cgst_sgst', label: 'CGST + SGST (local / intra-state)' }, { value: 'igst', label: 'IGST (other state / inter-state)' }, { value: 'single', label: 'Single Input/Output GST' }]} />
           <Input label="TDS Payable Ledger" value={tdsLedger} onChange={e => setTdsLedger(e.target.value)} placeholder="TDS Payable" />
         </div>
+      </Step>
 
+      {/* STEP 3 — Export vouchers */}
+      <Step n={3} title="Export the period's entries"
+        desc="Your approved payments and received income for the dates above, as Tally Payment & Receipt vouchers — GST and TDS already split onto the right ledgers.">
         <div className="flex flex-wrap gap-2">
-          <Button icon={FileCode} loading={busy} onClick={exportXml}>Vouchers XML</Button>
-          <Button variant="secondary" icon={BookOpen} loading={busy} onClick={exportLedgers}>Ledger Masters XML</Button>
-          <Button variant="secondary" icon={Table} loading={busy} onClick={exportCsv}>CSV</Button>
+          <Button icon={FileCode} loading={busy} onClick={exportXml}>Download Vouchers (XML)</Button>
+          <Button variant="secondary" icon={Table} loading={busy} onClick={exportCsv}>CSV (to review)</Button>
         </div>
+        {counts && <div className="text-xs text-emerald-400 mt-2">Last export: {counts.payments} payments + {counts.income} receipts.</div>}
+        <p className="text-[11px] text-[#5a5a7a] mt-2">In Tally: <span className="text-[#8888aa]">Gateway of Tally → Import → Vouchers</span>, pick this file. (Import the Chart of Accounts first.)</p>
+      </Step>
 
-        {counts && (
-          <div className="text-xs text-[#8888aa]">Last export: {counts.payments} Payment + {counts.income} Receipt vouchers.</div>
-        )}
-      </div>
-
-      {/* How to import */}
+      {/* Plain-language explainer */}
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
-        <div className="flex items-center gap-2 mb-3"><Download size={15} className="text-white/70" /><h3 className="text-sm font-semibold text-white">How your accountant imports this</h3></div>
-        <ol className="text-xs text-[#c8c8da] space-y-1.5 list-decimal pl-4 leading-relaxed">
-          <li>First import <span className="text-white">Ledger Masters XML</span> (so every party/ledger exists), then the <span className="text-white">Vouchers XML</span>.</li>
-          <li>In Tally: <span className="text-white">Gateway of Tally → Import Data → Vouchers</span> (TallyPrime) / <span className="text-white">Import of Data</span> (ERP 9), pick the file, confirm.</li>
-          <li>Payments post as <span className="text-white">Payment vouchers</span> (party debited, {bankLedger || 'Bank/Cash'} credited); income as <span className="text-white">Receipt vouchers</span>.</li>
-          <li>Review the imported vouchers in Tally before finalising — re-map any ledger to the correct group/head as needed.</li>
-        </ol>
-        <div className="mt-3 flex items-start gap-2 text-[11px] text-[#8888aa] bg-[#1a1a24] rounded-xl p-3">
-          <Info size={13} className="mt-0.5 shrink-0 text-amber-400" />
-          <span>Each payment posts the full GST/TDS breakup: base to the party, GST to Input {gstSplit === 'igst' ? 'IGST' : gstSplit === 'single' ? 'GST' : 'CGST/SGST'}, TDS to “{tdsLedger}”, net to {bankLedger || 'bank/cash'}. Income posts base + Output GST. Check the GST split (intra vs inter-state) matches the invoices before importing.</span>
+        <div className="flex items-center gap-2 mb-2"><Download size={15} className="text-white/70" /><h3 className="text-sm font-semibold text-white">What lands in Tally</h3></div>
+        <p className="text-xs text-[#c8c8da] leading-relaxed">
+          Each <span className="text-white">payment</span> becomes a Payment voucher: the vendor is debited with the base amount, GST goes to
+          {' '}<span className="text-white">Input {gstSplit === 'igst' ? 'IGST' : gstSplit === 'single' ? 'GST' : 'CGST/SGST'}</span>, TDS to <span className="text-white">{tdsLedger}</span>,
+          and the net paid is credited to <span className="text-white">{bankLedger || 'your bank/cash'}</span>. Each <span className="text-white">receipt</span> credits the income ledger plus Output GST.
+          Everything balances Dr = Cr. Always review in Tally before finalising.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function Step({ n, title, desc, children }: { n: number; title: string; desc: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-7 h-7 rounded-full bg-white text-black text-sm font-bold flex items-center justify-center shrink-0">{n}</div>
+        <div>
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          <p className="text-xs text-[#8888aa] mt-0.5 leading-relaxed">{desc}</p>
         </div>
       </div>
+      <div className="pl-10">{children}</div>
     </div>
   )
 }

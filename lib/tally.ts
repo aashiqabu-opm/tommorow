@@ -13,7 +13,7 @@ export interface TallyVoucher {
   lines: TallyLine[]           // every Dr/Cr leg; should net to zero
 }
 
-export interface TallyLedger { name: string; parent: string }
+export interface TallyLedger { name: string; parent: string; opening?: number }
 
 function esc(s: string): string {
   return String(s ?? '')
@@ -76,7 +76,7 @@ export function buildLedgerXml(ledgers: TallyLedger[], company = ''): string {
   const msgs = ledgers.map(l => `        <TALLYMESSAGE xmlns:UDF="TallyUDF">
           <LEDGER NAME="${esc(l.name)}" ACTION="Create">
             <NAME>${esc(l.name)}</NAME>
-            <PARENT>${esc(l.parent)}</PARENT>
+            <PARENT>${esc(l.parent)}</PARENT>${l.opening && Number(l.opening) !== 0 ? `\n            <OPENINGBALANCE>${amt(l.opening)}</OPENINGBALANCE>` : ''}
           </LEDGER>
         </TALLYMESSAGE>`).join('\n')
   return envelope(company, 'All Masters', msgs)

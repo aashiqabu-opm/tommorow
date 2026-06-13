@@ -41,7 +41,7 @@ export function VouchersClient({ ledgers, vouchers, userId }: Props) {
 
   // ── Ledger master modal ──
   const [ledgerOpen, setLedgerOpen] = useState(false)
-  const [ledgerForm, setLedgerForm] = useState({ name: '', parent: 'Sundry Creditors' })
+  const [ledgerForm, setLedgerForm] = useState({ name: '', parent: 'Sundry Creditors', opening: '' })
   const [ledgerSaving, setLedgerSaving] = useState(false)
 
   const ledgerOptions = useMemo(() => [{ value: '', label: 'Select ledger…' }, ...ledgers.map(l => ({ value: l.name, label: `${l.name} (${l.parent})` }))], [ledgers])
@@ -60,14 +60,14 @@ export function VouchersClient({ ledgers, vouchers, userId }: Props) {
     if (!ledgerForm.name.trim()) return toast.error('Enter a ledger name')
     setLedgerSaving(true)
     const supabase = createClient()
-    const { data, error } = await supabase.from('ledgers').insert({ name: ledgerForm.name.trim(), parent: ledgerForm.parent, created_by: userId }).select().single()
+    const { data, error } = await supabase.from('ledgers').insert({ name: ledgerForm.name.trim(), parent: ledgerForm.parent, opening_balance: parseFloat(ledgerForm.opening) || 0, created_by: userId }).select().single()
     if (error) {
       const hint = /relation .*ledgers.* does not exist/i.test(error.message) ? 'run migration-vouchers.sql first' : /duplicate|unique/i.test(error.message) ? 'a ledger with that name already exists' : error.message
       toast.error(`Couldn't add — ${String(hint).slice(0, 80)}`); setLedgerSaving(false); return
     }
     if (data) await logAction('create', 'ledgers', data.id, undefined, data)
     toast.success('Ledger added')
-    setLedgerSaving(false); setLedgerOpen(false); setLedgerForm({ name: '', parent: 'Sundry Creditors' })
+    setLedgerSaving(false); setLedgerOpen(false); setLedgerForm({ name: '', parent: 'Sundry Creditors', opening: '' })
     router.refresh()
   }
 
@@ -203,6 +203,7 @@ export function VouchersClient({ ledgers, vouchers, userId }: Props) {
         <form onSubmit={saveLedger} className="space-y-4">
           <Input label="Ledger Name *" value={ledgerForm.name} onChange={e => setLedgerForm({ ...ledgerForm, name: e.target.value })} placeholder="e.g. ABC Studios" />
           <Select label="Under Group (Tally)" value={ledgerForm.parent} onChange={e => setLedgerForm({ ...ledgerForm, parent: e.target.value })} options={TALLY_GROUPS.map(g => ({ value: g, label: g }))} />
+          <Input label="Opening Balance (optional)" type="number" value={ledgerForm.opening} onChange={e => setLedgerForm({ ...ledgerForm, opening: e.target.value })} placeholder="0" hint="Positive = Debit balance, negative = Credit" />
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" icon={X} onClick={() => setLedgerOpen(false)}>Cancel</Button>
             <Button type="submit" loading={ledgerSaving} icon={Plus}>Add</Button>

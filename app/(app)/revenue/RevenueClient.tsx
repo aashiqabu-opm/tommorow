@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus, TrendingUp, Hourglass, Download, Wallet } from 'lucide-react'
+import { Plus, TrendingUp, Hourglass, Download, Wallet, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -23,6 +23,7 @@ interface Props {
   income: Row[]
   projects: { id: string; name: string }[]
   userId: string
+  role: string
 }
 
 const INITIAL = {
@@ -45,11 +46,14 @@ function fyStart(): string {
   return `${year}-04-01`
 }
 
-export function RevenueClient({ income, projects, userId }: Props) {
+export function RevenueClient({ income, projects, userId, role }: Props) {
   const router = useRouter()
   const toast = useToast()
+  const canDelete = role === 'founder' || role === 'accountant'
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [editing, setEditing] = useState<Row | null>(null)
   const [form, setForm] = useState(INITIAL)
   const [projectFilter, setProjectFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -68,13 +72,37 @@ export function RevenueClient({ income, projects, userId }: Props) {
   const fy = fyStart()
   const collectedFY = received.filter(r => (r.income_date ?? '') >= fy).reduce((s, r) => s + (r.amount ?? 0), 0)
 
+  function openNew() {
+    setEditing(null)
+    setForm(INITIAL)
+    setOpen(true)
+  }
+
+  function openEdit(r: Row) {
+    setEditing(r)
+    setForm({
+      project_id: r.project_id ?? '',
+      source: r.source ?? 'theatrical',
+      status: r.status ?? 'received',
+      party: r.party ?? '',
+      territory: r.territory ?? '',
+      gross_amount: r.gross_amount != null ? String(r.gross_amount) : '',
+      commission_amount: r.commission_amount != null ? String(r.commission_amount) : '',
+      amount: r.amount != null ? String(r.amount) : '',
+      income_date: r.income_date ?? new Date().toISOString().split('T')[0],
+      expected_date: r.expected_date ?? '',
+      notes: r.notes ?? '',
+    })
+    setOpen(true)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.project_id) return toast.error('Select a project')
     if (!form.amount) return toast.error('Enter the net amount')
     setSaving(true)
     const supabase = createClient()
-    const { data, error } = await supabase.from('project_income').insert({
+    const payload = {
       project_id: form.project_id,
       source: form.source,
       status: form.status,
@@ -86,14 +114,37 @@ export function RevenueClient({ income, projects, userId }: Props) {
       income_date: form.income_date,
       expected_date: form.status === 'receivable' ? (form.expected_date || null) : null,
       notes: form.notes || null,
-      recorded_by: userId,
-    }).select().single()
-    if (error) { toast.error("Couldn't save — try again"); setSaving(false); return }
-    if (data) await logAction('create', 'project_income', data.id, undefined, data)
-    toast.success('Revenue recorded')
+    }
+    if (editing) {
+      const { data, error } = await supabase.from('project_income').update(payload).eq('id', editing.id).select().single()
+      if (error) { toast.error("Couldn't update — try again"); setSaving(false); return }
+      if (data) await logAction('update', 'project_income', editing.id, editing, data)
+      toast.success('Revenue updated')
+    } else {
+      const { data, error } = await supabase.from('project_income').insert({ ...payload, recorded_by: userId }).select().single()
+      if (error) { toast.error("Couldn't save — try again"); setSaving(false); return }
+      if (data) await logAction('create', 'project_income', data.id, undefined, data)
+      toast.success('Revenue recorded')
+    }
     setSaving(false)
     setOpen(false)
+    setEditing(null)
     setForm(INITIAL)
+    router.refresh()
+  }
+
+  async function handleDelete() {
+    if (!editing) return
+    if (!window.confirm(`Delete this ${REVENUE_SOURCE_LABELS[editing.source] ?? 'revenue'} entry of ${formatCurrency(editing.amount)}? This cannot be undone.`)) return
+    setDeleting(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('project_income').delete().eq('id', editing.id)
+    if (error) { toast.error("Couldn't delete — try again"); setDeleting(false); return }
+    await logAction('delete', 'project_income', editing.id, editing, undefined)
+    toast.success('Revenue entry deleted')
+    setDeleting(false)
+    setOpen(false)
+    setEditing(null)
     router.refresh()
   }
 
@@ -123,7 +174,7 @@ export function RevenueClient({ income, projects, userId }: Props) {
       <PageHeader
         title="Revenue"
         subtitle="Collections, distributor settlements & rights income"
-        action={<Button icon={Plus} onClick={() => { setForm(INITIAL); setOpen(true) }}>Record Revenue</Button>}
+        action={<Button icon={Plus} onClick={openNew}>Record Revenue</Button>}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -159,13 +210,13 @@ export function RevenueClient({ income, projects, userId }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-[#2a2a3a]">
-              {['Date', 'Project', 'Type', 'Party', 'Gross', 'Commission', 'Net', 'Status'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-[11px] font-medium text-[#8888aa] uppercase tracking-wider whitespace-nowrap">{h}</th>
+              {['Date', 'Project', 'Type', 'Party', 'Gross', 'Commission', 'Net', 'Status', ''].map((h, i) => (
+                <th key={i} className="px-4 py-3 text-left text-[11px] font-medium text-[#8888aa] uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
             </tr></thead>
             <tbody className="divide-y divide-[#2a2a3a]">
-              {rows.map((r, i) => (
-                <tr key={i} className="hover:bg-[#1a1a24]">
+              {rows.map((r) => (
+                <tr key={r.id} className="hover:bg-[#1a1a24]">
                   <td className="px-4 py-3 text-[#8888aa] whitespace-nowrap">{formatDate(r.income_date)}</td>
                   <td className="px-4 py-3 text-white whitespace-nowrap">{r.project?.name ?? '—'}</td>
                   <td className="px-4 py-3 text-[#c8c8da] whitespace-nowrap">{REVENUE_SOURCE_LABELS[r.source] ?? r.source}</td>
@@ -178,10 +229,15 @@ export function RevenueClient({ income, projects, userId }: Props) {
                       ? <StatusBadge label="Received" variant="green" />
                       : <StatusBadge label="Receivable" variant="yellow" />}
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={() => openEdit(r)} className="text-[#8888aa] hover:text-white" title="Edit / correct">
+                      <Pencil size={14} />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-[#8888aa] text-sm">No revenue recorded{(projectFilter || typeFilter || statusFilter) ? ' for this filter' : ' yet'}.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-[#8888aa] text-sm">No revenue recorded{(projectFilter || typeFilter || statusFilter) ? ' for this filter' : ' yet'}.</td></tr>
               )}
             </tbody>
           </table>
@@ -189,7 +245,7 @@ export function RevenueClient({ income, projects, userId }: Props) {
       </div>
 
       {/* Record Revenue Modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title="Record Revenue" size="lg">
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Revenue' : 'Record Revenue'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <Select label="Project *" value={form.project_id} onChange={e => setForm({ ...form, project_id: e.target.value })}
@@ -217,9 +273,14 @@ export function RevenueClient({ income, projects, userId }: Props) {
             <Input label="Expected Collection Date" type="date" value={form.expected_date} onChange={e => setForm({ ...form, expected_date: e.target.value })} />
           )}
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving}>Save Revenue</Button>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            {editing && canDelete ? (
+              <Button variant="ghost" type="button" icon={Trash2} loading={deleting} onClick={handleDelete} className="text-red-400 hover:text-red-300">Delete</Button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" loading={saving}>{editing ? 'Save Changes' : 'Save Revenue'}</Button>
+            </div>
           </div>
         </form>
       </Modal>

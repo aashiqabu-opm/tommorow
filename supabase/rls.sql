@@ -84,6 +84,23 @@ CREATE POLICY "cash_delete_finance" ON cash_entries
   FOR DELETE TO authenticated USING (public.is_finance());
 
 -- ─────────────────────────────────────────────
+-- PROJECT INCOME / REVENUE (Finance only)
+-- ─────────────────────────────────────────────
+ALTER TABLE project_income ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "income_read_finance" ON project_income
+  FOR SELECT TO authenticated USING (public.is_finance());
+
+CREATE POLICY "income_insert_finance" ON project_income
+  FOR INSERT TO authenticated WITH CHECK (public.is_finance());
+
+CREATE POLICY "income_update_finance" ON project_income
+  FOR UPDATE TO authenticated USING (public.is_finance());
+
+CREATE POLICY "income_delete_finance" ON project_income
+  FOR DELETE TO authenticated USING (public.is_finance());
+
+-- ─────────────────────────────────────────────
 -- LIABILITIES (Finance only)
 -- ─────────────────────────────────────────────
 ALTER TABLE liabilities ENABLE ROW LEVEL SECURITY;

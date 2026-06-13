@@ -20,6 +20,7 @@ export default async function RevenuePage() {
       income={income ?? []}
       projects={projects ?? []}
       userId={profile.id}
+      role={profile.role}
     />
   )
 }

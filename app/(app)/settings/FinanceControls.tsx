@@ -9,7 +9,7 @@ export async function FinanceControls({ role }: { role: string }) {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
 
   const [{ data: settings }, { count }] = await Promise.all([
-    supabase.from('app_settings').select('key, value').in('key', ['books_locked_through', 'ai_monthly_cap', 'tally_bank_ledger', 'tally_gst_split', 'tally_tds_ledger']),
+    supabase.from('app_settings').select('key, value').in('key', ['books_locked_through', 'ai_monthly_cap', 'tally_bank_ledger', 'tally_gst_split', 'tally_tds_ledger', 'approval_limit']),
     supabase.from('ai_usage').select('*', { count: 'exact', head: true }).gte('created_at', monthStart),
   ])
   const byKey = Object.fromEntries((settings ?? []).map(s => [s.key, s.value]))
@@ -22,6 +22,7 @@ export async function FinanceControls({ role }: { role: string }) {
       bankLedger={byKey['tally_bank_ledger'] ?? 'Cash'}
       gstSplit={byKey['tally_gst_split'] ?? 'cgst_sgst'}
       tdsLedger={byKey['tally_tds_ledger'] ?? 'TDS Payable'}
+      approvalLimit={byKey['approval_limit'] ?? ''}
       canEdit={role === 'founder'}
     />
   )

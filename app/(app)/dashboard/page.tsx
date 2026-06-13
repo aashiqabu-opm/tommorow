@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { BarChart } from '@/components/ui/BarChart'
 import { formatCurrency, formatDate, paidPercent, cn } from '@/lib/utils'
 import { fundingMetrics } from '@/lib/funding'
+import { Watchlist } from './Watchlist'
 import type { ProjectFunding } from '@/lib/types'
 import { Coins, Percent } from 'lucide-react'
 import Link from 'next/link'
@@ -118,6 +119,9 @@ export default async function DashboardPage() {
         <h1 className="text-xl font-bold text-white">Company Overview</h1>
         <p className="text-sm text-[#8888aa] mt-0.5">Everything at a glance</p>
       </div>
+
+      {/* Proactive watchlist — finance only */}
+      {isFinance && <Watchlist />}
 
       {/* Finance Stats — Founder/Accountant only */}
       {isFinance && (

@@ -26,6 +26,7 @@ interface Props {
   comments: Comment[]
   userId: string
   role: string
+  approvalLimit: number
   vendors: { id: string; name: string; pan?: string | null }[]
   budgetLines: { id: string; project_id: string; section: string; head: string }[]
 }
@@ -49,7 +50,7 @@ const INITIAL_FORM = {
   budget_line_id: '',
 }
 
-export function PaymentsClient({ requests, projects, comments, vendors, budgetLines, userId, role }: Props) {
+export function PaymentsClient({ requests, projects, comments, vendors, budgetLines, userId, role, approvalLimit }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [open, setOpen] = useState(false)
@@ -76,7 +77,9 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
   const isAccountant = role === 'accountant'
   const canCreate = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
   const canVerify = isFounder || isAccountant
-  const canApprove = isFounder
+  // Founder approves anything; with an approval limit set, the accountant can
+  // approve payments at or under it. Bigger ones still need the founder.
+  const canApproveReq = (amount: number) => isFounder || (isAccountant && approvalLimit > 0 && amount <= approvalLimit)
 
   const filtered = requests.filter(r => {
     if (activeTab === 'pending') return r.approval_status === 'pending'
@@ -606,11 +609,15 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
                         <button onClick={() => setRejectTarget({ req, stage: 'verify' })} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"><XCircle size={12} /> Reject</button>
                       </>
                     )}
-                    {canApprove && req.verification_status === 'verified' && req.approval_status === 'pending' && (
-                      <>
-                        <button onClick={() => handleApprove(req)} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"><CheckCircle size={12} /> Approve</button>
-                        <button onClick={() => setRejectTarget({ req, stage: 'approve' })} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"><XCircle size={12} /> Reject</button>
-                      </>
+                    {req.verification_status === 'verified' && req.approval_status === 'pending' && (
+                      canApproveReq(req.amount) ? (
+                        <>
+                          <button onClick={() => handleApprove(req)} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"><CheckCircle size={12} /> Approve</button>
+                          <button onClick={() => setRejectTarget({ req, stage: 'approve' })} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"><XCircle size={12} /> Reject</button>
+                        </>
+                      ) : isAccountant ? (
+                        <span className="text-[11px] text-amber-400">Founder approval required</span>
+                      ) : null
                     )}
                     {canVerify && req.approval_status === 'approved' && req.payment_status === 'unpaid' && (
                       <button onClick={() => handleMarkPaid(req)} className="text-xs text-white/70 hover:text-white flex items-center gap-1"><CheckCircle size={12} /> Mark Paid</button>

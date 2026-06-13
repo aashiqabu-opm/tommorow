@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Lock, Unlock, Sparkles, AlertCircle, NotebookPen } from 'lucide-react'
+import { Lock, Unlock, Sparkles, AlertCircle, NotebookPen, Download } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
@@ -10,9 +10,9 @@ import { logAction } from '@/lib/audit'
 import { formatDate } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
-interface Props { lockedThrough: string; aiCap: string; aiUsed: number; bankLedger: string; gstSplit: string; tdsLedger: string; canEdit: boolean }
+interface Props { lockedThrough: string; aiCap: string; aiUsed: number; bankLedger: string; gstSplit: string; tdsLedger: string; approvalLimit: string; canEdit: boolean }
 
-export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, bankLedger, gstSplit, tdsLedger, canEdit }: Props) {
+export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, bankLedger, gstSplit, tdsLedger, approvalLimit, canEdit }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [lockDate, setLockDate] = useState(lockedThrough)
@@ -20,6 +20,7 @@ export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, bankLedger
   const [bank, setBank] = useState(bankLedger)
   const [split, setSplit] = useState(gstSplit)
   const [tds, setTds] = useState(tdsLedger)
+  const [limit, setLimit] = useState(approvalLimit)
   const [busy, setBusy] = useState('')
 
   async function setSetting(key: string, value: string, label: string) {
@@ -33,6 +34,21 @@ export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, bankLedger
     await logAction('update', 'app_settings', key, undefined, { value })
     toast.success(label)
     setBusy(''); router.refresh()
+  }
+
+  const BACKUP_TABLES = ['projects', 'payment_requests', 'project_income', 'cash_entries', 'liabilities', 'vendors', 'bank_accounts', 'bank_transactions', 'ledgers', 'vouchers', 'voucher_entries', 'budget_lines', 'project_funding', 'staff_salaries', 'documents', 'profiles']
+  async function downloadBackup() {
+    setBusy('backup')
+    const supabase = createClient()
+    const out: Record<string, unknown> = { exported_at: new Date().toISOString() }
+    for (const t of BACKUP_TABLES) {
+      const { data } = await supabase.from(t).select('*').limit(10000)
+      out[t] = data ?? []
+    }
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }))
+    a.download = `opm-office-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(a.href)
+    toast.success('Backup downloaded'); setBusy('')
   }
 
   const capNum = parseInt(cap) || 0
@@ -85,6 +101,27 @@ export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, bankLedger
             <Button size="sm" loading={busy === 'ai_monthly_cap'} onClick={() => setSetting('ai_monthly_cap', cap, cap ? `Cap set to ${cap}` : 'Cap removed')}>Save</Button>
           </div>
         ) : <p className="text-[11px] text-[#5a5a7a]">Only the founder can change the cap.</p>}
+      </div>
+
+      {/* Payment approval limit */}
+      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-1"><Lock size={15} className="text-white/60" /><h3 className="text-sm font-semibold text-white">Approval Limit</h3></div>
+        <p className="text-xs text-[#8888aa] leading-relaxed mb-3">The accountant can approve payments up to this amount; anything larger needs the founder. Leave blank to keep approvals founder-only.</p>
+        {canEdit ? (
+          <div className="flex gap-2 items-end">
+            <Input type="number" value={limit} onChange={e => setLimit(e.target.value)} label="Accountant can approve up to (₹)" placeholder="founder-only" />
+            <Button size="sm" loading={busy === 'approval_limit'} onClick={() => setSetting('approval_limit', limit, limit ? `Accountant may approve up to ${Number(limit).toLocaleString('en-IN')}` : 'Approvals are founder-only')}>Save</Button>
+          </div>
+        ) : <p className="text-[11px] text-[#5a5a7a]">Only the founder can set this.</p>}
+      </div>
+
+      {/* Data backup */}
+      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-1"><Download size={15} className="text-white/60" /><h3 className="text-sm font-semibold text-white">Data Backup</h3></div>
+        <p className="text-xs text-[#8888aa] leading-relaxed mb-3">Download a full snapshot of your data (projects, payments, income, ledgers, vouchers, bank, documents) as a JSON file. Keep a copy off-platform.</p>
+        {canEdit
+          ? <Button size="sm" icon={Download} loading={busy === 'backup'} onClick={downloadBackup}>Download backup (JSON)</Button>
+          : <p className="text-[11px] text-[#5a5a7a]">Only the founder can export a backup.</p>}
       </div>
 
       {/* Auto-voucher defaults (used when payments/income become vouchers) */}

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/ai-briefing",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "30 2 * * 1"
     }
   ]
 }

@@ -71,8 +71,15 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
+export const TEAM_GROUP_LABELS: Record<string, string> = {
+  pre_production: 'Pre-Production',
+  production: 'Production',
+  post_production: 'Post-Production',
+}
+
 export const PROJECT_ROLE_LABELS: Record<string, string> = {
   director: 'Director',
+  dop: 'Director of Photography (DOP)',
   executive_producer: 'Executive Producer',
   general_manager: 'General Manager',
   finance_controller: 'Finance Controller (Head of Finance)',
@@ -101,6 +108,7 @@ export const PROJECT_ROLE_LABELS: Record<string, string> = {
 // Management app-roles (founder/accountant/GM/EP) see everything regardless.
 export const PROJECT_ROLE_CAPS: Record<string, { pettyCash?: boolean; payments?: boolean; dpr?: boolean; vehicles?: boolean; fullView?: boolean }> = {
   director:              { dpr: true, fullView: true },
+  dop:                   { fullView: true },
   executive_producer:    { payments: true, dpr: true, vehicles: true, fullView: true },
   general_manager:       { payments: true, dpr: true, vehicles: true, fullView: true },
   finance_controller:    { pettyCash: true, payments: true, fullView: true },

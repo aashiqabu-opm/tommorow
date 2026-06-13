@@ -15,7 +15,7 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, DOCUMENT_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew, ProductionReport, ProjectMember, ProjectCheckin, PhaseTask, BoxOfficeCollection, MonitoringFinding, CampaignAsset } from '@/lib/types'
+import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew, ProductionReport, ProjectMember, ProjectCheckin, ProjectMessage, PhaseTask, BoxOfficeCollection, MonitoringFinding, CampaignAsset } from '@/lib/types'
 import { PhaseTracker } from './PhaseTracker'
 import { CollectionsSection } from './CollectionsSection'
 import { CampaignSection } from './CampaignSection'
@@ -26,6 +26,7 @@ import { PettyCashSection } from './PettyCashSection'
 import { CrewLedgerSection } from './CrewLedgerSection'
 import { ProductionReportSection } from './ProductionReportSection'
 import { ProjectTeamSection } from './ProjectTeamSection'
+import { ProjectChannelSection } from './ProjectChannelSection'
 import { ProjectCheckinSection } from './ProjectCheckinSection'
 import { ProjectDocsSection } from './ProjectDocsSection'
 import { useRouter } from 'next/navigation'
@@ -48,7 +49,7 @@ interface Props {
   dprs: ProductionReport[]
   members: ProjectMember[]
   checkins: ProjectCheckin[]
-  allProfiles: { id: string; full_name: string; email: string; role: string }[]
+  messages: ProjectMessage[]
   phaseTasks: PhaseTask[]
   collections: BoxOfficeCollection[]
   findings: MonitoringFinding[]
@@ -77,12 +78,14 @@ const INCOME_SOURCES = [
   { value: 'other', label: 'Other' },
 ]
 
-export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, dprs, members, checkins, allProfiles, phaseTasks, collections, findings, campaignAssets, extraSpentByLine, userId, role }: Props) {
+export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, dprs, members, checkins, messages, phaseTasks, collections, findings, campaignAssets, extraSpentByLine, userId, role }: Props) {
   const isFinance = ['founder', 'accountant'].includes(role)
   const isManagement = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
   const canManageTeam = ['founder', 'general_manager', 'executive_producer'].includes(role)
   const isProjectMember = members.some(m => m.user_id === userId)
-  const canCheckin = isManagement || isProjectMember
+  // Crew log in as 'staff' and are matched to the project by email (user_id may
+  // be null), and RLS only lets members load this page — so staff here can post.
+  const canCheckin = isManagement || isProjectMember || role === 'staff'
   const budgetHeads = budgetLines.map(l => ({ id: l.id, section: l.section, head: l.head }))
   const router = useRouter()
   const toast = useToast()
@@ -363,10 +366,12 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
       <ProjectTeamSection
         projectId={project.id}
         members={members}
-        candidates={allProfiles}
         userId={userId}
         canManage={canManageTeam}
       />
+
+      {/* Team communication channel — everyone on the project */}
+      <ProjectChannelSection projectId={project.id} messages={messages} userId={userId} role={role} canPost={canCheckin} />
 
       {/* Film Budget & Cost Report (finance only) */}
       {isFinance && (

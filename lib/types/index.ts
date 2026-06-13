@@ -3,6 +3,7 @@ export type Role = 'founder' | 'accountant' | 'general_manager' | 'executive_pro
 // Per-project core-team roles (stored on project_members.project_role)
 export type ProjectRole =
   | 'director'
+  | 'dop'
   | 'executive_producer'
   | 'general_manager'
   | 'finance_controller'
@@ -29,13 +30,26 @@ export type ProjectRole =
 export interface ProjectMember {
   id: string
   project_id: string
-  user_id: string
+  user_id: string | null
   project_role: ProjectRole
   title?: string | null
+  team_group?: 'pre_production' | 'production' | 'post_production'
+  member_name?: string | null
+  member_email?: string | null
+  member_phone?: string | null
   added_by?: string | null
   created_at: string
-  // joined
+  // joined (present only when user_id links an app user)
   profile?: { id: string; full_name: string; email: string; role: Role } | null
+}
+
+export interface ProjectMessage {
+  id: string
+  project_id: string
+  author_id: string
+  body: string
+  created_at: string
+  author?: { full_name: string; role: Role } | null
 }
 
 export type ProjectPhase = 'development' | 'production' | 'post_production' | 'distribution' | 'release'

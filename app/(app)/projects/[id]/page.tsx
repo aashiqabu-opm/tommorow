@@ -79,11 +79,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   if (!project) notFound()
 
-  // Roster of users that management can add to the team
-  const canManageTeam = ['founder', 'general_manager', 'executive_producer'].includes(profile.role)
-  const { data: allProfiles } = canManageTeam
-    ? await supabase.from('profiles').select('id, full_name, email, role').eq('is_active', true).order('full_name')
-    : { data: [] }
+  // Per-project communication channel (visible to the team)
+  const { data: messages } = await supabase.from('project_messages')
+    .select('*, author:profiles!author_id(full_name, role)')
+    .eq('project_id', id).order('created_at', { ascending: true }).limit(200)
 
   // Petty-cash expenses and crew payments coded to a budget head feed the cost report's "Spent"
   const extraSpentByLine: Record<string, number> = {}
@@ -112,7 +111,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       dprs={dprs ?? []}
       members={members ?? []}
       checkins={checkins ?? []}
-      allProfiles={allProfiles ?? []}
+      messages={messages ?? []}
       phaseTasks={phaseTasks ?? []}
       collections={collections ?? []}
       findings={findings ?? []}

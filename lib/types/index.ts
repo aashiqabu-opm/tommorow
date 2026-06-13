@@ -478,3 +478,50 @@ export interface ProductionReport {
   created_at: string
   updated_at: string
 }
+
+export type VehicleType = 'car' | 'van' | 'bus' | 'truck' | 'camera_vehicle' | 'generator' | 'bike' | 'other'
+export type VehicleLogType = 'trip' | 'fuel' | 'service'
+
+export interface Vehicle {
+  id: string
+  reg_number: string
+  name?: string | null
+  vehicle_type: VehicleType
+  ownership: 'owned' | 'hired'
+  owner_name?: string | null
+  hire_rate?: number | null
+  hire_basis?: 'day' | 'km' | 'month' | 'trip' | null
+  driver_name?: string | null
+  driver_phone?: string | null
+  project_id?: string | null
+  status: 'active' | 'inactive'
+  notes?: string | null
+  created_by?: string
+  created_at: string
+  updated_at: string
+  logs?: VehicleLog[]
+  project?: { name?: string } | null
+}
+
+export interface VehicleLog {
+  id: string
+  vehicle_id: string
+  log_date: string
+  type: VehicleLogType
+  odometer_start?: number | null
+  odometer_end?: number | null
+  km?: number | null
+  fuel_litres?: number | null
+  amount: number
+  purpose?: string | null
+  driver_name?: string | null
+  project_id?: string | null
+  notes?: string | null
+  created_by?: string
+  created_at: string
+}
+
+export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
+  car: 'Car', van: 'Van', bus: 'Bus', truck: 'Truck',
+  camera_vehicle: 'Camera Vehicle', generator: 'Generator', bike: 'Bike', other: 'Other',
+}

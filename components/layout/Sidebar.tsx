@@ -20,6 +20,7 @@ import {
   TrendingUp,
   LineChart,
   Receipt,
+  Car,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -40,6 +41,7 @@ const navItems = [
   { href: '/liabilities', label: 'Liabilities', icon: AlertTriangle, roles: ['founder', 'accountant'] },
   { href: '/payroll', label: 'Payroll', icon: HandCoins, roles: ['founder', 'accountant'] },
   { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
+  { href: '/vehicles', label: 'Vehicles', icon: Car, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
   { href: '/revenue', label: 'Revenue', icon: TrendingUp, roles: ['founder', 'accountant'] },
   { href: '/forecast', label: 'Forecast', icon: LineChart, roles: ['founder', 'accountant'] },
   { href: '/compliance', label: 'Tax & Compliance', icon: Receipt, roles: ['founder', 'accountant'] },

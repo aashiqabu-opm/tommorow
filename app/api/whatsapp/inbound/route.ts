@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
+// Short human-friendly reference for a request id (last 6 hex chars)
+const idCode = (id: string) => id.replace(/-/g, '').slice(-6).toUpperCase()
 const xml = (body: string) => new Response(body, { headers: { 'Content-Type': 'text/xml; charset=utf-8' } })
 
 // Twilio WhatsApp inbound webhook. A bill photo/PDF becomes a DRAFT payment
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
     } catch { /* storage optional */ }
 
     const amount = bill?.amount ?? 0
-    await admin.from('payment_requests').insert({
+    const { data: created } = await admin.from('payment_requests').insert({
       project_id: proj.id,
       requested_by: profile.id,
       payee: bill?.vendor_name ?? (body || 'Unknown vendor'),
@@ -89,7 +91,8 @@ export async function POST(req: Request) {
       approval_status: 'pending',
       payment_status: 'unpaid',
       notes: 'Submitted via WhatsApp',
-    })
+    }).select('id').single()
+    const code = created ? idCode(created.id) : ''
 
     const who = bill?.vendor_name ? ` for ${bill.vendor_name}` : ''
     const amt = amount ? inr(amount) : 'amount unreadable'
@@ -98,7 +101,8 @@ export async function POST(req: Request) {
     const payeeLabel = bill?.vendor_name ?? (body || 'a vendor')
     const approvers = (profiles ?? []).filter(p =>
       p.is_active && p.id !== profile.id && ['founder', 'accountant'].includes(p.role))
-    const waText = `🧾 New bill via WhatsApp from ${profile.full_name}: ${payeeLabel} (${amt}) under "${proj.name}". Review & approve in OPM Office.`
+    const waText = `🧾 New bill via WhatsApp from ${profile.full_name}: ${payeeLabel} (${amt}) under "${proj.name}". Review & approve in OPM Office.` +
+      (code ? `\nTo decline, reply: REJECT ${code}` : '')
     const html = emailTemplate('New WhatsApp bill to review',
       `<p style="margin:0 0 8px;"><strong>${profile.full_name}</strong> submitted a bill via WhatsApp.</p>` +
       `<p style="margin:0;">Payee: ${payeeLabel}<br/>Amount: ${amt}<br/>Project: ${proj.name}</p>` +
@@ -120,8 +124,41 @@ export async function POST(req: Request) {
   if (!body || cmd === 'help' || cmd === 'hi' || cmd === 'hello') {
     return xml(twimlMessage(
       'OPM Office on WhatsApp:\n• Send a bill photo or PDF → I draft a payment for approval.' +
-      (isFinance ? "\n• Text 'cash' — current cash & bank\n• Text 'pending' — approvals waiting" : '')
+      (isFinance ? "\n• Text 'cash' — current cash & bank\n• Text 'pending' — approvals waiting\n• Reply 'REJECT <code>' to decline a draft" : '')
     ))
+  }
+
+  // Reject a pending request by its reference code (approving stays in-app only)
+  const rejectMatch = body.match(/^(?:reject|decline|no)\s+([a-z0-9]{4,8})\b\s*(.*)/i)
+  if (rejectMatch) {
+    if (!isFinance) return xml(twimlMessage('Only finance approvers can reject payment requests.'))
+    const code = rejectMatch[1].toUpperCase()
+    const reason = (rejectMatch[2] ?? '').trim()
+    const { data: pend } = await admin.from('payment_requests')
+      .select('id, payee, amount, requested_by').eq('approval_status', 'pending')
+    const target = (pend ?? []).find(r => idCode(r.id) === code)
+    if (!target) return xml(twimlMessage(`No pending request matching code ${code}. It may already be actioned.`))
+
+    const update = { approval_status: 'rejected', approved_by: profile.id, approved_at: new Date().toISOString() }
+    await admin.from('payment_requests').update(update).eq('id', target.id)
+    await admin.from('audit_logs').insert({
+      user_id: profile.id, action: 'update', entity_type: 'payment_requests', entity_id: target.id,
+      old_values: { approval_status: 'pending' }, new_values: update,
+    })
+    if (reason) {
+      await admin.from('comments').insert({
+        entity_type: 'payment_requests', entity_id: target.id, user_id: profile.id,
+        content: `Rejected via WhatsApp: ${reason}`,
+      })
+    }
+    // Tell the submitter
+    const submitter = (profiles ?? []).find(p => p.id === target.requested_by)
+    if (submitter && submitter.id !== profile.id) {
+      const msg = `❌ Your payment request — ${target.payee} (${inr(Number(target.amount))}) — was rejected by ${profile.full_name}${reason ? `: ${reason}` : ''}.`
+      if (submitter.whatsapp_alerts && submitter.whatsapp_number) await sendWhatsApp(submitter.whatsapp_number, msg)
+      if (submitter.email_alerts && submitter.email) await sendEmail(submitter.email, 'Payment request rejected — OPM Office', emailTemplate('Payment request rejected', `<p style="margin:0;">${msg}</p>`))
+    }
+    return xml(twimlMessage(`Rejected: ${target.payee} (${inr(Number(target.amount))}).${submitter && submitter.id !== profile.id ? ' The submitter has been notified.' : ''}`))
   }
 
   if (isFinance && (cmd.includes('cash') || cmd.includes('balance'))) {

@@ -8,6 +8,7 @@ import { BarChart } from '@/components/ui/BarChart'
 import { formatCurrency, formatDate, paidPercent, cn } from '@/lib/utils'
 import { fundingMetrics } from '@/lib/funding'
 import { Watchlist } from './Watchlist'
+import { AiReview } from './AiReview'
 import type { ProjectFunding } from '@/lib/types'
 import { Coins, Percent } from 'lucide-react'
 import Link from 'next/link'
@@ -120,8 +121,13 @@ export default async function DashboardPage() {
         <p className="text-sm text-[#8888aa] mt-0.5">Everything at a glance</p>
       </div>
 
-      {/* Proactive watchlist — finance only */}
-      {isFinance && <Watchlist />}
+      {/* Proactive watchlist + on-demand AI review — finance only */}
+      {isFinance && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Watchlist />
+          <AiReview />
+        </div>
+      )}
 
       {/* Finance Stats — Founder/Accountant only */}
       {isFinance && (

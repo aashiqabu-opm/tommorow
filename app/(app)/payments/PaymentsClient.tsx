@@ -27,6 +27,11 @@ interface Props {
   userId: string
   role: string
   vendors: { id: string; name: string; pan?: string | null }[]
+  budgetLines: { id: string; project_id: string; section: string; head: string }[]
+}
+
+const BUDGET_SECTION_LABELS: Record<string, string> = {
+  above_line: 'Above the Line', below_line: 'Below the Line', post: 'Post-production', other: 'Other',
 }
 
 const INITIAL_FORM = {
@@ -40,9 +45,10 @@ const INITIAL_FORM = {
   category: '',
   due_date: '',
   notes: '',
+  budget_line_id: '',
 }
 
-export function PaymentsClient({ requests, projects, comments, vendors, userId, role }: Props) {
+export function PaymentsClient({ requests, projects, comments, vendors, budgetLines, userId, role }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [open, setOpen] = useState(false)
@@ -142,6 +148,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
       category: req.category ?? '',
       due_date: req.due_date ?? '',
       notes: req.notes ?? '',
+      budget_line_id: req.budget_line_id ?? '',
     })
     setBill(null)
     setOpen(true)
@@ -269,6 +276,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
       bill_url: billUrl,
       bill_file_name: billName,
       notes: form.notes || null,
+      budget_line_id: form.budget_line_id || null,
     }
 
     if (editing) {
@@ -738,6 +746,32 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
               options={PAYMENT_CATEGORY_OPTIONS.map(c => ({ value: c, label: c }))} placeholder="— Category —" />
             <Input label="Due Date" type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
           </div>
+
+          {(() => {
+            const lines = budgetLines.filter(b => b.project_id === form.project_id)
+            if (!form.project_id || lines.length === 0) return null
+            return (
+              <div>
+                <label className="block text-xs font-medium text-[#8888aa] mb-1.5">Budget Head (cost report)</label>
+                <select
+                  value={form.budget_line_id}
+                  onChange={e => setForm({ ...form, budget_line_id: e.target.value })}
+                  className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40"
+                >
+                  <option value="">— Not coded —</option>
+                  {['above_line', 'below_line', 'post', 'other'].map(section => {
+                    const secLines = lines.filter(l => l.section === section)
+                    if (!secLines.length) return null
+                    return (
+                      <optgroup key={section} label={BUDGET_SECTION_LABELS[section] ?? section}>
+                        {secLines.map(l => <option key={l.id} value={l.id}>{l.head}</option>)}
+                      </optgroup>
+                    )
+                  })}
+                </select>
+              </div>
+            )
+          })()}
           <div className="space-y-1">
             <FilePicker label="Bill / Receipt" file={bill} onChange={handleBillPicked} />
             {extracting && (

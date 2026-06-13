@@ -173,6 +173,7 @@ export interface PaymentRequest {
   tds_percent?: number
   tds_amount?: number
   net_payable?: number
+  budget_line_id?: string | null
   vendor?: { pan?: string } | null
 }
 

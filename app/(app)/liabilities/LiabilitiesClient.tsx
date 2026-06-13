@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, AlertTriangle } from 'lucide-react'
+import { Plus, AlertTriangle, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -21,6 +21,7 @@ interface Props {
   liabilities: Liability[]
   projects: { id: string; name: string }[]
   userId: string
+  role: string
 }
 
 const INITIAL_FORM = {
@@ -36,11 +37,14 @@ const INITIAL_FORM = {
   notes: '',
 }
 
-export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
+export function LiabilitiesClient({ liabilities, projects, userId, role }: Props) {
   const router = useRouter()
   const toast = useToast()
+  const canDelete = role === 'founder'
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [editing, setEditing] = useState<Liability | null>(null)
   const [form, setForm] = useState(INITIAL_FORM)
   const [paymentModal, setPaymentModal] = useState<Liability | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
@@ -58,14 +62,36 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
   const dueThisWeek = liabilities.filter(l => l.due_date && new Date(l.due_date) <= week && l.status !== 'cleared')
   const dueThisMonth = liabilities.filter(l => l.due_date && new Date(l.due_date) <= month && l.status !== 'cleared')
 
+  function openNew() {
+    setEditing(null)
+    setForm(INITIAL_FORM)
+    setOpen(true)
+  }
+
+  function openEdit(lib: Liability) {
+    setEditing(lib)
+    setForm({
+      party_name: lib.party_name ?? '',
+      amount_owed: lib.amount_owed != null ? String(lib.amount_owed) : '',
+      amount_paid: lib.amount_paid != null ? String(lib.amount_paid) : '',
+      original_date: lib.original_date ?? new Date().toISOString().split('T')[0],
+      due_date: lib.due_date ?? '',
+      project_id: lib.project_id ?? '',
+      type: lib.type ?? 'vendor',
+      priority: lib.priority ?? 'normal',
+      status: lib.status ?? 'unpaid',
+      notes: lib.notes ?? '',
+    })
+    setOpen(true)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     const supabase = createClient()
     const amountOwed = parseFloat(form.amount_owed) || 0
     const amountPaid = parseFloat(form.amount_paid) || 0
-
-    const { data, error } = await supabase.from('liabilities').insert({
+    const payload = {
       party_name: form.party_name,
       amount_owed: amountOwed,
       amount_paid: amountPaid,
@@ -77,21 +103,39 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
       priority: form.priority,
       status: form.status,
       notes: form.notes || null,
-      created_by: userId,
-    }).select().single()
-
-    if (error) {
-      toast.error("Couldn't save liability — please try again")
-      setSaving(false)
-      return
     }
 
-    if (data) await logAction('create', 'liabilities', data.id, undefined, data)
-    toast.success('Liability added')
+    if (editing) {
+      const { data, error } = await supabase.from('liabilities').update(payload).eq('id', editing.id).select().single()
+      if (error) { toast.error("Couldn't update liability — please try again"); setSaving(false); return }
+      if (data) await logAction('update', 'liabilities', editing.id, editing as unknown as Record<string, unknown>, data)
+      toast.success('Liability updated')
+    } else {
+      const { data, error } = await supabase.from('liabilities').insert({ ...payload, created_by: userId }).select().single()
+      if (error) { toast.error("Couldn't save liability — please try again"); setSaving(false); return }
+      if (data) await logAction('create', 'liabilities', data.id, undefined, data)
+      toast.success('Liability added')
+    }
 
     setSaving(false)
     setOpen(false)
+    setEditing(null)
     setForm(INITIAL_FORM)
+    router.refresh()
+  }
+
+  async function handleDelete() {
+    if (!editing) return
+    if (!window.confirm(`Delete the liability for ${editing.party_name} (${formatCurrency(editing.amount_owed)})? Any recorded payments against it are removed too. This cannot be undone.`)) return
+    setDeleting(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('liabilities').delete().eq('id', editing.id)
+    if (error) { toast.error("Couldn't delete — please try again"); setDeleting(false); return }
+    await logAction('delete', 'liabilities', editing.id, editing as unknown as Record<string, unknown>, undefined)
+    toast.success('Liability deleted')
+    setDeleting(false)
+    setOpen(false)
+    setEditing(null)
     router.refresh()
   }
 
@@ -137,7 +181,7 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
       <PageHeader
         title="Previous Liabilities"
         subtitle="Track all outstanding dues and payments"
-        action={<Button icon={Plus} onClick={() => setOpen(true)}>Add Liability</Button>}
+        action={<Button icon={Plus} onClick={openNew}>Add Liability</Button>}
       />
 
       {/* Stats */}
@@ -183,16 +227,22 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
                     </div>
                   </div>
                   <ProgressBar value={lib.amount_paid} max={lib.amount_owed} showLabel size="sm" />
-                  {lib.status !== 'cleared' && (
-                    <div className="mt-2">
+                  <div className="mt-2 flex items-center gap-4">
+                    {lib.status !== 'cleared' && (
                       <button
                         onClick={() => setPaymentModal(lib)}
                         className="text-xs text-white/70 hover:text-white font-medium"
                       >
                         + Record Payment
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <button
+                      onClick={() => openEdit(lib)}
+                      className="text-xs text-[#8888aa] hover:text-white font-medium flex items-center gap-1"
+                    >
+                      <Pencil size={12} /> Edit
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -201,7 +251,7 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
       </div>
 
       {/* Add Liability Modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title="Add Liability" size="lg">
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Liability' : 'Add Liability'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Party Name" value={form.party_name} onChange={e => setForm({ ...form, party_name: e.target.value })} required placeholder="Vendor / Artist / Person name" />
           <div className="grid grid-cols-2 gap-3">
@@ -224,9 +274,14 @@ export function LiabilitiesClient({ liabilities, projects, userId }: Props) {
             placeholder="— No project —"
             options={projects.map(p => ({ value: p.id, label: p.name }))} />
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving}>Save</Button>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            {editing && canDelete ? (
+              <Button variant="ghost" type="button" icon={Trash2} loading={deleting} onClick={handleDelete} className="text-red-400 hover:text-red-300">Delete</Button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" loading={saving}>{editing ? 'Save Changes' : 'Save'}</Button>
+            </div>
           </div>
         </form>
       </Modal>

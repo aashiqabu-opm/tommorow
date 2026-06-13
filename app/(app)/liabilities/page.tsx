@@ -13,5 +13,5 @@ export default async function LiabilitiesPage() {
     supabase.from('projects').select('id, name'),
   ])
 
-  return <LiabilitiesClient liabilities={liabilities ?? []} projects={projects ?? []} userId={profile.id} />
+  return <LiabilitiesClient liabilities={liabilities ?? []} projects={projects ?? []} userId={profile.id} role={profile.role} />
 }

@@ -28,6 +28,7 @@ export function CashClientPage({ entries, userId }: Props) {
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [dupAck, setDupAck] = useState(false)
   const [form, setForm] = useState({
     entry_date: new Date().toISOString().split('T')[0],
     opening_cash: '',
@@ -44,6 +45,15 @@ export function CashClientPage({ entries, userId }: Props) {
   const cutoff30d = Date.now() - 30 * 86400000
   const recent = entries.filter(e => new Date(e.entry_date).getTime() >= cutoff30d)
 
+  // Live guards on the form
+  const oVal = parseFloat(form.opening_cash) || 0
+  const iVal = parseFloat(form.cash_in) || 0
+  const otVal = parseFloat(form.cash_out) || 0
+  const hasMovement = form.cash_in !== '' || form.cash_out !== '' || form.opening_cash !== ''
+  const dupExists = hasMovement && entries.some(e =>
+    e.entry_date === form.entry_date && e.opening_cash === oVal && e.cash_in === iVal && e.cash_out === otVal)
+  const openingMismatch = latest != null && form.opening_cash !== '' && oVal !== latest.closing_cash
+
   function openAddEntry() {
     // Carry forward the latest closing balance so cash isn't double-counted
     setForm({
@@ -53,11 +63,20 @@ export function CashClientPage({ entries, userId }: Props) {
       cash_out: '',
       notes: '',
     })
+    setDupAck(false)
     setOpen(true)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    // Block an exact duplicate (same date + opening + in + out) unless confirmed
+    if (dupExists && !dupAck) {
+      setDupAck(true)
+      toast.error('An identical entry already exists for this date — tap Save once more to confirm')
+      return
+    }
+
     setSaving(true)
     const supabase = createClient()
 
@@ -256,6 +275,18 @@ export function CashClientPage({ entries, userId }: Props) {
             </div>
           )}
 
+          {openingMismatch && !dupExists && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 text-xs text-amber-300">
+              Opening doesn&apos;t match the last closing balance ({formatCurrency(latest!.closing_cash)}). If this isn&apos;t a correction, cash may be double-counted.
+            </div>
+          )}
+
+          {dupExists && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2.5 text-xs text-red-300">
+              An identical entry already exists for {formatDate(form.entry_date)} (same opening, in, and out). {dupAck ? 'Tap Save again to add it anyway.' : 'Check the table before saving.'}
+            </div>
+          )}
+
           <Textarea
             label="Notes"
             value={form.notes}
@@ -267,7 +298,9 @@ export function CashClientPage({ entries, userId }: Props) {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving}>Save Entry</Button>
+            <Button type="submit" loading={saving} variant={dupExists && dupAck ? 'danger' : 'primary'}>
+              {dupExists && dupAck ? 'Save Anyway' : 'Save Entry'}
+            </Button>
           </div>
         </form>
       </Modal>

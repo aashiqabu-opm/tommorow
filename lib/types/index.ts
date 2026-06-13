@@ -493,6 +493,10 @@ export interface Vehicle {
   hire_basis?: 'day' | 'km' | 'month' | 'trip' | null
   driver_name?: string | null
   driver_phone?: string | null
+  driver_union_id?: string | null
+  driver_license_no?: string | null
+  driver_license_expiry?: string | null
+  owner_phone?: string | null
   project_id?: string | null
   status: 'active' | 'inactive'
   notes?: string | null
@@ -500,7 +504,30 @@ export interface Vehicle {
   created_at: string
   updated_at: string
   logs?: VehicleLog[]
+  documents?: VehicleDocument[]
   project?: { name?: string } | null
+}
+
+export type VehicleDocType = 'rc' | 'insurance' | 'puc' | 'permit' | 'fitness' | 'tax' | 'other'
+
+export interface VehicleDocument {
+  id: string
+  vehicle_id: string
+  doc_type: VehicleDocType
+  doc_number?: string | null
+  issue_date?: string | null
+  expiry_date?: string | null
+  file_url?: string | null
+  file_name?: string | null
+  notes?: string | null
+  created_by?: string
+  created_at: string
+  updated_at: string
+}
+
+export const VEHICLE_DOC_LABELS: Record<VehicleDocType, string> = {
+  rc: 'Registration (RC)', insurance: 'Insurance', puc: 'Pollution (PUC)',
+  permit: 'Permit', fitness: 'Fitness Certificate', tax: 'Road Tax', other: 'Other',
 }
 
 export interface VehicleLog {

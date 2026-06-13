@@ -44,11 +44,12 @@ export async function GET(request: Request) {
   const recv = (receivables.data ?? []) as { amount: number; expected_date: string | null; party: string | null; project: { name?: string } | null }[]
 
   // ── Film budget heads trending over estimate (≥90% used) ──
-  const [budgetLinesAll, codedPays, pettyExp, crewCoded] = await Promise.all([
+  const [budgetLinesAll, codedPays, pettyExp, crewCoded, vehicleDocs] = await Promise.all([
     admin.from('budget_lines').select('id, head, estimated, project:projects(name)').then(r => r.data ?? []),
     admin.from('payment_requests').select('amount, net_payable, payment_status, approval_status, budget_line_id').not('budget_line_id', 'is', null).then(r => r.data ?? []),
     admin.from('petty_cash_txns').select('amount, budget_line_id').eq('type', 'expense').not('budget_line_id', 'is', null).then(r => r.data ?? []),
     admin.from('project_crew').select('budget_line_id, payments:crew_payments(amount)').not('budget_line_id', 'is', null).then(r => r.data ?? []),
+    admin.from('vehicle_documents').select('doc_type, expiry_date, vehicle:vehicles(reg_number)').not('expiry_date', 'is', null).gte('expiry_date', todayStr).lte('expiry_date', in30).then(r => r.data ?? []),
   ])
   const actualByLine: Record<string, number> = {}
   const bump = (id: string | null, n: number) => { if (id) actualByLine[id] = (actualByLine[id] ?? 0) + n }
@@ -95,7 +96,10 @@ export async function GET(request: Request) {
     overdueLiabilities: liab.filter(l => (l.due_date as string) < todayStr).map(l => ({ party: l.party_name, amount: Number(l.balance_remaining), due: l.due_date as string })),
     dueSoonLiabilities: liab.filter(l => (l.due_date as string) >= todayStr && (l.due_date as string) <= in14).map(l => ({ party: l.party_name, amount: Number(l.balance_remaining), due: l.due_date as string })),
     overdueReceivables: recv.filter(r => r.expected_date && r.expected_date < todayStr).map(r => ({ project: r.project?.name ?? '', party: r.party ?? 'a buyer', amount: Number(r.amount), expected: r.expected_date as string })),
-    expiringDocs: (docs.data ?? []).map(d => ({ title: d.title as string, expiry: d.expiry_date as string })),
+    expiringDocs: [
+      ...(docs.data ?? []).map(d => ({ title: d.title as string, expiry: d.expiry_date as string })),
+      ...(vehicleDocs as { doc_type: string; expiry_date: string; vehicle: { reg_number?: string } | null }[]).map(v => ({ title: `Vehicle ${v.vehicle?.reg_number ?? ''} — ${v.doc_type.toUpperCase()}`, expiry: v.expiry_date })),
+    ],
     docKeyDates,
     docFlags,
     budgetAlerts,

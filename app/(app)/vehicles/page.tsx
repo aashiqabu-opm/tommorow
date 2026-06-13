@@ -10,7 +10,7 @@ export default async function VehiclesPage() {
 
   const [{ data: vehicles }, { data: projects }] = await Promise.all([
     supabase.from('vehicles')
-      .select('*, project:projects(name), logs:vehicle_logs(*)')
+      .select('*, project:projects(name), logs:vehicle_logs(*), documents:vehicle_documents(*)')
       .order('created_at', { ascending: false }),
     supabase.from('projects').select('id, name').order('name'),
   ])

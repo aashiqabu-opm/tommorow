@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { whatsappConfigured, normalizeWhatsApp } from '@/lib/alerts/channels'
+import { whatsappConfigured, normalizeWhatsApp, sendWhatsApp, sendEmail, emailTemplate, sleep } from '@/lib/alerts/channels'
 import { validateTwilioSignature, twimlMessage, twimlEmpty, fetchTwilioMedia, pickProject } from '@/lib/whatsapp'
 import { extractBill } from '@/lib/ai/extract-bill'
 
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
   // Match the sender to an active profile by WhatsApp number
   const fromNorm = normalizeWhatsApp(from)
-  const { data: profiles } = await admin.from('profiles').select('id, full_name, role, whatsapp_number, is_active')
+  const { data: profiles } = await admin.from('profiles').select('id, full_name, role, whatsapp_number, is_active, email, email_alerts, whatsapp_alerts')
   const profile = (profiles ?? []).find(p => p.is_active && p.whatsapp_number && normalizeWhatsApp(p.whatsapp_number) === fromNorm)
   if (!profile) {
     return xml(twimlMessage("This number isn't registered with OPM Office. Ask an admin to add your WhatsApp number to your profile."))
@@ -93,6 +93,21 @@ export async function POST(req: Request) {
 
     const who = bill?.vendor_name ? ` for ${bill.vendor_name}` : ''
     const amt = amount ? inr(amount) : 'amount unreadable'
+
+    // Ping finance approvers (founder + accountant) to review — excluding the submitter
+    const payeeLabel = bill?.vendor_name ?? (body || 'a vendor')
+    const approvers = (profiles ?? []).filter(p =>
+      p.is_active && p.id !== profile.id && ['founder', 'accountant'].includes(p.role))
+    const waText = `🧾 New bill via WhatsApp from ${profile.full_name}: ${payeeLabel} (${amt}) under "${proj.name}". Review & approve in OPM Office.`
+    const html = emailTemplate('New WhatsApp bill to review',
+      `<p style="margin:0 0 8px;"><strong>${profile.full_name}</strong> submitted a bill via WhatsApp.</p>` +
+      `<p style="margin:0;">Payee: ${payeeLabel}<br/>Amount: ${amt}<br/>Project: ${proj.name}</p>` +
+      `<p style="margin:12px 0 0;">It's a draft pending your approval.</p>`)
+    for (const a of approvers) {
+      if (a.whatsapp_alerts && a.whatsapp_number) await sendWhatsApp(a.whatsapp_number, waText)
+      if (a.email_alerts && a.email) { await sendEmail(a.email, 'New WhatsApp bill to review — OPM Office', html); await sleep(600) }
+    }
+
     return xml(twimlMessage(
       `✅ Draft payment created${who} (${amt}) under "${proj.name}". It's pending approval in OPM Office.` +
       (amount ? '' : '\nThe amount couldn’t be read — set it in the app.')

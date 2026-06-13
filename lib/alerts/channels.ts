@@ -3,6 +3,13 @@
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opmoffice.vercel.app'
 
+export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+// Resend free tier allows ~2 emails/sec. A 600ms gap between sends keeps
+// multi-recipient fan-outs (digests, broadcasts) under the limit so none
+// get throttled (HTTP 429).
+export const EMAIL_THROTTLE_MS = 600
+
 export function emailConfigured() {
   return Boolean(process.env.RESEND_API_KEY)
 }

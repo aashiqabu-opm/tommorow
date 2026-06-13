@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured } from '@/lib/alerts/channels'
+import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured, sleep, EMAIL_THROTTLE_MS } from '@/lib/alerts/channels'
 import { CATEGORY_LABELS, type AlertCategory } from '@/lib/alerts/categories'
 
 // Fan an alert out to users via every channel they've enabled, skipping
@@ -36,18 +36,18 @@ export async function deliverAlert(
   const html = emailTemplate(title, body ? `<p style="margin:0;">${escapeHtml(body)}</p>` : '')
   const text = body ? `*OPM Office · ${tag}*\n${title}\n${body}` : `*OPM Office · ${tag}*\n${title}`
 
-  await Promise.allSettled(
-    recipients.flatMap((p) => {
-      const jobs: Promise<boolean>[] = []
-      if (p.email_alerts && p.email) {
-        jobs.push(sendEmail(p.email, `OPM Office [${tag}] — ${title}`, html))
-      }
-      if (important && p.whatsapp_alerts && p.whatsapp_number) {
-        jobs.push(sendWhatsApp(p.whatsapp_number, text))
-      }
-      return jobs
-    })
-  )
+  // Sequential with a throttle so larger recipient lists stay under
+  // Resend's ~2/sec rate limit (otherwise some sends get a 429).
+  for (let i = 0; i < recipients.length; i++) {
+    const p = recipients[i]
+    if (p.email_alerts && p.email) {
+      await sendEmail(p.email, `OPM Office [${tag}] — ${title}`, html)
+    }
+    if (important && p.whatsapp_alerts && p.whatsapp_number) {
+      await sendWhatsApp(p.whatsapp_number, text)
+    }
+    if (i < recipients.length - 1) await sleep(EMAIL_THROTTLE_MS)
+  }
 }
 
 export function escapeHtml(s: string): string {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured } from '@/lib/alerts/channels'
+import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured, sleep, EMAIL_THROTTLE_MS } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
 
 export const dynamic = 'force-dynamic'
@@ -114,19 +114,18 @@ export async function GET(request: Request) {
   // WhatsApp is reserved for urgent matters — only fires when something is overdue
   const urgentText = `*OPM Office — Urgent (${dateStr})*\n🔴 ${overdue.length} overdue liabilit${overdue.length === 1 ? 'y' : 'ies'}:\n${overdue.slice(0, 5).map((l) => `• ${l.party_name} — ${inr(Number(l.balance_remaining))} (due ${l.due_date})`).join('\n')}${pending.length > 0 ? `\n⏳ ${pending.length} payment${pending.length === 1 ? '' : 's'} awaiting approval` : ''}`
 
+  // Sequential with a throttle to stay under Resend's ~2/sec rate limit.
   let sent = 0
-  await Promise.allSettled(
-    recipients.flatMap((r) => {
-      const jobs: Promise<boolean>[] = []
-      if (r.email_alerts && r.email) {
-        jobs.push(sendEmail(r.email, `OPM Office — Daily Digest (${dateStr})`, html).then((ok) => { if (ok) sent++; return ok }))
-      }
-      if (overdue.length > 0 && r.whatsapp_alerts && r.whatsapp_number) {
-        jobs.push(sendWhatsApp(r.whatsapp_number, urgentText).then((ok) => { if (ok) sent++; return ok }))
-      }
-      return jobs
-    })
-  )
+  for (let i = 0; i < recipients.length; i++) {
+    const r = recipients[i]
+    if (r.email_alerts && r.email) {
+      if (await sendEmail(r.email, `OPM Office — Daily Digest (${dateStr})`, html)) sent++
+    }
+    if (overdue.length > 0 && r.whatsapp_alerts && r.whatsapp_number) {
+      if (await sendWhatsApp(r.whatsapp_number, urgentText)) sent++
+    }
+    if (i < recipients.length - 1) await sleep(EMAIL_THROTTLE_MS)
+  }
 
   return NextResponse.json({ ok: true, recipients: recipients.length, sent })
 }

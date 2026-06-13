@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send, Printer, Sparkles, AlertTriangle } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, CreditCard, MessageSquare, Send, Printer, Sparkles, AlertTriangle, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge, getPaymentStatusBadge } from '@/components/ui/StatusBadge'
@@ -47,6 +47,8 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [editing, setEditing] = useState<PaymentRequest | null>(null)
   const [form, setForm] = useState(INITIAL_FORM)
   const [bill, setBill] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
@@ -88,7 +90,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
     const vendorId = form.payee_vendor_id
 
     // Prior non-rejected requests to the same vendor (by id) or payee (by name)
-    const prior = requests.filter(r => r.approval_status !== 'rejected' && (
+    const prior = requests.filter(r => r.id !== editing?.id && r.approval_status !== 'rejected' && (
       vendorId ? r.payee_vendor_id === vendorId
         : (payeeKey ? r.payee.trim().toLowerCase() === payeeKey : false)
     ))
@@ -116,14 +118,48 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
     }
 
     return { dup, typical, tdsNoPan }
-  }, [form.amount, form.tds_percent, form.payee, form.payee_vendor_id, requests, vendors])
+  }, [form.amount, form.tds_percent, form.payee, form.payee_vendor_id, requests, vendors, editing])
 
   function openNewRequest() {
     // Pre-select the project used last time
     const lastProject = localStorage.getItem('opm_last_project') ?? ''
+    setEditing(null)
     setForm({ ...INITIAL_FORM, project_id: projects.some(p => p.id === lastProject) ? lastProject : '' })
     setBill(null)
     setOpen(true)
+  }
+
+  function openEdit(req: PaymentRequest) {
+    setEditing(req)
+    setForm({
+      project_id: req.project_id ?? '',
+      payee: req.payee ?? '',
+      payee_vendor_id: req.payee_vendor_id ?? '',
+      amount: req.amount != null ? String(req.amount) : '',
+      gst_amount: req.gst_amount != null ? String(req.gst_amount) : '',
+      tds_percent: req.tds_percent != null ? String(req.tds_percent) : '0',
+      purpose: req.purpose ?? '',
+      category: req.category ?? '',
+      due_date: req.due_date ?? '',
+      notes: req.notes ?? '',
+    })
+    setBill(null)
+    setOpen(true)
+  }
+
+  async function handleDelete() {
+    if (!editing) return
+    if (!window.confirm(`Delete the payment request to ${editing.payee} for ${formatCurrency(editing.amount)}? This cannot be undone.`)) return
+    setDeleting(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('payment_requests').delete().eq('id', editing.id)
+    if (error) { toast.error("Couldn't delete — please try again"); setDeleting(false); return }
+    await logAction('delete', 'payment_requests', editing.id, editing as unknown as Record<string, unknown>, undefined)
+    toast.success('Payment request deleted')
+    setDeleting(false)
+    setOpen(false)
+    setEditing(null)
+    router.refresh()
   }
 
   // When a bill is attached, read it with Claude and pre-fill empty fields.
@@ -186,8 +222,8 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.project_id) return toast.error('Please select a project')
-    // Possible double-payment — make the user confirm before creating it
-    if (guard.dup && !window.confirm(
+    // Possible double-payment — make the user confirm before creating it (new requests only)
+    if (!editing && guard.dup && !window.confirm(
       `A ${formatCurrency(guard.dup.amount)} payment to ${form.payee || 'this party'} was already recorded on ${formatDate(guard.dup.created_at)} (${guard.dup.approval_status}). Submit this one anyway?`
     )) return
     setSaving(true)
@@ -199,8 +235,8 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
     const tdsAmt = tdsPct > 0 ? Math.round(baseAmount * tdsPct / 100 * 100) / 100 : 0
     const netPayable = baseAmount + gstAmt - tdsAmt
 
-    let billUrl: string | undefined
-    let billName: string | undefined
+    let billUrl: string | undefined = editing?.bill_url
+    let billName: string | undefined = editing?.bill_file_name
 
     if (bill) {
       const upload = await compressImage(bill)
@@ -218,12 +254,11 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
       }
     }
 
-    const { data, error } = await supabase.from('payment_requests').insert({
+    const core = {
       project_id: form.project_id,
-      requested_by: userId,
       payee: form.payee,
       payee_vendor_id: form.payee_vendor_id || null,
-      amount: parseFloat(form.amount) || 0,
+      amount: baseAmount,
       gst_amount: gstAmt || null,
       tds_percent: tdsPct || null,
       tds_amount: tdsAmt || null,
@@ -233,29 +268,55 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
       due_date: form.due_date || null,
       bill_url: billUrl,
       bill_file_name: billName,
-      verification_status: 'pending',
-      approval_status: 'pending',
-      payment_status: 'unpaid',
       notes: form.notes || null,
-    }).select().single()
+    }
 
-    if (error) {
-      toast.error("Couldn't submit request — please try again")
-      setSaving(false)
-      return
+    if (editing) {
+      // If the amount changed on an already-approved/paid request, it must go
+      // back through approval — the prior sign-off was for a different figure.
+      const amountChanged = baseAmount !== editing.amount
+      const wasCleared = editing.approval_status === 'approved' || editing.payment_status === 'paid'
+      const reset = amountChanged && wasCleared
+      const update = reset
+        ? { ...core, approval_status: 'pending', approved_by: null, approved_at: null, payment_status: 'unpaid', paid_by: null, paid_at: null }
+        : core
+      const { data, error } = await supabase.from('payment_requests').update(update).eq('id', editing.id).select().single()
+      if (error) { toast.error("Couldn't update request — please try again"); setSaving(false); return }
+      if (data) await logAction('update', 'payment_requests', editing.id, editing as unknown as Record<string, unknown>, data)
+      if (reset) {
+        await notifyFinance(
+          `Payment edited — needs re-approval: ${form.payee}`,
+          `Amount changed to ${formatCurrency(baseAmount)} — ${form.purpose}`,
+          'payment_requests', editing.id, userId, true
+        )
+        toast.success('Updated — amount changed, sent back for re-approval')
+      } else {
+        toast.success('Payment request updated')
+      }
+    } else {
+      const { data, error } = await supabase.from('payment_requests').insert({
+        ...core,
+        requested_by: userId,
+        verification_status: 'pending',
+        approval_status: 'pending',
+        payment_status: 'unpaid',
+      }).select().single()
+      if (error) { toast.error("Couldn't submit request — please try again"); setSaving(false); return }
+      if (data) {
+        await logAction('create', 'payment_requests', data.id, undefined, data)
+        await notifyFinance(
+          `New payment request: ${form.payee}`,
+          `${formatCurrency(baseAmount)} — ${form.purpose}`,
+          'payment_requests', data.id, userId, true
+        )
+      }
+      localStorage.setItem('opm_last_project', form.project_id)
+      toast.success('Payment request submitted')
     }
-    if (data) {
-      await logAction('create', 'payment_requests', data.id, undefined, data)
-      await notifyFinance(
-        `New payment request: ${form.payee}`,
-        `${formatCurrency(parseFloat(form.amount) || 0)} — ${form.purpose}`,
-        'payment_requests', data.id, userId, true
-      )
-    }
-    localStorage.setItem('opm_last_project', form.project_id)
-    toast.success('Payment request submitted')
+
     setSaving(false)
     setOpen(false)
+    setEditing(null)
     setForm(INITIAL_FORM)
     setBill(null)
     router.refresh()
@@ -544,6 +605,9 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
                     {req.payment_status === 'paid' && (
                       <button onClick={() => openVoucher(req)} className="text-xs text-[#8888aa] hover:text-white flex items-center gap-1"><Printer size={12} /> Voucher</button>
                     )}
+                    {canVerify && req.approval_status !== 'rejected' && (
+                      <button onClick={() => openEdit(req)} className="text-xs text-[#8888aa] hover:text-white flex items-center gap-1"><Pencil size={12} /> Edit</button>
+                    )}
                     <button
                       onClick={() => { setCommentsFor(commentsFor === req.id ? null : req.id); setCommentText('') }}
                       className="text-xs text-[#8888aa] hover:text-white flex items-center gap-1"
@@ -600,8 +664,8 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
         )}
       </div>
 
-      {/* New Request Modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title="New Payment Request" size="lg">
+      {/* New / Edit Request Modal */}
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Payment Request' : 'New Payment Request'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Select
             label="Project *"
@@ -705,9 +769,21 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving}>Submit Request</Button>
+          {editing && (editing.approval_status === 'approved' || editing.payment_status === 'paid') && (parseFloat(form.amount) || 0) !== editing.amount && (
+            <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 text-xs text-amber-300">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>You changed the amount on an already-{editing.payment_status === 'paid' ? 'paid' : 'approved'} request. Saving will send it back for re-approval.</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 pt-2">
+            {editing && isFounder ? (
+              <Button variant="ghost" type="button" icon={Trash2} loading={deleting} onClick={handleDelete} className="text-red-400 hover:text-red-300">Delete</Button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" loading={saving}>{editing ? 'Save Changes' : 'Submit Request'}</Button>
+            </div>
           </div>
         </form>
       </Modal>

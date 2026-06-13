@@ -15,7 +15,10 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, DOCUMENT_TYPE_LABELS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew, ProductionReport, ProjectMember, ProjectCheckin } from '@/lib/types'
+import type { Project, Document, Liability, ProjectIncome, ProjectFunding, BudgetLine, PettyCashFloat, ProjectCrew, ProductionReport, ProjectMember, ProjectCheckin, PhaseTask, BoxOfficeCollection, MonitoringFinding } from '@/lib/types'
+import { PhaseTracker } from './PhaseTracker'
+import { CollectionsSection } from './CollectionsSection'
+import { ReleaseWatchSection } from './ReleaseWatchSection'
 import { FundingSection } from './FundingSection'
 import { ProjectBudgetSection, type CodedPayment } from './ProjectBudgetSection'
 import { PettyCashSection } from './PettyCashSection'
@@ -44,6 +47,9 @@ interface Props {
   members: ProjectMember[]
   checkins: ProjectCheckin[]
   allProfiles: { id: string; full_name: string; email: string; role: string }[]
+  phaseTasks: PhaseTask[]
+  collections: BoxOfficeCollection[]
+  findings: MonitoringFinding[]
   extraSpentByLine: Record<string, number>
   userId: string
   role: string
@@ -68,7 +74,7 @@ const INCOME_SOURCES = [
   { value: 'other', label: 'Other' },
 ]
 
-export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, dprs, members, checkins, allProfiles, extraSpentByLine, userId, role }: Props) {
+export function ProjectDetailClient({ project, documents, payments, liabilities, income, funding, budgetLines, pettyFloats, crew, dprs, members, checkins, allProfiles, phaseTasks, collections, findings, extraSpentByLine, userId, role }: Props) {
   const isFinance = ['founder', 'accountant'].includes(role)
   const isManagement = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
   const canManageTeam = ['founder', 'general_manager', 'executive_producer'].includes(role)
@@ -214,6 +220,9 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
           </div>
         </div>
       )}
+
+      {/* Production tracker — phases & milestones */}
+      <PhaseTracker projectId={project.id} status={project.status} tasks={phaseTasks} userId={userId} canManage={canManageTeam} />
 
       {/* ── P&L Overview ─────────────────────────────────────── */}
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 space-y-5">
@@ -402,6 +411,16 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
             canDelete={role === 'founder'}
           />
         </FinishedSectionWrap>
+      )}
+
+      {/* Box-office collections + AI trend (management writes, team reads) */}
+      {isManagement && (
+        <CollectionsSection projectId={project.id} released={project.status === 'released'} rows={collections} userId={userId} canManage={isManagement} />
+      )}
+
+      {/* Release watch — piracy & reputation monitoring (management only) */}
+      {isManagement && (
+        <ReleaseWatchSection projectId={project.id} findings={findings} canManage={canManageTeam} />
       )}
 
       {/* Daily Check-ins — team reports to the producer */}

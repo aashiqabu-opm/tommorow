@@ -24,6 +24,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     dprs,
     members,
     checkins,
+    phaseTasks,
+    collections,
+    findings,
   ] = await Promise.all([
     supabase.from('projects').select('*').eq('id', id).single(),
     supabase.from('documents').select('*').eq('project_id', id).order('created_at', { ascending: false }),
@@ -64,6 +67,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .order('created_at', { ascending: false })
       .limit(60)
       .then(r => r.data ?? []),
+    // Tracker, collections, monitoring — gracefully empty if not migrated yet
+    supabase.from('phase_tasks').select('*').eq('project_id', id).order('sort_order', { ascending: true }).then(r => r.data ?? []),
+    supabase.from('box_office_collections').select('*').eq('project_id', id).order('collection_date', { ascending: false }).then(r => r.data ?? []),
+    isManagement
+      ? supabase.from('monitoring_findings').select('*').eq('project_id', id).order('scan_date', { ascending: false }).limit(60).then(r => r.data ?? [])
+      : Promise.resolve([]),
   ])
 
   if (!project) notFound()
@@ -102,6 +111,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       members={members ?? []}
       checkins={checkins ?? []}
       allProfiles={allProfiles ?? []}
+      phaseTasks={phaseTasks ?? []}
+      collections={collections ?? []}
+      findings={findings ?? []}
       extraSpentByLine={extraSpentByLine}
       userId={profile.id}
       role={profile.role}

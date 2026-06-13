@@ -24,6 +24,47 @@ export interface ProjectMember {
   profile?: { id: string; full_name: string; email: string; role: Role } | null
 }
 
+export type ProjectPhase = 'development' | 'production' | 'post_production' | 'distribution' | 'release'
+
+export interface PhaseTask {
+  id: string
+  project_id: string
+  phase: ProjectPhase
+  title: string
+  done: boolean
+  done_at?: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface BoxOfficeCollection {
+  id: string
+  project_id: string
+  day_number: number | null
+  collection_date: string
+  india_net: number | null
+  worldwide_gross: number | null
+  screens: number | null
+  occupancy: number | null
+  source: string | null
+  confirmed: boolean
+  notes: string | null
+  created_at: string
+}
+
+export interface MonitoringFinding {
+  id: string
+  project_id: string
+  scan_date: string
+  category: 'piracy' | 'reputation'
+  severity: 'high' | 'medium' | 'low'
+  title: string
+  detail: string | null
+  url: string | null
+  dismissed: boolean
+  created_at: string
+}
+
 export interface ProjectCheckin {
   id: string
   project_id: string

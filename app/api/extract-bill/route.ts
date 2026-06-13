@@ -34,9 +34,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'File too large — use one under ~6MB' }, { status: 413 })
   }
 
-  const extracted = await extractBill(base64, mediaType)
+  const { data: extracted, error } = await extractBill(base64, mediaType)
   if (!extracted) {
-    return NextResponse.json({ error: 'Could not read the bill' }, { status: 422 })
+    return NextResponse.json({ error: 'Could not read the bill', detail: error ?? null }, { status: 422 })
   }
   return NextResponse.json({ ok: true, extracted })
 }

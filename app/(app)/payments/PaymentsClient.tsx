@@ -148,7 +148,10 @@ export function PaymentsClient({ requests, projects, comments, vendors, userId, 
         body: JSON.stringify({ base64, mediaType: file.type }),
       })
       if (!res.ok) {
-        if (res.status !== 503) toast.error("Couldn't read the bill — fill the form manually")
+        if (res.status !== 503) {
+          const body = await res.json().catch(() => ({}))
+          toast.error(body?.detail ? `Bill read failed: ${String(body.detail).slice(0, 90)}` : "Couldn't read the bill — fill manually")
+        }
         return
       }
       const { extracted } = await res.json()

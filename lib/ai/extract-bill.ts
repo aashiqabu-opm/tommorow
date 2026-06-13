@@ -45,8 +45,13 @@ const SYSTEM = `You extract structured data from Indian vendor bills and invoice
 - Use null for anything not clearly present. Do not guess PAN/GSTIN.
 - Pick "category" only from the allowed enum; use null if none fit.`
 
-export async function extractBill(base64: string, mediaType: string): Promise<ExtractedBill | null> {
-  if (!billExtractionConfigured()) return null
+export interface ExtractResult {
+  data: ExtractedBill | null
+  error?: string
+}
+
+export async function extractBill(base64: string, mediaType: string): Promise<ExtractResult> {
+  if (!billExtractionConfigured()) return { data: null, error: 'ANTHROPIC_API_KEY not set' }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const isPdf = mediaType === 'application/pdf'
@@ -72,9 +77,11 @@ export async function extractBill(base64: string, mediaType: string): Promise<Ex
       ],
     })
     const text = response.content.find((b) => b.type === 'text')
-    if (!text || text.type !== 'text') return null
-    return JSON.parse(text.text) as ExtractedBill
-  } catch {
-    return null
+    if (!text || text.type !== 'text') return { data: null, error: 'No text in model response' }
+    return { data: JSON.parse(text.text) as ExtractedBill }
+  } catch (e) {
+    const err = e as { status?: number; message?: string; error?: { error?: { message?: string } } }
+    const msg = err?.error?.error?.message || err?.message || 'Unknown error'
+    return { data: null, error: `${err?.status ?? ''} ${msg}`.trim() }
   }
 }

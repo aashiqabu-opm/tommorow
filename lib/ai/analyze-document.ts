@@ -101,10 +101,10 @@ export async function analyzeDocument(base64: string, mediaType: string, title?:
   try {
     const response = await client.messages.create({
       model: 'claude-opus-4-8',
-      // Generous ceiling so thinking + the full JSON never truncate (you only
-      // pay for tokens actually generated). 2048 was cutting long analyses off.
-      max_tokens: 16000,
-      thinking: { type: 'adaptive' },
+      // No thinking here: structured extraction is one-pass, and adaptive
+      // thinking was consuming the budget unpredictably and truncating the
+      // JSON. The whole ceiling now goes to the (schema-bounded) output.
+      max_tokens: 8000,
       system: SYSTEM,
       output_config: { format: { type: 'json_schema', schema: SCHEMA } },
       messages: [{

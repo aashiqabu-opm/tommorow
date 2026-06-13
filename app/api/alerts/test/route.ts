@@ -26,6 +26,9 @@ export async function GET() {
       SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
       CRON_SECRET: Boolean(process.env.CRON_SECRET),
       TWILIO: whatsappConfigured(),
+      TWILIO_ACCOUNT_SID: Boolean(process.env.TWILIO_ACCOUNT_SID),
+      TWILIO_AUTH_TOKEN: Boolean(process.env.TWILIO_AUTH_TOKEN),
+      TWILIO_WHATSAPP_FROM: process.env.TWILIO_WHATSAPP_FROM ?? '(not set)',
     },
     your_profile: {
       email: profile.email,

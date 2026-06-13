@@ -34,6 +34,7 @@ const INITIAL = {
   territory: '',
   gross_amount: '',
   commission_amount: '',
+  gst_amount: '',
   amount: '',
   income_date: new Date().toISOString().split('T')[0],
   expected_date: '',
@@ -88,6 +89,7 @@ export function RevenueClient({ income, projects, userId, role }: Props) {
       territory: r.territory ?? '',
       gross_amount: r.gross_amount != null ? String(r.gross_amount) : '',
       commission_amount: r.commission_amount != null ? String(r.commission_amount) : '',
+      gst_amount: r.gst_amount != null ? String(r.gst_amount) : '',
       amount: r.amount != null ? String(r.amount) : '',
       income_date: r.income_date ?? new Date().toISOString().split('T')[0],
       expected_date: r.expected_date ?? '',
@@ -110,6 +112,7 @@ export function RevenueClient({ income, projects, userId, role }: Props) {
       territory: form.territory || null,
       gross_amount: parseFloat(form.gross_amount) || null,
       commission_amount: parseFloat(form.commission_amount) || null,
+      gst_amount: parseFloat(form.gst_amount) || null,
       amount: parseFloat(form.amount) || 0,
       income_date: form.income_date,
       expected_date: form.status === 'receivable' ? (form.expected_date || null) : null,
@@ -256,9 +259,10 @@ export function RevenueClient({ income, projects, userId, role }: Props) {
             <Input label="Party (distributor / platform)" value={form.party} onChange={e => setForm({ ...form, party: e.target.value })} placeholder="e.g. Central Pictures" />
             <Input label="Territory" value={form.territory} onChange={e => setForm({ ...form, territory: e.target.value })} placeholder="e.g. Kerala / Worldwide" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <MoneyInput label="Gross / Deal Value (₹)" value={form.gross_amount} onChange={v => setForm({ ...form, gross_amount: v })} />
             <MoneyInput label="Commission / Deduction (₹)" value={form.commission_amount} onChange={v => setForm({ ...form, commission_amount: v })} />
+            <MoneyInput label="Output GST Collected (₹)" value={form.gst_amount} onChange={v => setForm({ ...form, gst_amount: v })} />
           </div>
           <MoneyInput label="Net Amount (₹) *" value={form.amount} onChange={v => setForm({ ...form, amount: v })} required />
           {form.gross_amount && form.commission_amount && !form.amount && (

@@ -41,6 +41,7 @@ const INITIAL_FORM = {
   amount: '',
   gst_amount: '',
   tds_percent: '0',
+  tds_section: '',
   purpose: '',
   category: '',
   due_date: '',
@@ -144,6 +145,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
       amount: req.amount != null ? String(req.amount) : '',
       gst_amount: req.gst_amount != null ? String(req.gst_amount) : '',
       tds_percent: req.tds_percent != null ? String(req.tds_percent) : '0',
+      tds_section: req.tds_section ?? '',
       purpose: req.purpose ?? '',
       category: req.category ?? '',
       due_date: req.due_date ?? '',
@@ -268,6 +270,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
       amount: baseAmount,
       gst_amount: gstAmt || null,
       tds_percent: tdsPct || null,
+      tds_section: tdsPct > 0 ? (form.tds_section || null) : null,
       tds_amount: tdsAmt || null,
       net_payable: (gstAmt > 0 || tdsPct > 0) ? netPayable : null,
       purpose: form.purpose,
@@ -712,6 +715,19 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
                 { value: '10', label: '10%' },
               ]} />
           </div>
+          {parseFloat(form.tds_percent) > 0 && (
+            <Select label="TDS Section" value={form.tds_section} onChange={e => setForm({ ...form, tds_section: e.target.value })}
+              options={[
+                { value: '', label: '— Select section —' },
+                { value: '194C', label: '194C — Contractor' },
+                { value: '194J', label: '194J — Professional / Technical' },
+                { value: '194I', label: '194I — Rent' },
+                { value: '194H', label: '194H — Commission' },
+                { value: '192', label: '192 — Salary' },
+                { value: '194Q', label: '194Q — Purchase of goods' },
+                { value: 'Other', label: 'Other' },
+              ]} />
+          )}
           {(parseFloat(form.gst_amount) > 0 || parseFloat(form.tds_percent) > 0) && (
             <div className="bg-[#1a1a24] border border-[#2a2a3a] rounded-xl p-4 text-xs space-y-1.5">
               <div className="flex justify-between text-[#8888aa]">

@@ -75,6 +75,7 @@ export interface ProjectIncome {
   commission_amount?: number | null
   expected_date?: string | null
   status?: 'received' | 'receivable'
+  gst_amount?: number | null
 }
 
 export const REVENUE_SOURCES = [
@@ -174,6 +175,7 @@ export interface PaymentRequest {
   tds_amount?: number
   net_payable?: number
   budget_line_id?: string | null
+  tds_section?: string | null
   vendor?: { pan?: string } | null
 }
 

@@ -90,6 +90,8 @@ export interface Project {
   start_date?: string
   end_date?: string
   budget?: number
+  ai_status_reason?: string | null
+  ai_status_at?: string | null
   created_by: string
   created_at: string
   updated_at: string

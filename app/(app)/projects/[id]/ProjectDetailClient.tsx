@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Clapperboard, FileText, CreditCard, AlertTriangle, Plus, TrendingUp, TrendingDown, DollarSign, Target } from 'lucide-react'
+import { Clapperboard, FileText, CreditCard, AlertTriangle, Plus, TrendingUp, TrendingDown, DollarSign, Target, Sparkles, Archive, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
@@ -109,6 +109,30 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
 
   const pendingPayments = payments.filter(p => p.approval_status === 'pending').length
 
+  // ── Settled vs open: finished matters archive, pending floats to top ──
+  const SETTLED_PAY = new Set(['approved', 'paid', 'rejected'])
+  const openPayments = payments.filter(p => !SETTLED_PAY.has(p.approval_status))
+  const settledPayments = payments.filter(p => SETTLED_PAY.has(p.approval_status))
+  const openLiabilities = liabilities.filter(l => l.status !== 'cleared')
+  const settledLiabilities = liabilities.filter(l => l.status === 'cleared')
+  const shootWrapped = ['post_production', 'released'].includes(project.status)
+
+  const renderPaymentRow = (p: PaymentRequest) => {
+    const s = getPaymentStatusBadge(p.approval_status)
+    return (
+      <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-sm text-white truncate">{p.payee}</div>
+          <div className="text-xs text-[#8888aa] truncate">{p.purpose}</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-sm font-semibold text-white tabular-nums">{formatCurrency(p.amount)}</div>
+          <StatusBadge label={s.label} variant={s.variant} />
+        </div>
+      </div>
+    )
+  }
+
   // ── Spend by category ──────────────────────────────────────
   const categorySpend = approvedPayments.reduce<Record<string, number>>((acc, p) => {
     const cat = p.category?.trim() || 'Uncategorised'
@@ -178,6 +202,18 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
         </div>
         <Link href="/projects" className="text-sm text-[#8888aa] hover:text-white shrink-0">← Back</Link>
       </div>
+
+      {/* AI stage note — set automatically by the daily monitor */}
+      {project.ai_status_reason && (
+        <div className="bg-[#13131a] border border-[#2a2a3a] rounded-xl px-4 py-3 flex items-start gap-2.5">
+          <Sparkles size={15} className="text-white/60 mt-0.5 shrink-0" />
+          <div className="text-xs text-[#c8c8da] leading-relaxed">
+            <span className="text-white font-medium">Stage: {STATUS_LABELS[project.status] ?? project.status}</span>
+            {' '}— {project.ai_status_reason}
+            <span className="text-[#5a5a7a]"> · set by AI monitor{project.ai_status_at ? ` ${formatDate(project.ai_status_at)}` : ''}</span>
+          </div>
+        </div>
+      )}
 
       {/* ── P&L Overview ─────────────────────────────────────── */}
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 space-y-5">
@@ -331,15 +367,17 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
         />
       )}
 
-      {/* Petty Cash Floats (finance only) */}
+      {/* Petty Cash Floats (finance only) — collapses once the shoot wraps */}
       {isFinance && (
-        <PettyCashSection
-          projectId={project.id}
-          floats={pettyFloats}
-          budgetLines={budgetHeads}
-          userId={userId}
-          canManage={isFinance}
-        />
+        <FinishedSectionWrap collapsible={shootWrapped} label="Petty Cash Floats">
+          <PettyCashSection
+            projectId={project.id}
+            floats={pettyFloats}
+            budgetLines={budgetHeads}
+            userId={userId}
+            canManage={isFinance}
+          />
+        </FinishedSectionWrap>
       )}
 
       {/* Crew & Cast Ledger (finance only) */}
@@ -353,15 +391,17 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
         />
       )}
 
-      {/* Daily Production Reports (management) */}
+      {/* Daily Production Reports (management) — collapses once the shoot wraps */}
       {isManagement && (
-        <ProductionReportSection
-          projectId={project.id}
-          reports={dprs}
-          userId={userId}
-          canManage={isManagement}
-          canDelete={role === 'founder'}
-        />
+        <FinishedSectionWrap collapsible={shootWrapped} label="Daily Production Reports">
+          <ProductionReportSection
+            projectId={project.id}
+            reports={dprs}
+            userId={userId}
+            canManage={isManagement}
+            canDelete={role === 'founder'}
+          />
+        </FinishedSectionWrap>
       )}
 
       {/* Daily Check-ins — team reports to the producer */}
@@ -402,32 +442,25 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
           )}
         </div>
 
-        {/* Payment Requests */}
+        {/* Payment Requests — open (needs action) first, settled archived */}
         <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-[#2a2a3a] flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white">Payment Requests</h3>
+            <h3 className="text-sm font-semibold text-white">Payment Requests {openPayments.length > 0 && <span className="text-amber-400">· {openPayments.length} open</span>}</h3>
             <Link href="/payments" className="text-xs text-white/70 hover:text-white">View all</Link>
           </div>
           {payments.length === 0 ? (
             <div className="py-8 text-center text-[#8888aa] text-sm">No payment requests</div>
           ) : (
-            <div className="divide-y divide-[#2a2a3a]">
-              {payments.slice(0, 6).map(p => {
-                const s = getPaymentStatusBadge(p.approval_status)
-                return (
-                  <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-sm text-white truncate">{p.payee}</div>
-                      <div className="text-xs text-[#8888aa] truncate">{p.purpose}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-semibold text-white tabular-nums">{formatCurrency(p.amount)}</div>
-                      <StatusBadge label={s.label} variant={s.variant} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <>
+              {openPayments.length === 0 ? (
+                <div className="py-6 text-center text-emerald-400/80 text-xs">All settled — nothing pending</div>
+              ) : (
+                <div className="divide-y divide-[#2a2a3a]">{openPayments.slice(0, 8).map(renderPaymentRow)}</div>
+              )}
+              <SettledGroup count={settledPayments.length} label="Settled (approved / paid / rejected)">
+                {settledPayments.slice(0, 20).map(renderPaymentRow)}
+              </SettledGroup>
+            </>
           )}
         </div>
 
@@ -466,17 +499,34 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
           {liabilities.length === 0 ? (
             <div className="py-8 text-center text-[#8888aa] text-sm">No liabilities</div>
           ) : (
-            <div className="divide-y divide-[#2a2a3a]">
-              {liabilities.map(l => (
-                <div key={l.id} className="px-5 py-3 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm text-white truncate">{l.party_name}</div>
-                    <div className="text-xs text-[#8888aa]">Balance: {formatCurrency(l.balance_remaining)}</div>
-                  </div>
-                  <div className="text-sm font-semibold text-white tabular-nums shrink-0">{formatCurrency(l.amount_owed)}</div>
+            <>
+              {openLiabilities.length === 0 ? (
+                <div className="py-6 text-center text-emerald-400/80 text-xs">All cleared</div>
+              ) : (
+                <div className="divide-y divide-[#2a2a3a]">
+                  {openLiabilities.map(l => (
+                    <div key={l.id} className="px-5 py-3 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-sm text-white truncate">{l.party_name}</div>
+                        <div className="text-xs text-[#8888aa]">Balance: {formatCurrency(l.balance_remaining)}</div>
+                      </div>
+                      <div className="text-sm font-semibold text-white tabular-nums shrink-0">{formatCurrency(l.amount_owed)}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+              <SettledGroup count={settledLiabilities.length} label="Cleared">
+                {settledLiabilities.map(l => (
+                  <div key={l.id} className="px-5 py-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm text-white truncate">{l.party_name}</div>
+                      <div className="text-xs text-[#8888aa]">Cleared</div>
+                    </div>
+                    <div className="text-sm font-semibold text-white tabular-nums shrink-0">{formatCurrency(l.amount_owed)}</div>
+                  </div>
+                ))}
+              </SettledGroup>
+            </>
           )}
         </div>
       </div>
@@ -517,6 +567,47 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
           </div>
         </form>
       </Modal>
+    </div>
+  )
+}
+
+// Wraps a shoot-phase section. Once the shoot has wrapped (post-production /
+// released) the section collapses to a single bar; one click reopens it.
+function FinishedSectionWrap({ collapsible, label, children }: { collapsible: boolean; label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  if (!collapsible) return <>{children}</>
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="w-full bg-[#13131a] border border-[#2a2a3a] rounded-2xl px-5 py-3.5 flex items-center justify-between text-sm text-[#8888aa] hover:text-white transition-colors">
+        <span className="flex items-center gap-2"><Archive size={14} /> {label}</span>
+        <span className="flex items-center gap-1.5"><span className="text-[10px] uppercase tracking-wide text-[#5a5a7a]">shoot wrapped</span><ChevronDown size={15} /></span>
+      </button>
+    )
+  }
+  return (
+    <div className="space-y-2">
+      <button onClick={() => setOpen(false)} className="text-xs text-[#8888aa] hover:text-white flex items-center gap-1.5 px-1">
+        <ChevronDown size={13} className="rotate-180" /> Hide {label}
+      </button>
+      {children}
+    </div>
+  )
+}
+
+// Collapsible "settled / archived" group — keeps finished items out of the way
+// while one click reveals them. Pending items stay above, always visible.
+function SettledGroup({ count, label, children }: { count: number; label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  if (count === 0) return null
+  return (
+    <div className="border-t border-[#2a2a3a]">
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full px-5 py-2.5 flex items-center justify-between text-xs text-[#8888aa] hover:text-white transition-colors">
+        <span className="flex items-center gap-1.5"><Archive size={12} /> {label} · {count}</span>
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="divide-y divide-[#2a2a3a] opacity-75">{children}</div>}
     </div>
   )
 }

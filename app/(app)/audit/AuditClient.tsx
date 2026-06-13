@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ScrollText, Filter } from 'lucide-react'
+import { ScrollText, Filter, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { AuditLog } from '@/lib/types'
@@ -31,16 +31,26 @@ const ACTION_VARIANTS: Record<string, 'green' | 'yellow' | 'red' | 'gray'> = {
 // Skip noisy bookkeeping fields when summarizing a change
 const HIDDEN_FIELDS = new Set(['updated_at', 'created_at', 'id', 'verified_at', 'approved_at', 'paid_at', 'verified_by', 'approved_by', 'paid_by'])
 
+const HIGHLIGHT_KEYS = ['payee', 'party_name', 'title', 'name', 'full_name', 'amount', 'amount_owed', 'closing_cash', 'cash_out', 'cash_in', 'entry_date', 'purpose']
+
 function summarize(log: AuditLog): string {
   const newValues = log.new_values ?? {}
   const oldValues = log.old_values ?? {}
 
   if (log.action === 'create') {
-    const highlights = ['payee', 'party_name', 'title', 'name', 'full_name', 'amount', 'amount_owed', 'closing_cash', 'purpose']
+    const highlights = HIGHLIGHT_KEYS
       .filter((k) => newValues[k] !== undefined && newValues[k] !== null)
       .slice(0, 3)
       .map((k) => `${k.replace(/_/g, ' ')}: ${newValues[k]}`)
     return highlights.join(' · ') || 'New record created'
+  }
+
+  if (log.action === 'delete') {
+    const highlights = HIGHLIGHT_KEYS
+      .filter((k) => oldValues[k] !== undefined && oldValues[k] !== null)
+      .slice(0, 4)
+      .map((k) => `${k.replace(/_/g, ' ')}: ${oldValues[k]}`)
+    return `Removed — ${highlights.join(' · ') || 'record deleted'}`
   }
 
   const changes = Object.keys(newValues)
@@ -93,6 +103,14 @@ export function AuditClient({ logs }: Props) {
             <option key={a} value={a} className="capitalize">{a}</option>
           ))}
         </select>
+        <button
+          onClick={() => setActionFilter(actionFilter === 'delete' ? '' : 'delete')}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs border transition-colors ${
+            actionFilter === 'delete' ? 'bg-red-500/15 border-red-500/40 text-red-300' : 'bg-[#13131a] border-[#2a2a3a] text-[#8888aa] hover:border-white/30'
+          }`}
+        >
+          <Trash2 size={13} /> Deletions only
+        </button>
         <span className="text-xs text-[#5a5a7a] ml-auto">{filtered.length} of {logs.length} entries (latest 300)</span>
       </div>
 

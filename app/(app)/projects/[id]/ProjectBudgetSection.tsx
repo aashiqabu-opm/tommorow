@@ -83,7 +83,11 @@ export function ProjectBudgetSection({ projectId, budgetLines, payments, userId,
     const supabase = createClient()
     const rows = BUDGET_TEMPLATE.map((t, i) => ({ project_id: projectId, section: t.section, phase: t.phase, head: t.head, estimated: 0, sort_order: i, created_by: userId }))
     const { error } = await supabase.from('budget_lines').insert(rows)
-    if (error) { toast.error("Couldn't apply template — try again"); setSeeding(false); return }
+    if (error) {
+      const hint = /relation .*budget_lines.* does not exist/i.test(error.message) ? 'run migration-budget.sql first' : error.message
+      toast.error(`Couldn't apply template — ${String(hint).slice(0, 90)}`)
+      setSeeding(false); return
+    }
     toast.success('Standard budget template added')
     setSeeding(false)
     router.refresh()

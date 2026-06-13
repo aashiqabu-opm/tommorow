@@ -18,7 +18,6 @@ import {
   Landmark,
   HandCoins,
   TrendingUp,
-  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/version'
@@ -33,7 +32,6 @@ interface SidebarProps {
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
-  { href: '/ask', label: 'Ask OPM', icon: Sparkles, roles: ['founder', 'accountant'] },
   { href: '/cash', label: 'Cash in Hand', icon: Wallet, roles: ['founder', 'accountant'] },
   { href: '/vendors', label: 'Vendors', icon: Building2, roles: ['founder', 'accountant', 'general_manager'] },
   { href: '/accounts', label: 'Accounts', icon: Landmark, roles: ['founder', 'accountant'] },

@@ -165,6 +165,7 @@ async function reconcile(admin: SupabaseClient, ownerId: string): Promise<number
     .select('id, txn_date, amount, merchant, origin, dup_of').eq('owner_id', ownerId).gte('txn_date', since)
   if (!txns) return 0
   const rank: Record<string, number> = { statement: 3, alert: 2, receipt: 1, manual: 0 }
+  const token = (m: string | null) => (m ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').trim().split(/\s+/)[0] ?? ''
   const list = txns.map(t => ({ ...t, amt: Number(t.amount), d: new Date(t.txn_date as string).getTime() }))
   let matched = 0
   for (let i = 0; i < list.length; i++) {
@@ -175,14 +176,22 @@ async function reconcile(admin: SupabaseClient, ownerId: string): Promise<number
       if (b.dup_of) continue
       if (a.amt !== b.amt) continue
       if (Math.abs(a.d - b.d) > 4 * 86400000) continue
-      // pick canonical (higher rank) and duplicate (lower rank)
+      // A duplicate is the SAME transaction seen via two different channels —
+      // never two alerts of an identical recurring charge. Require different
+      // origins, and either a statement is involved or the merchants agree.
+      if (a.origin === b.origin) continue
+      const oneStatement = a.origin === 'statement' || b.origin === 'statement'
+      const ta = token(a.merchant), tb = token(b.merchant)
+      const merchAgree = ta && tb && ta === tb
+      if (!oneStatement && !merchAgree) continue
+      if (oneStatement && ta && tb && !merchAgree) continue // statement merchant known but differs
       const aRank = rank[a.origin as string] ?? 0, bRank = rank[b.origin as string] ?? 0
       const dup = aRank >= bRank ? b : a
       const canon = aRank >= bRank ? a : b
-      if (dup.dup_of === canon.id) continue
       await admin.from('personal_transactions').update({ dup_of: canon.id, reconciled: true }).eq('id', dup.id)
       dup.dup_of = canon.id
       matched++
+      break // 1:1 — this canonical claims one duplicate
     }
   }
   return matched

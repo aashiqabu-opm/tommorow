@@ -366,3 +366,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 23. OFFICE production scheduling P1 (breakdown/days/locations) ─────────────
 -- migration-office-3.sql (locations, scenes, scene_elements, schedule_day_scenes, day_requirements, day_checklist).
+
+-- ───────────── 24. OFFICE call sheets log ─────────────
+-- migration-office-4.sql (call_sheets).

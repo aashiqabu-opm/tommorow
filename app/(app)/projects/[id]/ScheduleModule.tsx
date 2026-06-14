@@ -148,6 +148,26 @@ function Days({ projectId, canEdit, days, scenes, locs, locName, onChange, supab
   const [dayScenes, setDayScenes] = useState<any[]>([]); const [reqs, setReqs] = useState<Req[]>([]); const [chks, setChks] = useState<Chk[]>([])
   const [reqF, setReqF] = useState<any>({ category: 'equipment', label: '', qty: 1, dept: '' }); const [chkItem, setChkItem] = useState('')
   const [addSceneId, setAddSceneId] = useState('')
+  // call sheet
+  const [csText, setCsText] = useState<string | null>(null); const [csOpen, setCsOpen] = useState(false); const [csBusy, setCsBusy] = useState(false)
+
+  async function previewCallSheet(dayId: string) {
+    setCsBusy(true)
+    try {
+      const res = await fetch('/api/projects/callsheet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dayId, previewOnly: true }) })
+      const d = await res.json(); if (!res.ok) { toast.error(d.error || 'Failed'); return }
+      setCsText(d.text); setCsOpen(true)
+    } catch { toast.error('Failed') } finally { setCsBusy(false) }
+  }
+  async function sendCallSheet(dayId: string) {
+    setCsBusy(true)
+    try {
+      const res = await fetch('/api/projects/callsheet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dayId }) })
+      const d = await res.json(); if (!res.ok) { toast.error(d.error || 'Failed'); return }
+      toast.success(`Call sheet sent — WhatsApp ${d.sent?.whatsapp ?? 0}, email ${d.sent?.email ?? 0}`); setCsOpen(false)
+    } catch { toast.error('Failed') } finally { setCsBusy(false) }
+  }
+  function printCallSheet() { const w = window.open('', '_blank'); if (w && csText) { w.document.write(`<pre style="font:14px/1.5 monospace;white-space:pre-wrap;padding:24px">${csText.replace(/</g, '&lt;')}</pre>`); w.document.close(); w.print() } }
 
   const loadDay = useCallback(async (dayId: string) => {
     const [ds, r, c] = await Promise.all([
@@ -205,6 +225,7 @@ function Days({ projectId, canEdit, days, scenes, locs, locName, onChange, supab
               </div>
               {isOpen && (
                 <div className="px-4 pb-4 border-t border-[#2a2a3a] pt-3 space-y-4 text-sm">
+                  {canEdit && <div className="flex justify-end"><Button variant="ghost" onClick={() => previewCallSheet(d.id)} loading={csBusy}>📋 Call sheet</Button></div>}
                   {/* Scenes */}
                   <div>
                     <div className="text-xs font-semibold text-white mb-1">Scenes</div>
@@ -249,6 +270,13 @@ function Days({ projectId, canEdit, days, scenes, locs, locName, onChange, supab
           <div className="grid grid-cols-2 gap-3"><Input label="Weather" value={f.weather} onChange={(e: any) => setF({ ...f, weather: e.target.value })} /><Select label="Status" value={f.status} onChange={(e: any) => setF({ ...f, status: e.target.value })} options={['planned', 'confirmed', 'done', 'cancelled'].map(v => ({ value: v, label: v }))} /></div>
           <Textarea label="Notes" value={f.notes} onChange={(e: any) => setF({ ...f, notes: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></div>
+        </div>
+      </Modal>
+      <Modal open={csOpen} onClose={() => setCsOpen(false)} title="Call sheet">
+        <div className="space-y-3">
+          <pre className="text-xs text-white/90 whitespace-pre-wrap bg-[#13131a] border border-[#2a2a3a] rounded-lg p-3 max-h-[50vh] overflow-y-auto">{csText}</pre>
+          <p className="text-[11px] text-[#8888aa]">Sends to every core-team member with a WhatsApp number / email on file.</p>
+          <div className="flex justify-end gap-2"><Button variant="ghost" onClick={printCallSheet}>Print / PDF</Button><Button onClick={() => { const id = days.find((d: Day) => exp === d.id)?.id; if (id) sendCallSheet(id) }} loading={csBusy}>Send to unit</Button></div>
         </div>
       </Modal>
     </div>

@@ -6,12 +6,11 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
-import { formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { ScheduleModule } from './ScheduleModule'
 
 interface Character { id: string; name: string; description?: string | null; age_range?: string | null; gender?: string | null; importance?: string | null; status: string; cast_actor?: string | null; notes?: string | null }
 interface Audition { id: string; character_id?: string | null; applicant_name: string; contact?: string | null; age?: string | null; location?: string | null; photo_url?: string | null; video_url?: string | null; ai_score?: number | null; status: string; notes?: string | null }
-interface Schedule { id: string; shoot_date: string; end_date?: string | null; location?: string | null; scenes?: string | null; call_time?: string | null; unit?: string | null; status: string; notes?: string | null }
 interface Doc { id: string; title: string; doc_type: string; file_path?: string | null; file_name?: string | null; ai_summary?: string | null; created_at: string }
 interface PressItem { id: string; kind: string; title: string; file_path?: string | null; link?: string | null; notes?: string | null }
 interface Channel { id: string; platform: string; handle?: string | null; url: string; notes?: string | null }
@@ -27,22 +26,20 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
   const [tab, setTab] = useState<Tab>('characters')
   const [characters, setCharacters] = useState<Character[]>([])
   const [auditions, setAuditions] = useState<Audition[]>([])
-  const [schedule, setSchedule] = useState<Schedule[]>([])
   const [docs, setDocs] = useState<Doc[]>([])
   const [press, setPress] = useState<PressItem[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
 
   const load = useCallback(async () => {
-    const [c, a, s, d, p, ch] = await Promise.all([
+    const [c, a, d, p, ch] = await Promise.all([
       supabase.from('project_characters').select('*').eq('project_id', projectId).order('created_at'),
       supabase.from('project_auditions').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
-      supabase.from('project_schedule').select('*').eq('project_id', projectId).order('shoot_date'),
       supabase.from('project_documents').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('project_press_kit').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('project_channels').select('*').eq('project_id', projectId).order('created_at'),
     ])
     setCharacters((c.data ?? []) as Character[]); setAuditions((a.data ?? []) as Audition[])
-    setSchedule((s.data ?? []) as Schedule[]); setDocs((d.data ?? []) as Doc[])
+    setDocs((d.data ?? []) as Doc[])
     setPress((p.data ?? []) as PressItem[]); setChannels((ch.data ?? []) as Channel[])
   }, [projectId, supabase])
   useEffect(() => { load() }, [load])
@@ -62,7 +59,7 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
       </div>
       {tab === 'characters' && <Characters projectId={projectId} rows={characters} canEdit={canEditCasting} onChange={load} supabase={supabase} toast={toast} />}
       {tab === 'auditions' && <Auditions projectId={projectId} rows={auditions} characters={characters} canEdit={canEditCasting} onChange={load} supabase={supabase} toast={toast} />}
-      {tab === 'schedule' && <ScheduleTab projectId={projectId} rows={schedule} canEdit={canEditCasting} onChange={load} supabase={supabase} toast={toast} />}
+      {tab === 'schedule' && <ScheduleModule projectId={projectId} canEdit={canEditCasting} />}
       {tab === 'documents' && <Documents projectId={projectId} rows={docs} canEdit={canEditDocs} userId={userId} onChange={load} supabase={supabase} toast={toast} addCharacters={async (chars) => {
         const payload = chars.map(c => ({ project_id: projectId, name: c.name, description: c.description, status: 'open' }))
         const { error } = await supabase.from('project_characters').insert(payload)
@@ -161,50 +158,6 @@ function Auditions({ projectId, rows, characters, canEdit, onChange, supabase, t
           <Select label="For character" value={f.character_id} onChange={e => setF({ ...f, character_id: e.target.value })} placeholder="— select role —" options={characters.map(c => ({ value: c.id, label: c.name }))} />
           <Input label="Self-tape video link" value={f.video_url} onChange={e => setF({ ...f, video_url: e.target.value })} placeholder="YouTube / Drive link" />
           <Input label="Photo link" value={f.photo_url} onChange={e => setF({ ...f, photo_url: e.target.value })} />
-          <Textarea label="Notes" value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} />
-          <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></div>
-        </div>
-      </Modal>
-    </div>
-  )
-}
-
-function ScheduleTab({ projectId, rows, canEdit, onChange, supabase, toast }: { projectId: string; rows: Schedule[]; canEdit: boolean; onChange: () => void; supabase: SB; toast: Toast }) {
-  const [open, setOpen] = useState(false); const [ed, setEd] = useState<Schedule | null>(null)
-  const [f, setF] = useState<any>({ shoot_date: new Date().toISOString().slice(0, 10), end_date: '', location: '', scenes: '', call_time: '', unit: '', status: 'planned', notes: '' })
-  function openNew() { setEd(null); setF({ shoot_date: new Date().toISOString().slice(0, 10), end_date: '', location: '', scenes: '', call_time: '', unit: '', status: 'planned', notes: '' }); setOpen(true) }
-  function openEd(r: Schedule) { setEd(r); setF({ shoot_date: r.shoot_date, end_date: r.end_date ?? '', location: r.location ?? '', scenes: r.scenes ?? '', call_time: r.call_time ?? '', unit: r.unit ?? '', status: r.status, notes: r.notes ?? '' }); setOpen(true) }
-  async function save() {
-    const p = { ...f, end_date: f.end_date || null, location: f.location || null, scenes: f.scenes || null, call_time: f.call_time || null, unit: f.unit || null, notes: f.notes || null }
-    const { error } = ed ? await supabase.from('project_schedule').update(p).eq('id', ed.id) : await supabase.from('project_schedule').insert({ ...p, project_id: projectId })
-    if (error) { toast.error("Couldn't save"); return }
-    setOpen(false); toast.success('Saved'); onChange()
-  }
-  async function del(r: Schedule) { if (!confirm('Delete?')) return; await supabase.from('project_schedule').delete().eq('id', r.id); onChange() }
-  return (
-    <div>
-      {canEdit && <div className="flex justify-end mb-3"><Button icon={Plus} onClick={openNew}>Add shoot day</Button></div>}
-      {rows.length === 0 ? <Empty t="No shoot days scheduled. Add shooting dates, locations and scenes." /> : (
-        <div className="space-y-2">{rows.map(r => (
-          <div key={r.id} className="flex items-center justify-between bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-4 py-3">
-            <div className="min-w-0"><div className="text-sm text-white font-medium flex items-center gap-2">{formatDate(r.shoot_date)}{r.end_date ? ` – ${formatDate(r.end_date)}` : ''} {badge(r.status)}</div>
-              <div className="text-xs text-[#8888aa] mt-0.5">{[r.location, r.call_time ? `call ${r.call_time}` : '', r.unit, r.scenes].filter(Boolean).join(' · ')}</div></div>
-            {canEdit && <div className="flex items-center gap-3 shrink-0"><button onClick={() => openEd(r)} className="text-[#8888aa] hover:text-white"><Pencil size={15} /></button><button onClick={() => del(r)} className="text-[#8888aa] hover:text-red-400"><Trash2 size={15} /></button></div>}
-          </div>))}</div>
-      )}
-      <Modal open={open} onClose={() => setOpen(false)} title={ed ? 'Edit shoot day' : 'Add shoot day'}>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Date" type="date" value={f.shoot_date} onChange={e => setF({ ...f, shoot_date: e.target.value })} />
-            <Input label="End date (if multi-day)" type="date" value={f.end_date} onChange={e => setF({ ...f, end_date: e.target.value })} />
-          </div>
-          <Input label="Location" value={f.location} onChange={e => setF({ ...f, location: e.target.value })} />
-          <Input label="Scenes" value={f.scenes} onChange={e => setF({ ...f, scenes: e.target.value })} placeholder="Sc 12, 13, 18" />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Call time" value={f.call_time} onChange={e => setF({ ...f, call_time: e.target.value })} placeholder="6:00 AM" />
-            <Input label="Unit" value={f.unit} onChange={e => setF({ ...f, unit: e.target.value })} placeholder="Main / 2nd unit" />
-          </div>
-          <Select label="Status" value={f.status} onChange={e => setF({ ...f, status: e.target.value })} options={['planned', 'confirmed', 'done', 'cancelled'].map(v => ({ value: v, label: v }))} />
           <Textarea label="Notes" value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></div>
         </div>

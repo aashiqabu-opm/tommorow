@@ -363,3 +363,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 22. OFFICE press kit + channels ─────────────
 -- migration-office-2.sql (project_press_kit, project_channels).
+
+-- ───────────── 23. OFFICE production scheduling P1 (breakdown/days/locations) ─────────────
+-- migration-office-3.sql (locations, scenes, scene_elements, schedule_day_scenes, day_requirements, day_checklist).

@@ -772,6 +772,10 @@ export interface PersonalAccount {
   type: 'bank' | 'cash' | 'wallet' | 'investment'
   balance: number
   notes?: string | null
+  bank_name?: string | null
+  account_no?: string | null
+  ifsc?: string | null
+  branch?: string | null
   created_at: string
 }
 

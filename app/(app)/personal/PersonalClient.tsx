@@ -290,16 +290,20 @@ function AccountsTab({ ownerId, rows, onChange, toast }: { ownerId: string; rows
   const [type, setType] = useState<PersonalAccount['type']>('bank')
   const [balance, setBalance] = useState('')
   const [notes, setNotes] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [accountNo, setAccountNo] = useState('')
+  const [ifsc, setIfsc] = useState('')
+  const [branch, setBranch] = useState('')
   const [saving, setSaving] = useState(false)
 
-  function openNew() { setEditing(null); setName(''); setType('bank'); setBalance(''); setNotes(''); setOpen(true) }
-  function openEdit(r: PersonalAccount) { setEditing(r); setName(r.name); setType(r.type); setBalance(String(r.balance)); setNotes(r.notes ?? ''); setOpen(true) }
+  function openNew() { setEditing(null); setName(''); setType('bank'); setBalance(''); setNotes(''); setBankName(''); setAccountNo(''); setIfsc(''); setBranch(''); setOpen(true) }
+  function openEdit(r: PersonalAccount) { setEditing(r); setName(r.name); setType(r.type); setBalance(String(r.balance)); setNotes(r.notes ?? ''); setBankName(r.bank_name ?? ''); setAccountNo(r.account_no ?? ''); setIfsc(r.ifsc ?? ''); setBranch(r.branch ?? ''); setOpen(true) }
 
   async function save() {
     if (!name) { toast.error('Name is required'); return }
     setSaving(true)
     const supabase = createClient()
-    const payload = { name, type, balance: Number(balance || 0), notes: notes || null }
+    const payload = { name, type, balance: Number(balance || 0), notes: notes || null, bank_name: bankName || null, account_no: accountNo || null, ifsc: ifsc || null, branch: branch || null }
     if (editing) {
       const { error } = await supabase.from('personal_accounts').update(payload).eq('id', editing.id)
       if (error) { toast.error("Couldn't save"); setSaving(false); return }
@@ -331,8 +335,8 @@ function AccountsTab({ ownerId, rows, onChange, toast }: { ownerId: string; rows
           {rows.map(r => (
             <div key={r.id} className="flex items-center justify-between bg-[#13131a] border border-[#2a2a3a] rounded-lg px-4 py-3">
               <div className="min-w-0">
-                <div className="text-sm text-white font-medium">{r.name}</div>
-                <div className="text-xs text-[#8888aa] mt-0.5">{TYPE_LABELS[r.type]}{r.notes ? ` · ${r.notes}` : ''}</div>
+                <div className="text-sm text-white font-medium">{r.name}{r.bank_name ? ` · ${r.bank_name}` : ''}</div>
+                <div className="text-xs text-[#8888aa] mt-0.5">{TYPE_LABELS[r.type]}{r.account_no ? ` · A/c ${r.account_no}` : ''}{r.ifsc ? ` · ${r.ifsc}` : ''}{r.branch ? ` · ${r.branch}` : ''}{r.notes ? ` · ${r.notes}` : ''}</div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="text-sm font-semibold text-white">{formatCurrency(Number(r.balance))}</span>
@@ -349,6 +353,16 @@ function AccountsTab({ ownerId, rows, onChange, toast }: { ownerId: string; rows
           <Select label="Type" value={type} onChange={e => setType(e.target.value as PersonalAccount['type'])}
             options={[{ value: 'bank', label: 'Bank' }, { value: 'cash', label: 'Cash' }, { value: 'wallet', label: 'Wallet' }, { value: 'investment', label: 'Investment' }]} />
           <MoneyInput label="Current balance" value={balance} onChange={setBalance} />
+          {type === 'bank' && (
+            <>
+              <Input label="Bank name" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="HDFC Bank" />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="Account number" value={accountNo} onChange={e => setAccountNo(e.target.value)} />
+                <Input label="IFSC code" value={ifsc} onChange={e => setIfsc(e.target.value.toUpperCase())} placeholder="HDFC0001234" />
+              </div>
+              <Input label="Branch" value={branch} onChange={e => setBranch(e.target.value)} placeholder="MG Road, Kochi" />
+            </>
+          )}
           <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
           <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save} loading={saving}>Save</Button></div>
         </div>

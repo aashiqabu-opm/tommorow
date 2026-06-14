@@ -35,8 +35,21 @@ export function CardsTab({ ownerId, cards, txns, onChange }: { ownerId: string; 
 
   const month = thisMonth()
   // Exclude reconciled duplicates so spend isn't double-counted.
-  const monthSpend = txns.filter(t => t.direction === 'debit' && t.txn_date.startsWith(month) && !t.dup_of).reduce((s, t) => s + Number(t.amount), 0)
+  const debits = txns.filter(t => t.direction === 'debit' && !t.dup_of)
+  const monthSpend = debits.filter(t => t.txn_date.startsWith(month)).reduce((s, t) => s + Number(t.amount), 0)
   const dupCount = txns.filter(t => t.dup_of).length
+  // This week (last 7 days)
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+  const weekSpend = debits.filter(t => t.txn_date >= weekAgo).reduce((s, t) => s + Number(t.amount), 0)
+  // Last 6 months, split
+  const monthlySplit: { label: string; key: string; total: number }[] = []
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i)
+    const key = d.toISOString().slice(0, 7)
+    const label = d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })
+    monthlySplit.push({ label, key, total: debits.filter(t => t.txn_date.startsWith(key)).reduce((s, t) => s + Number(t.amount), 0) })
+  }
+  const fmtBig = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 
   return (
     <div className="space-y-6">
@@ -47,6 +60,27 @@ export function CardsTab({ ownerId, cards, txns, onChange }: { ownerId: string; 
         <Button variant="ghost" icon={syncing ? undefined : RefreshCw} onClick={syncNow} disabled={syncing}>
           {syncing ? <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Syncing…</span> : 'Sync now'}
         </Button>
+      </div>
+
+      {/* Prominent expense totals */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-1 bg-gradient-to-br from-[#1a1a24] to-[#13131a] border border-[#f5b301]/30 rounded-2xl p-6 flex flex-col justify-center">
+          <div className="text-[11px] uppercase tracking-[0.15em] text-[#8888aa]">Spent this month</div>
+          <div className="text-4xl lg:text-5xl font-bold text-white mt-2">{fmtBig(monthSpend)}</div>
+          <div className="text-sm text-[#8888aa] mt-2">This week: <span className="text-white font-medium">{fmtBig(weekSpend)}</span></div>
+        </div>
+        <div className="md:col-span-2 bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
+          <div className="text-[11px] uppercase tracking-[0.15em] text-[#8888aa] mb-3">Monthly spend (last 6 months)</div>
+          <div className="space-y-2">
+            {(() => { const max = Math.max(1, ...monthlySplit.map(m => m.total)); return monthlySplit.map(m => (
+              <div key={m.key} className="flex items-center gap-3">
+                <div className="w-10 text-xs text-[#8888aa] shrink-0">{m.label}</div>
+                <div className="flex-1 h-5 bg-[#1a1a24] rounded overflow-hidden"><div className="h-full bg-[#f5b301]/70 rounded" style={{ width: `${(m.total / max) * 100}%` }} /></div>
+                <div className="w-24 text-right text-sm text-white shrink-0">{fmtBig(m.total)}</div>
+              </div>
+            )) })()}
+          </div>
+        </div>
       </div>
       <GstBlock ownerId={ownerId} rows={txns} onChange={onChange} toast={toast} />
       <CardsBlock ownerId={ownerId} rows={cards} onChange={onChange} toast={toast} />

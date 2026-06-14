@@ -354,3 +354,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 19. PERSONAL per-email sync markers ─────────────
 -- migration-personal-6.sql (personal_synced_emails) — skip already-processed mail.
+
+-- ───────────── 20. PERSONAL bank account essentials ─────────────
+-- migration-personal-7.sql (account_no, ifsc, branch, bank_name).

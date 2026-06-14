@@ -14,7 +14,9 @@
     "@supabase/supabase-js": "^2.49.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "imapflow": "^1.4.0",
     "lucide-react": "^0.511.0",
+    "mailparser": "^3.9.9",
     "next": "^15.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.5",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^22.15.3",
     "@types/react": "^19.1.3",
     "@types/react-dom": "^19.1.3",

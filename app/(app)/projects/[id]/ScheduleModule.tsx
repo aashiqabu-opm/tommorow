@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check } from 'lucide-react'
+import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -27,7 +27,7 @@ const cat = (s: string) => <span className="text-[9px] uppercase tracking-wide p
 
 export function ScheduleModule({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
   const toast = useToast(); const supabase = createClient()
-  const [view, setView] = useState<'breakdown' | 'days' | 'locations'>('breakdown')
+  const [view, setView] = useState<'breakdown' | 'days' | 'dood' | 'locations'>('breakdown')
   const [locs, setLocs] = useState<Loc[]>([]); const [scenes, setScenes] = useState<Scene[]>([])
   const [elems, setElems] = useState<Elem[]>([]); const [days, setDays] = useState<Day[]>([])
 
@@ -47,12 +47,13 @@ export function ScheduleModule({ projectId, canEdit }: { projectId: string; canE
   return (
     <div>
       <div className="flex gap-1 mb-4">
-        {([['breakdown', 'Breakdown', Clapperboard], ['days', 'Shoot Days', CalendarDays], ['locations', 'Locations', MapPin]] as const).map(([id, label, Icon]) => (
+        {([['breakdown', 'Breakdown', Clapperboard], ['days', 'Shoot Days', CalendarDays], ['dood', 'Day-Out-of-Days', LayoutGrid], ['locations', 'Locations', MapPin]] as const).map(([id, label, Icon]) => (
           <button key={id} onClick={() => setView(id)} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg ${view === id ? 'bg-white/10 text-white' : 'text-[#8888aa] hover:text-white'}`}><Icon size={13} /> {label}</button>
         ))}
       </div>
       {view === 'breakdown' && <Breakdown {...{ projectId, canEdit, scenes, elems, locs, locName, onChange: load, supabase, toast }} />}
       {view === 'days' && <Days {...{ projectId, canEdit, days, scenes, locs, locName, onChange: load, supabase, toast }} />}
+      {view === 'dood' && <DOOD {...{ days, scenes, elems, supabase }} />}
       {view === 'locations' && <Locations {...{ projectId, canEdit, rows: locs, onChange: load, supabase, toast }} />}
     </div>
   )
@@ -250,6 +251,62 @@ function Days({ projectId, canEdit, days, scenes, locs, locName, onChange, supab
           <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></div>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+// Day-Out-of-Days: cast × shoot-day grid with Start/Work/Hold/Finish codes.
+function DOOD({ days, scenes, elems, supabase }: any) {
+  const [map, setMap] = useState<Record<string, string[]>>({})  // dayId -> sceneIds
+  useEffect(() => {
+    (async () => {
+      const ids = days.map((d: Day) => d.id)
+      if (!ids.length) { setMap({}); return }
+      const { data } = await supabase.from('schedule_day_scenes').select('schedule_day_id, scene_id').in('schedule_day_id', ids)
+      const m: Record<string, string[]> = {}
+      for (const r of (data ?? []) as any[]) { (m[r.schedule_day_id] ||= []).push(r.scene_id) }
+      setMap(m)
+    })()
+  }, [days, supabase])
+
+  const castNames: string[] = Array.from(new Set((elems as Elem[]).filter(e => e.category === 'cast').map(e => e.label.trim()))).sort()
+  const ordered = [...days].sort((a: Day, b: Day) => a.shoot_date.localeCompare(b.shoot_date))
+  // cast -> set of scene_ids they appear in
+  const castScenes: Record<string, Set<string>> = {}
+  for (const e of (elems as Elem[]).filter(e => e.category === 'cast')) { (castScenes[e.label.trim()] ||= new Set()).add(e.scene_id) }
+  // works[cast][dayIndex] = boolean
+  function worksOn(cast: string, dayId: string) { const sids = map[dayId] ?? []; const cs = castScenes[cast]; return cs ? sids.some(s => cs.has(s)) : false }
+
+  if (!castNames.length || !ordered.length) return <Empty t="Day-Out-of-Days builds automatically once you've tagged cast in scenes and assigned scenes to shoot days." />
+
+  const codeFor = (cast: string) => {
+    const w = ordered.map((d: Day) => worksOn(cast, d.id))
+    const first = w.indexOf(true), last = w.lastIndexOf(true)
+    return ordered.map((_: Day, i: number) => {
+      if (first === -1 || i < first || i > last) return ''
+      if (i === first && i === last) return 'SWF'
+      if (i === first) return 'SW'
+      if (i === last) return 'WF'
+      return w[i] ? 'W' : 'H'
+    })
+  }
+  const color = (c: string) => c === 'H' ? 'text-amber-300' : c.includes('S') || c.includes('F') ? 'text-[#f5b301]' : c === 'W' ? 'text-emerald-300' : 'text-transparent'
+
+  return (
+    <div>
+      <p className="text-xs text-[#8888aa] mb-2">SW=Start·Work · W=Work · H=Hold (idle, still paid) · WF=Work·Finish · SWF=single day. Tighten the schedule to cut hold days.</p>
+      <div className="overflow-x-auto">
+        <table className="text-xs border-collapse">
+          <thead><tr><th className="sticky left-0 bg-[#13131a] text-left text-[#8888aa] font-semibold px-2 py-1 border-b border-[#2a2a3a]">Cast</th>
+            {ordered.map((d: Day, i: number) => <th key={d.id} className="px-2 py-1 text-[#8888aa] border-b border-[#2a2a3a] whitespace-nowrap">{d.day_number ?? i + 1}</th>)}
+            <th className="px-2 py-1 text-[#8888aa] border-b border-[#2a2a3a]">Days</th></tr></thead>
+          <tbody>{castNames.map(cast => { const codes = codeFor(cast); const work = codes.filter(c => c && c !== 'H').length; const hold = codes.filter(c => c === 'H').length; return (
+            <tr key={cast}><td className="sticky left-0 bg-[#13131a] text-white px-2 py-1 border-b border-[#1f1f2a] whitespace-nowrap">{cast}</td>
+              {codes.map((c, i) => <td key={i} className={`px-2 py-1 text-center border-b border-[#1f1f2a] ${color(c)}`}>{c}</td>)}
+              <td className="px-2 py-1 text-center border-b border-[#1f1f2a] text-white/80 whitespace-nowrap">{work}{hold ? ` +${hold}H` : ''}</td></tr>
+          ) })}</tbody>
+        </table>
+      </div>
     </div>
   )
 }

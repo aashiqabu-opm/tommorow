@@ -47,10 +47,18 @@ type NavItem = { href: string; label: string; icon: typeof LayoutDashboard; role
 type NavSection = { section: string | null; items: NavItem[] }
 
 const NAV: NavSection[] = [
+  // Production-house order: films + the AI assistant first, finance below.
   { section: null, items: [
     // Founder-only private workspace, pinned above everything.
     { href: '/personal', label: 'Personal', icon: Lock, roles: ['founder'] },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
+    { href: '/assistant', label: 'Ask OPM', icon: Sparkles, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
+  ] },
+  { section: 'Production', items: [
+    { href: '/projects', label: 'Films & Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
+    { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
+    { href: '/vehicles', label: 'Vehicles', icon: Car, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
+    { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   ] },
   { section: 'Finance', items: [
     { href: '/cash', label: 'Cash in Hand', icon: Wallet, roles: ['founder', 'accountant'] },
@@ -70,14 +78,7 @@ const NAV: NavSection[] = [
     { href: '/tally', label: 'Tally Export', icon: BookText, roles: ['founder', 'accountant'] },
     { href: '/gst-inputs', label: 'GST Inputs', icon: Receipt, roles: ['founder', 'accountant'] },
   ] },
-  { section: 'Production', items: [
-    { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
-    { href: '/vehicles', label: 'Vehicles', icon: Car, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
-    { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
-    { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
-  ] },
   { section: 'Intelligence', items: [
-    { href: '/assistant', label: 'Ask OPM', icon: Sparkles, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
     // Market (other-films tracker) is web-search powered — hidden while that's off
     ...(WEB_SEARCH_ENABLED ? [{ href: '/market', label: 'Market', icon: Newspaper, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] }] : []),
     { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },

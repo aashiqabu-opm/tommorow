@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { withCronErrorAlert } from '@/lib/monitoring'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -10,6 +11,9 @@ type Row = Record<string, any>
 // Daily: deactivate crew (staff) logins once ALL their projects released > 7
 // days ago. Kept active if they're on any project not yet past that window.
 export async function GET(request: Request) {
+  return withCronErrorAlert('crew-access', () => run(request))
+}
+async function run(request: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

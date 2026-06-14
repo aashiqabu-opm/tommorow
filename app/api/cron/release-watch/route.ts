@@ -4,6 +4,7 @@ import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfig
 import { escapeHtml } from '@/lib/alerts/deliver'
 import { fetchCollectionEstimate, scanOnline, trackCampaignAsset, intelConfigured } from '@/lib/ai/release-intel'
 import { releaseWindow } from '@/lib/phases'
+import { withCronErrorAlert } from '@/lib/monitoring'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -13,6 +14,9 @@ export const maxDuration = 300
 //   2. Scan the web for piracy + coordinated hate/negative campaigns
 // High-severity findings alert the founder. Read-only on money & records.
 export async function GET(request: Request) {
+  return withCronErrorAlert('release-watch', () => run(request))
+}
+async function run(request: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

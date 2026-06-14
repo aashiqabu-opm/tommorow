@@ -4,6 +4,7 @@ import { sendEmail, emailTemplate, emailConfigured, sleep } from '@/lib/alerts/c
 import { generateWeeklyReport, type WeeklySnapshot, type ProjectWeekly } from '@/lib/ai/weekly-report'
 import { fundingMetrics } from '@/lib/funding'
 import type { ProjectFunding } from '@/lib/types'
+import { withCronErrorAlert } from '@/lib/monitoring'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -12,6 +13,9 @@ const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 
 // Weekly AI management report → founder + accountant. Triggered by Vercel Cron.
 export async function GET(request: Request) {
+  return withCronErrorAlert('weekly-report', () => run(request))
+}
+async function run(request: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail, sendWhatsApp, emailTemplate, whatsappConfigured, emailConfigured } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
 import { assessProjectStage, stageRank, type StageSignals } from '@/lib/ai/project-stage'
+import { withCronErrorAlert } from '@/lib/monitoring'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -16,6 +17,9 @@ const STATUS_LABEL: Record<string, string> = {
 // (never backward, never on_hold/cancelled). Every change is audit-logged and
 // the founder is notified. It never touches money — stage only.
 export async function GET(request: Request) {
+  return withCronErrorAlert('project-stages', () => run(request))
+}
+async function run(request: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

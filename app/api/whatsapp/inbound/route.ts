@@ -3,6 +3,7 @@ import { whatsappConfigured, normalizeWhatsApp, sendWhatsApp, sendEmail, emailTe
 import { validateTwilioSignature, twimlMessage, twimlEmpty, fetchTwilioMedia, pickProject } from '@/lib/whatsapp'
 import { extractBill } from '@/lib/ai/extract-bill'
 import { askOpm } from '@/lib/ai/assistant'
+import { reportError } from '@/lib/monitoring'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,18 @@ const xml = (body: string) => new Response(body, { headers: { 'Content-Type': 't
 // Twilio WhatsApp inbound webhook. A bill photo/PDF becomes a DRAFT payment
 // request (pending human approval — never auto-paid). Finance users can also
 // text simple read-only queries.
+// Top-level wrapper: any unhandled error is reported (and surfaced to the
+// sender as a friendly message) instead of becoming a bare 500 → Twilio 11200.
 export async function POST(req: Request) {
+  try {
+    return await handleInbound(req)
+  } catch (e) {
+    await reportError('whatsapp/inbound', e)
+    return xml(twimlMessage('Something went wrong handling your message — the team has been notified. Please try again shortly.'))
+  }
+}
+
+async function handleInbound(req: Request) {
   if (!whatsappConfigured()) return xml(twimlEmpty())
   const sid = process.env.TWILIO_ACCOUNT_SID!
   const authToken = process.env.TWILIO_AUTH_TOKEN!

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
 import { generateBriefing, type BriefingSnapshot } from '@/lib/ai/briefing'
+import { withCronErrorAlert } from '@/lib/monitoring'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -10,6 +11,9 @@ export const maxDuration = 60
 // Daily AI monitor: reads the books, Claude writes a prioritized briefing,
 // delivered to founder + accountant. Triggered by Vercel Cron.
 export async function GET(request: Request) {
+  return withCronErrorAlert('ai-briefing', () => run(request))
+}
+async function run(request: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

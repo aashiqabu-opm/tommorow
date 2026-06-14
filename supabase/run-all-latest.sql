@@ -360,3 +360,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 21. OFFICE per-project suite (characters/auditions/schedule/docs) ─────────────
 -- migration-office-1.sql + casting_director project role.
+
+-- ───────────── 22. OFFICE press kit + channels ─────────────
+-- migration-office-2.sql (project_press_kit, project_channels).

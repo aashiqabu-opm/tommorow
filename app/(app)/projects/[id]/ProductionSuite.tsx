@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Film, CalendarDays, FileText, Plus, Pencil, Trash2, Upload, Loader2, Sparkles, ExternalLink, UserPlus } from 'lucide-react'
+import { Users, Film, CalendarDays, FileText, Plus, Pencil, Trash2, Upload, Loader2, Sparkles, ExternalLink, UserPlus, Megaphone, Link2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -13,8 +13,10 @@ interface Character { id: string; name: string; description?: string | null; age
 interface Audition { id: string; character_id?: string | null; applicant_name: string; contact?: string | null; age?: string | null; location?: string | null; photo_url?: string | null; video_url?: string | null; ai_score?: number | null; status: string; notes?: string | null }
 interface Schedule { id: string; shoot_date: string; end_date?: string | null; location?: string | null; scenes?: string | null; call_time?: string | null; unit?: string | null; status: string; notes?: string | null }
 interface Doc { id: string; title: string; doc_type: string; file_path?: string | null; file_name?: string | null; ai_summary?: string | null; created_at: string }
+interface PressItem { id: string; kind: string; title: string; file_path?: string | null; link?: string | null; notes?: string | null }
+interface Channel { id: string; platform: string; handle?: string | null; url: string; notes?: string | null }
 
-type Tab = 'characters' | 'auditions' | 'schedule' | 'documents'
+type Tab = 'characters' | 'auditions' | 'schedule' | 'documents' | 'press' | 'channels'
 const IMPORTANCE = ['lead', 'supporting', 'cameo', 'extra']
 
 export function ProductionSuite({ projectId, projectStatus, userId, canEditCasting, canEditDocs }: {
@@ -27,20 +29,25 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
   const [auditions, setAuditions] = useState<Audition[]>([])
   const [schedule, setSchedule] = useState<Schedule[]>([])
   const [docs, setDocs] = useState<Doc[]>([])
+  const [press, setPress] = useState<PressItem[]>([])
+  const [channels, setChannels] = useState<Channel[]>([])
 
   const load = useCallback(async () => {
-    const [c, a, s, d] = await Promise.all([
+    const [c, a, s, d, p, ch] = await Promise.all([
       supabase.from('project_characters').select('*').eq('project_id', projectId).order('created_at'),
       supabase.from('project_auditions').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('project_schedule').select('*').eq('project_id', projectId).order('shoot_date'),
       supabase.from('project_documents').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
+      supabase.from('project_press_kit').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
+      supabase.from('project_channels').select('*').eq('project_id', projectId).order('created_at'),
     ])
     setCharacters((c.data ?? []) as Character[]); setAuditions((a.data ?? []) as Audition[])
     setSchedule((s.data ?? []) as Schedule[]); setDocs((d.data ?? []) as Doc[])
+    setPress((p.data ?? []) as PressItem[]); setChannels((ch.data ?? []) as Channel[])
   }, [projectId, supabase])
   useEffect(() => { load() }, [load])
 
-  const TABS: [Tab, string, typeof Users][] = [['characters', 'Characters', Users], ['auditions', 'Auditions', Film], ['schedule', 'Shoot Schedule', CalendarDays], ['documents', 'Documents', FileText]]
+  const TABS: [Tab, string, typeof Users][] = [['characters', 'Characters', Users], ['auditions', 'Auditions', Film], ['schedule', 'Shoot Schedule', CalendarDays], ['documents', 'Documents', FileText], ['press', 'Press Kit', Megaphone], ['channels', 'Channels', Link2]]
 
   return (
     <div className="bg-[#13131a] border border-[#2a2a3a] rounded-xl p-4">
@@ -61,6 +68,8 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
         const { error } = await supabase.from('project_characters').insert(payload)
         if (error) toast.error("Couldn't add characters"); else { toast.success(`${chars.length} characters added`); load() }
       }} />}
+      {tab === 'press' && <PressKit projectId={projectId} rows={press} canEdit={canEditCasting} userId={userId} projectStatus={projectStatus} onChange={load} supabase={supabase} toast={toast} />}
+      {tab === 'channels' && <Channels projectId={projectId} rows={channels} canEdit={canEditCasting} onChange={load} supabase={supabase} toast={toast} />}
       {projectStatus === 'post_production' && <p className="text-[11px] text-[#8888aa] mt-3">Casting director is auto-removed from the core team now the film is in post-production.</p>}
     </div>
   )
@@ -280,6 +289,97 @@ function Documents({ projectId, rows, canEdit, userId, onChange, supabase, toast
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save} loading={saving}>Save</Button></div>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+const PRESS_KINDS = [['poster', 'Poster'], ['still', 'Still / hi-res image'], ['logo', 'Logo'], ['publicity', 'Publicity material'], ['trailer', 'Trailer / video'], ['press_note', 'Press note'], ['other', 'Other']]
+function PressKit({ projectId, rows, canEdit, userId, projectStatus, onChange, supabase, toast }: { projectId: string; rows: PressItem[]; canEdit: boolean; userId: string; projectStatus: string; onChange: () => void; supabase: SB; toast: Toast }) {
+  const [open, setOpen] = useState(false)
+  const [f, setF] = useState<any>({ kind: 'poster', title: '', link: '', notes: '' })
+  const [file, setFile] = useState<File | null>(null); const [saving, setSaving] = useState(false)
+  async function save() {
+    if (!f.title) { toast.error('Title required'); return }
+    setSaving(true)
+    let filePath: string | null = null
+    if (file) {
+      const ext = file.name.split('.').pop()
+      const path = `press-kit/${projectId}/${Date.now()}.${ext}`
+      const { error: up } = await supabase.storage.from('documents').upload(path, file)
+      if (up) { toast.error("Couldn't upload"); setSaving(false); return }
+      filePath = path
+    }
+    const { error } = await supabase.from('project_press_kit').insert({ project_id: projectId, kind: f.kind, title: f.title, link: f.link || null, notes: f.notes || null, file_path: filePath, uploaded_by: userId })
+    setSaving(false); if (error) { toast.error("Couldn't save"); return }
+    setOpen(false); setF({ kind: 'poster', title: '', link: '', notes: '' }); setFile(null); toast.success('Added to press kit'); onChange()
+  }
+  async function view(r: PressItem) { if (r.file_path) { const { data } = await supabase.storage.from('documents').getPublicUrl(r.file_path); if (data?.publicUrl) window.open(data.publicUrl, '_blank') } else if (r.link) window.open(r.link, '_blank') }
+  async function del(r: PressItem) { if (!confirm('Delete?')) return; if (r.file_path) await supabase.storage.from('documents').remove([r.file_path]); await supabase.from('project_press_kit').delete().eq('id', r.id); onChange() }
+  return (
+    <div>
+      {projectStatus !== 'released' && <div className="text-[11px] text-[#f5b301] bg-[#f5b301]/10 border border-[#f5b301]/20 rounded-lg px-3 py-2 mb-3">Assemble the press kit before release — posters, hi-res stills, logos & publicity materials in one place.</div>}
+      {canEdit && <div className="flex justify-end mb-3"><Button icon={Plus} onClick={() => setOpen(true)}>Add asset</Button></div>}
+      {rows.length === 0 ? <Empty t="No press-kit assets yet. Upload posters, hi-res stills, logos and publicity materials." /> : (
+        <div className="space-y-2">{rows.map(r => (
+          <div key={r.id} className="flex items-center justify-between bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-4 py-3">
+            <div className="min-w-0"><div className="text-sm text-white font-medium flex items-center gap-2">{r.title} {badge(r.kind)}</div>{r.notes && <div className="text-xs text-[#8888aa] mt-0.5">{r.notes}</div>}</div>
+            <div className="flex items-center gap-3 shrink-0">
+              {(r.file_path || r.link) && <button onClick={() => view(r)} className="text-[#8888aa] hover:text-white"><ExternalLink size={15} /></button>}
+              {canEdit && <button onClick={() => del(r)} className="text-[#8888aa] hover:text-red-400"><Trash2 size={15} /></button>}
+            </div>
+          </div>))}</div>
+      )}
+      <Modal open={open} onClose={() => setOpen(false)} title="Add press-kit asset">
+        <div className="space-y-3">
+          <Select label="Kind" value={f.kind} onChange={e => setF({ ...f, kind: e.target.value })} options={PRESS_KINDS.map(([v, l]) => ({ value: v, label: l }))} />
+          <Input label="Title" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} placeholder="First-look poster" />
+          <label className="flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border text-white bg-[#13131a] border-[#2a2a3a] hover:border-white/30">
+            <Upload size={15} /> {file ? file.name : 'Upload file (hi-res image / PDF / video)'}
+            <input type="file" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+          </label>
+          <Input label="Or external link" value={f.link} onChange={e => setF({ ...f, link: e.target.value })} placeholder="Drive / YouTube link" />
+          <Textarea label="Notes" value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} />
+          <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save} loading={saving}>Save</Button></div>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+const PLATFORMS = [['youtube', 'YouTube'], ['instagram', 'Instagram'], ['facebook', 'Facebook'], ['x', 'X (Twitter)'], ['threads', 'Threads'], ['website', 'Website'], ['other', 'Other']]
+function Channels({ projectId, rows, canEdit, onChange, supabase, toast }: { projectId: string; rows: Channel[]; canEdit: boolean; onChange: () => void; supabase: SB; toast: Toast }) {
+  const [open, setOpen] = useState(false)
+  const [f, setF] = useState<any>({ platform: 'youtube', handle: '', url: '', notes: '' })
+  async function save() {
+    if (!f.url) { toast.error('URL required'); return }
+    const { error } = await supabase.from('project_channels').insert({ project_id: projectId, platform: f.platform, handle: f.handle || null, url: f.url, notes: f.notes || null })
+    if (error) { toast.error("Couldn't save"); return }
+    setOpen(false); setF({ platform: 'youtube', handle: '', url: '', notes: '' }); toast.success('Channel linked'); onChange()
+  }
+  async function del(r: Channel) { if (!confirm('Remove?')) return; await supabase.from('project_channels').delete().eq('id', r.id); onChange() }
+  return (
+    <div>
+      <p className="text-xs text-[#8888aa] mb-3">Link this film&apos;s YouTube channel & social pages. Live subscriber/view stats can be wired next (needs API setup).</p>
+      {canEdit && <div className="flex justify-end mb-3"><Button icon={Plus} onClick={() => setOpen(true)}>Link channel</Button></div>}
+      {rows.length === 0 ? <Empty t="No channels linked yet. Add the YouTube channel and social pages." /> : (
+        <div className="space-y-2">{rows.map(r => (
+          <div key={r.id} className="flex items-center justify-between bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-4 py-3">
+            <div className="min-w-0"><div className="text-sm text-white font-medium flex items-center gap-2">{badge(r.platform)} {r.handle || r.url}</div>{r.notes && <div className="text-xs text-[#8888aa] mt-0.5">{r.notes}</div>}</div>
+            <div className="flex items-center gap-3 shrink-0">
+              <a href={r.url} target="_blank" rel="noreferrer" className="text-[#8888aa] hover:text-white"><ExternalLink size={15} /></a>
+              {canEdit && <button onClick={() => del(r)} className="text-[#8888aa] hover:text-red-400"><Trash2 size={15} /></button>}
+            </div>
+          </div>))}</div>
+      )}
+      <Modal open={open} onClose={() => setOpen(false)} title="Link channel">
+        <div className="space-y-3">
+          <Select label="Platform" value={f.platform} onChange={e => setF({ ...f, platform: e.target.value })} options={PLATFORMS.map(([v, l]) => ({ value: v, label: l }))} />
+          <Input label="Handle / name" value={f.handle} onChange={e => setF({ ...f, handle: e.target.value })} placeholder="@opmcinemas" />
+          <Input label="URL" value={f.url} onChange={e => setF({ ...f, url: e.target.value })} placeholder="https://youtube.com/@opmcinemas" />
+          <Textarea label="Notes" value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} />
+          <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></div>
         </div>
       </Modal>
     </div>

@@ -14,6 +14,11 @@ export interface ExtractedTxn {
   source: 'card' | 'bank' | null
   date: string | null           // YYYY-MM-DD
   category: string | null
+  // GST / tax-invoice fields (only on proper vendor invoices)
+  gstin?: string | null
+  gst_amount?: number | null
+  taxable_value?: number | null
+  invoice_no?: string | null
 }
 
 export function txnExtractionConfigured() {
@@ -37,7 +42,8 @@ const SCHEMA = {
 }
 
 const SYSTEM = `You read Indian bank and credit-card alert emails and extract the transaction. Amounts are rupees (number only, no symbols/commas). Dates YYYY-MM-DD (Indian dates are DD/MM/YYYY). Set is_transaction=false for OTPs, statements, due-date reminders, marketing, or anything that is not an actual completed money movement. Use null for anything not clearly present. Never guess full card/account numbers.
-Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: is_transaction (boolean), amount (number|null), direction ("debit"|"credit"|null), merchant (string|null), account_hint (string|null), source ("card"|"bank"|null), date (string|null YYYY-MM-DD), category (string|null).`
+If this is a proper TAX INVOICE (has a GSTIN), also capture gstin, gst_amount (total GST in rupees), taxable_value (amount before GST), and invoice_no. Otherwise leave those null.
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: is_transaction (boolean), amount (number|null), direction ("debit"|"credit"|null), merchant (string|null), account_hint (string|null), source ("card"|"bank"|null), date (string|null YYYY-MM-DD), category (string|null), gstin (string|null), gst_amount (number|null), taxable_value (number|null), invoice_no (string|null).`
 
 export interface TxnResult { data: ExtractedTxn | null; error?: string }
 

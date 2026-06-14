@@ -42,6 +42,27 @@ export function readPdf(buffer: Buffer | Uint8Array, passwords: string[] = [], m
   }
 }
 
+// Render page 1 of a PDF to a small PNG (for an accounts-dept snapshot).
+// Returns null if it can't open/decrypt. scale ~0.6 keeps the file small.
+export function renderFirstPagePng(buffer: Buffer | Uint8Array, passwords: string[] = [], scale = 0.6): Buffer | null {
+  try {
+    const doc = mupdf.Document.openDocument(buffer, 'application/pdf') as unknown as {
+      needsPassword(): boolean; authenticatePassword(pw: string): number | boolean; countPages(): number
+      loadPage(n: number): { toPixmap(m: unknown, cs: unknown, alpha: boolean): { asPNG(): Uint8Array } }
+    }
+    if (doc.needsPassword()) {
+      let ok = false
+      for (const pw of passwords) { try { if (doc.authenticatePassword(pw)) { ok = true; break } } catch { /* next */ } }
+      if (!ok) return null
+    }
+    if (doc.countPages() < 1) return null
+    const pix = doc.loadPage(0).toPixmap(mupdf.Matrix.scale(scale, scale), mupdf.ColorSpace.DeviceRGB, false)
+    return Buffer.from(pix.asPNG())
+  } catch {
+    return null
+  }
+}
+
 // Build candidate passwords for Indian bank/card statements from a name + DOB.
 // Banks vary wildly; this covers the common formats (name4+DDMM, DDMMYYYY, etc.).
 export function pdfPasswordCandidates(name?: string, dobDDMMYYYY?: string): string[] {

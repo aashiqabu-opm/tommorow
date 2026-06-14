@@ -348,3 +348,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 17. PERSONAL txn ingestion/reconciliation cols ─────────────
 -- See migration-personal-4.sql (origin, dup_of, reconciled + fingerprint idx).
+
+-- ───────────── 18. PERSONAL GST capture + snapshots + company gst_inputs ─────────────
+-- See migration-personal-5.sql.

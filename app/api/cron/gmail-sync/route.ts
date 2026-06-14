@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 import { ImapFlow } from 'imapflow'
 import { simpleParser } from 'mailparser'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { extractTransaction } from '@/lib/ai/extract-transaction'
 import { extractStatement } from '@/lib/ai/extract-statement'
-import { readPdf, pdfPasswordCandidates } from '@/lib/pdf'
+import { readPdf, renderFirstPagePng, pdfPasswordCandidates } from '@/lib/pdf'
 import { withCronErrorAlert } from '@/lib/monitoring'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -23,15 +24,28 @@ const MERCHANTS = ['amazon', 'swiggy', 'zomato', 'flipkart', 'myntra']
 const STMT_WORDS = ['statement', 'e-statement', 'estatement', 'account statement']
 const TXN_WORDS = ['debited', 'credited', 'spent', 'transaction', 'txn', 'paid', 'purchase', 'withdrawn', 'received', 'payment of', 'charged', 'order', 'invoice', 'receipt']
 
+// Cron entry (Vercel injects CRON_SECRET).
 export async function GET(request: Request) {
-  return withCronErrorAlert('gmail-sync', () => run(request))
-}
-
-async function run(request: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const debug = new URL(request.url).searchParams.get('debug') === '1'
+  return withCronErrorAlert('gmail-sync', () => performSync(debug))
+}
+
+// On-demand entry — founder clicks "Sync now" in the app.
+export async function POST(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: profile } = await supabase.from('profiles').select('role, is_active').eq('id', user.id).single()
+  if (!profile?.is_active || profile.role !== 'founder') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const debug = new URL(request.url).searchParams.get('debug') === '1'
+  return withCronErrorAlert('gmail-sync', () => performSync(debug))
+}
+
+async function performSync(debug: boolean) {
   const user = process.env.GMAIL_USER, pass = process.env.GMAIL_APP_PASSWORD
   if (!user || !pass) return NextResponse.json({ ok: true, skipped: 'GMAIL creds not set' })
 
@@ -44,7 +58,6 @@ async function run(request: Request) {
   if (!ownerId) return NextResponse.json({ error: 'no owner profile' }, { status: 422 })
 
   const pwCandidates = pdfPasswordCandidates(process.env.GMAIL_PDF_NAME, process.env.GMAIL_PDF_DOB)
-  const debug = new URL(request.url).searchParams.get('debug') === '1'
   const log: string[] = []
 
   const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user, pass }, logger: false })
@@ -97,10 +110,23 @@ async function run(request: Request) {
           if (pdfs.length) { const r = readPdf(pdfs[0].content as Buffer, pwCandidates); if (r.text) text = r.text }
           const { data: x } = await extractTransaction({ from, subject, text, date: env.envelope.date?.toISOString() })
           if (x?.is_transaction && x.amount) {
+            const gstEligible = !!x.gstin
+            // Snapshot GST/business receipts (page 1, small PNG) for the accounts dept.
+            let snapshotUrl: string | null = null
+            if (gstEligible && pdfs.length) {
+              const png = renderFirstPagePng(pdfs[0].content as Buffer, pwCandidates)
+              if (png) {
+                const path = `gst-snapshots/${ownerId}/${Date.now()}.png`
+                const up = await admin.storage.from('documents').upload(path, png, { contentType: 'image/png', upsert: false })
+                if (!up.error) snapshotUrl = admin.storage.from('documents').getPublicUrl(path).data.publicUrl
+              }
+            }
             await admin.from('personal_transactions').insert({
               owner_id: ownerId, source: 'card', origin: 'receipt', account_label: x.account_hint ?? merchantName(from),
               txn_date: x.date ?? dateOf(env.envelope.date), merchant: x.merchant ?? merchantName(from), amount: x.amount,
               direction: x.direction ?? 'debit', category: x.category ?? null, email_ref: messageId, notes: 'Imported from Gmail receipt',
+              gstin: x.gstin ?? null, gst_amount: x.gst_amount ?? null, taxable_value: x.taxable_value ?? null,
+              invoice_no: x.invoice_no ?? null, gst_eligible: gstEligible, snapshot_url: snapshotUrl,
             })
             receipts++
           }

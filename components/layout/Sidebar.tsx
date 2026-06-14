@@ -68,6 +68,7 @@ const NAV: NavSection[] = [
     { href: '/vouchers', label: 'Vouchers', icon: NotebookPen, roles: ['founder', 'accountant'] },
     { href: '/statements', label: 'Statements', icon: BarChart3, roles: ['founder', 'accountant'] },
     { href: '/tally', label: 'Tally Export', icon: BookText, roles: ['founder', 'accountant'] },
+    { href: '/gst-inputs', label: 'GST Inputs', icon: Receipt, roles: ['founder', 'accountant'] },
   ] },
   { section: 'Production', items: [
     { href: '/projects', label: 'Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },

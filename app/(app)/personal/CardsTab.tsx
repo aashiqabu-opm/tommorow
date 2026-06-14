@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, CreditCard, Mail } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, Pencil, Trash2, CreditCard, Mail, RefreshCw, Loader2, Receipt, Send } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -17,6 +18,21 @@ const thisMonth = () => new Date().toISOString().slice(0, 7)
 
 export function CardsTab({ ownerId, cards, txns, onChange }: { ownerId: string; cards: PersonalCard[]; txns: PersonalTransaction[]; onChange: () => void }) {
   const toast = useToast()
+  const router = useRouter()
+  const [syncing, setSyncing] = useState(false)
+
+  async function syncNow() {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/cron/gmail-sync', { method: 'POST' })
+      const d = await res.json()
+      if (!res.ok) { toast.error(d.error || 'Sync failed'); return }
+      toast.success(`Synced: ${d.alerts ?? 0} alerts, ${d.receipts ?? 0} receipts, ${d.stmtLines ?? 0} statement lines`)
+      router.refresh()
+    } catch { toast.error('Sync failed — try again') }
+    finally { setSyncing(false) }
+  }
+
   const month = thisMonth()
   // Exclude reconciled duplicates so spend isn't double-counted.
   const monthSpend = txns.filter(t => t.direction === 'debit' && t.txn_date.startsWith(month) && !t.dup_of).reduce((s, t) => s + Number(t.amount), 0)
@@ -24,11 +40,63 @@ export function CardsTab({ ownerId, cards, txns, onChange }: { ownerId: string; 
 
   return (
     <div className="space-y-6">
-      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-lg p-3 flex items-center gap-2 text-xs text-[#8888aa]">
-        <Mail size={14} className="text-[#f5b301]" /> Auto-imported from Gmail every 6h — bank/card alerts, statements (incl. password-protected PDFs) & merchant receipts. Duplicates across sources are auto-reconciled{dupCount ? ` (${dupCount} matched)` : ''}.
+      <div className="bg-[#13131a] border border-[#2a2a3a] rounded-lg p-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs text-[#8888aa]">
+          <Mail size={14} className="text-[#f5b301]" /> Auto-imported from Gmail monthly — bank/card alerts, statements (incl. password-protected PDFs) & merchant receipts. Duplicates auto-reconciled{dupCount ? ` (${dupCount} matched)` : ''}.
+        </div>
+        <Button variant="ghost" icon={syncing ? undefined : RefreshCw} onClick={syncNow} disabled={syncing}>
+          {syncing ? <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Syncing…</span> : 'Sync now'}
+        </Button>
       </div>
+      <GstBlock ownerId={ownerId} rows={txns} onChange={onChange} toast={toast} />
       <CardsBlock ownerId={ownerId} rows={cards} onChange={onChange} toast={toast} />
       <TxnsBlock ownerId={ownerId} rows={txns} cards={cards} monthSpend={monthSpend} onChange={onChange} toast={toast} />
+    </div>
+  )
+}
+
+// GST input credits found in receipts — review and push to the accounts dept.
+function GstBlock({ ownerId, rows, onChange, toast }: { ownerId: string; rows: PersonalTransaction[]; onChange: () => void; toast: Toast }) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const eligible = rows.filter(r => r.gst_eligible && !r.sent_to_accounts)
+  const sent = rows.filter(r => r.gst_eligible && r.sent_to_accounts).length
+  const inputTotal = eligible.reduce((s, r) => s + Number(r.gst_amount ?? 0), 0)
+  if (!eligible.length && !sent) return null
+
+  async function send(r: PersonalTransaction) {
+    setBusy(r.id)
+    const supabase = createClient()
+    const { error: e1 } = await supabase.from('gst_inputs').insert({
+      source_owner: ownerId, vendor: r.merchant, gstin: r.gstin, invoice_no: r.invoice_no, invoice_date: r.txn_date,
+      taxable_value: r.taxable_value, gst_amount: r.gst_amount, total: r.amount, snapshot_url: r.snapshot_url, category: r.category,
+    })
+    if (e1) { toast.error("Couldn't send to accounts"); setBusy(null); return }
+    await supabase.from('personal_transactions').update({ sent_to_accounts: true }).eq('id', r.id)
+    toast.success('Sent to accounts'); setBusy(null); onChange()
+  }
+  async function sendAll() { for (const r of eligible) await send(r) }
+
+  return (
+    <div className="bg-[#13131a] border border-[#f5b301]/30 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Receipt size={15} className="text-[#f5b301]" /> GST inputs for filing {eligible.length ? `· ${formatCurrency(inputTotal)} credit` : ''}</h3>
+        {eligible.length > 1 && <Button onClick={sendAll}>Send all to accounts</Button>}
+      </div>
+      {eligible.length === 0 ? (
+        <p className="text-xs text-[#8888aa]">All GST receipts sent to accounts{sent ? ` (${sent})` : ''}. New ones from vendor tax-invoices will appear here.</p>
+      ) : (
+        <div className="space-y-2">
+          {eligible.map(r => (
+            <div key={r.id} className="flex items-center justify-between bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-2.5">
+              <div className="min-w-0">
+                <div className="text-sm text-white truncate">{r.merchant ?? 'Vendor'} <span className="text-[#8888aa]">· GSTIN {r.gstin}</span></div>
+                <div className="text-xs text-[#8888aa] mt-0.5">{formatDate(r.txn_date)}{r.invoice_no ? ` · inv ${r.invoice_no}` : ''} · taxable {formatCurrency(Number(r.taxable_value ?? 0))} · GST {formatCurrency(Number(r.gst_amount ?? 0))}{r.snapshot_url ? ' · 📎 snapshot' : ''}</div>
+              </div>
+              <Button onClick={() => send(r)} loading={busy === r.id} icon={Send}>Send</Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

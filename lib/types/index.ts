@@ -779,3 +779,15 @@ export const LEDGER_KIND_LABELS: Record<PersonalLedgerEntry['kind'], string> = {
   loan: 'Loan to company', capital: 'Capital introduced', drawing: 'Drawing',
   dividend: 'Dividend', repayment: 'Loan repayment', reimbursement: 'Reimbursement',
 }
+
+// ── Personal module Phase 2 (tax, film income, legal vault) ──
+export interface PersonalTaxProfile { owner_id: string; pan?: string | null; regime: 'old' | 'new'; fy?: string | null; notes?: string | null; updated_at: string }
+export interface PersonalTaxItem { id: string; owner_id: string; kind: 'advance_tax' | 'self_assessment' | 'tds' | 'itr'; label: string; fy?: string | null; amount: number; due_date?: string | null; status: 'pending' | 'paid' | 'filed'; notes?: string | null; created_at: string }
+export interface PersonalDeduction { id: string; owner_id: string; section: string; label: string; amount: number; fy?: string | null; created_at: string }
+export interface PersonalCapitalGain { id: string; owner_id: string; asset: string; buy_date?: string | null; buy_amount: number; sell_date?: string | null; sell_amount: number; gain_type?: 'LTCG' | 'STCG' | null; notes?: string | null; created_at: string }
+export interface PersonalFilmStake { id: string; owner_id: string; film: string; entity?: string | null; ownership_pct: number; investment: number; profit_share_terms?: string | null; status: 'active' | 'closed'; created_at: string }
+export interface PersonalRoyalty { id: string; owner_id: string; film: string; source: 'satellite' | 'ott' | 'music' | 'theatrical' | 'other'; amount: number; expected_date?: string | null; received_date?: string | null; status: 'expected' | 'received' | 'overdue'; notes?: string | null; created_at: string }
+export interface PersonalDocument { id: string; owner_id: string; title: string; doc_type: string; file_path?: string | null; file_name?: string | null; ai_summary?: string | null; key_dates?: { label: string; date: string }[] | null; expiry_date?: string | null; notes?: string | null; created_at: string }
+
+export const TAX_KIND_LABELS: Record<PersonalTaxItem['kind'], string> = { advance_tax: 'Advance tax', self_assessment: 'Self-assessment', tds: 'TDS', itr: 'ITR filing' }
+export const ROYALTY_SOURCE_LABELS: Record<PersonalRoyalty['source'], string> = { satellite: 'Satellite', ott: 'OTT', music: 'Music', theatrical: 'Theatrical', other: 'Other' }

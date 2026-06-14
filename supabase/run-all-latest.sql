@@ -337,3 +337,7 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 -- ───────────── 14. PERSONAL / FOUNDER MODULE (Phase 1) ─────────────
 -- See migration-personal.sql for the full block (tables, can_view_personal(),
 -- owner-only RLS, private storage bucket). Run that file as part of setup.
+
+-- ───────────── 15. PERSONAL MODULE PHASE 2 (tax/film/legal) ─────────────
+-- See migration-personal-2.sql (tax_profile, tax_items, deductions,
+-- capital_gains, film_stakes, royalties, documents; owner-only RLS). Run it.

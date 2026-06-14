@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight } from 'lucide-react'
+import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
@@ -13,18 +13,30 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import { LEDGER_KIND_LABELS, type PersonalLedgerEntry, type PersonalGuarantee, type PersonalAccount } from '@/lib/types'
+import { LEDGER_KIND_LABELS, type PersonalLedgerEntry, type PersonalGuarantee, type PersonalAccount,
+  type PersonalTaxProfile, type PersonalTaxItem, type PersonalDeduction, type PersonalCapitalGain,
+  type PersonalFilmStake, type PersonalRoyalty, type PersonalDocument } from '@/lib/types'
+import { TaxTab } from './TaxTab'
+import { FilmTab } from './FilmTab'
+import { LegalTab } from './LegalTab'
 
-type Tab = 'ledger' | 'guarantees' | 'accounts'
+type Tab = 'ledger' | 'guarantees' | 'accounts' | 'tax' | 'film' | 'legal'
 
 interface Props {
   ownerId: string
   ledger: PersonalLedgerEntry[]
   guarantees: PersonalGuarantee[]
   accounts: PersonalAccount[]
+  taxProfile: PersonalTaxProfile | null
+  taxItems: PersonalTaxItem[]
+  deductions: PersonalDeduction[]
+  gains: PersonalCapitalGain[]
+  stakes: PersonalFilmStake[]
+  royalties: PersonalRoyalty[]
+  documents: PersonalDocument[]
 }
 
-export function PersonalClient({ ownerId, ledger, guarantees, accounts }: Props) {
+export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [tab, setTab] = useState<Tab>('ledger')
@@ -35,6 +47,12 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts }: Props)
   const exposure = guarantees.filter(g => g.status === 'active').reduce((s, g) => s + Number(g.amount), 0)
   const cash = accounts.reduce((s, a) => s + Number(a.balance), 0)
   const netPosition = cash + owedByCompany
+  // Phase 2 summary signals
+  const today = new Date().toISOString().slice(0, 10)
+  const in90 = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10)
+  const taxDueSoon = taxItems.filter(t => t.status === 'pending' && t.due_date && t.due_date >= today && t.due_date <= in90)
+    .reduce((s, t) => s + Number(t.amount), 0)
+  const royaltiesPending = royalties.filter(r => r.status !== 'received').reduce((s, r) => s + Number(r.amount), 0)
 
   return (
     <div>
@@ -45,7 +63,7 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts }: Props)
       />
 
       {/* Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
         <StatCard title="Net position" value={formatCurrency(netPosition)} icon={Wallet}
           status={netPosition >= 0 ? 'green' : 'red'} subtitle="Cash + company owes you" />
         <StatCard title="Company owes you" value={formatCurrency(owedByCompany)} icon={Building2}
@@ -53,13 +71,17 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts }: Props)
         <StatCard title="Guarantee exposure" value={formatCurrency(exposure)} icon={ShieldAlert}
           status={exposure > 0 ? 'red' : 'green'} subtitle="If guarantees are called" />
         <StatCard title="Personal accounts" value={formatCurrency(cash)} icon={Wallet} subtitle={`${accounts.length} account(s)`} />
+        <StatCard title="Tax due (90d)" value={formatCurrency(taxDueSoon)} icon={Receipt}
+          status={taxDueSoon > 0 ? 'yellow' : 'default'} subtitle="Pending installments" />
+        <StatCard title="Royalties pending" value={formatCurrency(royaltiesPending)} icon={Clapperboard}
+          status={royaltiesPending > 0 ? 'green' : 'default'} subtitle="Expected / overdue" />
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-[#2a2a3a]">
-        {([['ledger', 'Founder ↔ Company', ArrowLeftRight], ['guarantees', 'Guarantees', ShieldAlert], ['accounts', 'Accounts', Wallet]] as const).map(([id, label, Icon]) => (
+      <div className="flex gap-1 mb-4 border-b border-[#2a2a3a] overflow-x-auto">
+        {([['ledger', 'Founder ↔ Company', ArrowLeftRight], ['guarantees', 'Guarantees', ShieldAlert], ['accounts', 'Accounts', Wallet], ['tax', 'Tax', Receipt], ['film', 'Film income', Clapperboard], ['legal', 'Legal vault', FileText]] as const).map(([id, label, Icon]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === id ? 'border-[#f5b301] text-white' : 'border-transparent text-[#8888aa] hover:text-white'}`}>
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${tab === id ? 'border-[#f5b301] text-white' : 'border-transparent text-[#8888aa] hover:text-white'}`}>
             <Icon size={15} /> {label}
           </button>
         ))}
@@ -68,6 +90,9 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts }: Props)
       {tab === 'ledger' && <LedgerTab ownerId={ownerId} rows={ledger} onChange={() => router.refresh()} toast={toast} />}
       {tab === 'guarantees' && <GuaranteesTab ownerId={ownerId} rows={guarantees} onChange={() => router.refresh()} toast={toast} />}
       {tab === 'accounts' && <AccountsTab ownerId={ownerId} rows={accounts} onChange={() => router.refresh()} toast={toast} />}
+      {tab === 'tax' && <TaxTab ownerId={ownerId} profile={taxProfile} items={taxItems} deductions={deductions} gains={gains} onChange={() => router.refresh()} />}
+      {tab === 'film' && <FilmTab ownerId={ownerId} stakes={stakes} royalties={royalties} onChange={() => router.refresh()} />}
+      {tab === 'legal' && <LegalTab ownerId={ownerId} rows={documents} onChange={() => router.refresh()} />}
     </div>
   )
 }

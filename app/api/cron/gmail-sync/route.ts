@@ -77,8 +77,8 @@ async function run(request: Request) {
 
         const parsed = await simpleParser(msg.source as Buffer)
         const body = (parsed.text || parsed.html || '').toString().replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
-        const x = await extractTransaction({ from, subject, text: body, date: msg.envelope.date?.toISOString() })
-        if (debug) samples.push({ from, subject: subject.slice(0, 50), textLen: body.length, is_txn: x?.is_transaction ?? 'null', amount: x?.amount ?? null })
+        const { data: x, error: xErr } = await extractTransaction({ from, subject, text: body, date: msg.envelope.date?.toISOString() })
+        if (debug) samples.push({ subject: subject.slice(0, 45), textLen: body.length, is_txn: x?.is_transaction ?? 'null', amount: x?.amount ?? null, err: xErr ?? null })
         if (!x || !x.is_transaction || !x.amount) { skipped++; continue }
 
         await admin.from('personal_transactions').insert({

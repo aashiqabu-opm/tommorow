@@ -36,10 +36,13 @@ const SCHEMA = {
   required: ['is_transaction', 'amount', 'direction', 'merchant', 'account_hint', 'source', 'date', 'category'],
 }
 
-const SYSTEM = `You read Indian bank and credit-card alert emails and extract the transaction. Amounts are rupees (number only, no symbols/commas). Dates YYYY-MM-DD (Indian dates are DD/MM/YYYY). Set is_transaction=false for OTPs, statements, due-date reminders, marketing, or anything that is not an actual completed money movement. Use null for anything not clearly present. Never guess full card/account numbers.`
+const SYSTEM = `You read Indian bank and credit-card alert emails and extract the transaction. Amounts are rupees (number only, no symbols/commas). Dates YYYY-MM-DD (Indian dates are DD/MM/YYYY). Set is_transaction=false for OTPs, statements, due-date reminders, marketing, or anything that is not an actual completed money movement. Use null for anything not clearly present. Never guess full card/account numbers.
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: is_transaction (boolean), amount (number|null), direction ("debit"|"credit"|null), merchant (string|null), account_hint (string|null), source ("card"|"bank"|null), date (string|null YYYY-MM-DD), category (string|null).`
 
-export async function extractTransaction(input: { from: string; subject: string; text: string; date?: string }): Promise<ExtractedTxn | null> {
-  if (!txnExtractionConfigured()) return null
+export interface TxnResult { data: ExtractedTxn | null; error?: string }
+
+export async function extractTransaction(input: { from: string; subject: string; text: string; date?: string }): Promise<TxnResult> {
+  if (!txnExtractionConfigured()) return { data: null, error: 'no api key' }
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const content = `From: ${input.from}\nSubject: ${input.subject}\nReceived: ${input.date ?? ''}\n\n${input.text.slice(0, 4000)}`
   try {
@@ -47,13 +50,19 @@ export async function extractTransaction(input: { from: string; subject: string;
       model: 'claude-opus-4-8',
       max_tokens: 400,
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
       messages: [{ role: 'user', content: [{ type: 'text', text: content }] }],
     })
-    const text = response.content.find((b) => b.type === 'text')
-    if (!text || text.type !== 'text') return null
-    return JSON.parse(text.text) as ExtractedTxn
-  } catch {
-    return null
+    const block = response.content.find((b) => b.type === 'text')
+    if (!block || block.type !== 'text') return { data: null, error: 'no text block' }
+    let raw = block.text.trim()
+    const m = raw.match(/\{[\s\S]*\}/)   // tolerate stray prose/code fences
+    if (m) raw = m[0]
+    return { data: JSON.parse(raw) as ExtractedTxn }
+  } catch (e) {
+    const err = e as { status?: number; message?: string; error?: { error?: { message?: string } } }
+    return { data: null, error: `${err?.status ?? ''} ${err?.error?.error?.message || err?.message || 'error'}`.trim() }
   }
 }
+
+// Keep SCHEMA referenced (documents the shape) without requiring output_config.
+void SCHEMA

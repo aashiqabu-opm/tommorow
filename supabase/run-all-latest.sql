@@ -351,3 +351,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 18. PERSONAL GST capture + snapshots + company gst_inputs ─────────────
 -- See migration-personal-5.sql.
+
+-- ───────────── 19. PERSONAL per-email sync markers ─────────────
+-- migration-personal-6.sql (personal_synced_emails) — skip already-processed mail.

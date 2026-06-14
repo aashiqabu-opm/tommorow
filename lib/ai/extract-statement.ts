@@ -23,7 +23,7 @@ export async function extractStatement(text: string): Promise<{ data: StatementT
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   try {
     const response = await client.messages.create({
-      model: 'claude-opus-4-8',
+      model: 'claude-haiku-4-5-20251001', // fast + cheap for high-volume statement text (prompt-JSON, no output_config)
       max_tokens: 4000,
       system: SYSTEM,
       messages: [{ role: 'user', content: [{ type: 'text', text: text.slice(0, 24000) }] }],

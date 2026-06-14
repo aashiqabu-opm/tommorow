@@ -62,6 +62,10 @@ async function performSync(debug: boolean) {
 
   const pwCandidates = pdfPasswordCandidates(process.env.GMAIL_PDF_NAME, process.env.GMAIL_PDF_DOB)
   const log: string[] = []
+  // Emails already processed in a prior run — skip so we never re-parse (re-cost,
+  // re-time) them. Marked incrementally so progress survives a timeout.
+  const { data: syn } = await admin.from('personal_synced_emails').select('message_id').eq('owner_id', ownerId)
+  const synced = new Set((syn ?? []).map(r => r.message_id as string))
 
   const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user, pass }, logger: false })
   let alerts = 0, receipts = 0, stmtLines = 0, lockedPdfs = 0
@@ -87,6 +91,10 @@ async function performSync(debug: boolean) {
         const isStmt = STMT_WORDS.some(w => sl.includes(w))
         const isTxn = TXN_WORDS.some(w => sl.includes(w))
         if (!isBank && !isMerchant && !isVendor && !isStmt && !isTxn) continue
+        if (synced.has(messageId)) continue
+        // Mark immediately so a mid-run timeout doesn't force a re-parse next time.
+        synced.add(messageId)
+        await admin.from('personal_synced_emails').upsert({ owner_id: ownerId, message_id: messageId }, { onConflict: 'owner_id,message_id', ignoreDuplicates: true })
 
         const full = await client.fetchOne(String(uid), { source: true }, { uid: true })
         if (!full || !full.source) continue

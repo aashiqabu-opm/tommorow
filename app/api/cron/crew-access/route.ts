@@ -46,5 +46,17 @@ async function run(request: Request) {
   if (expired.length) {
     await admin.from('profiles').update({ is_active: false, updated_at: new Date().toISOString() }).in('id', expired)
   }
-  return NextResponse.json({ ok: true, deactivated: expired.length })
+
+  // Casting is a pre-production/shoot job: remove casting_director memberships
+  // once the film wraps into post-production (or is released).
+  let castingRemoved = 0
+  const { data: cd } = await admin.from('project_members')
+    .select('id, project:projects(status)').eq('project_role', 'casting_director')
+  const toDrop = (cd ?? []).filter((m: Row) => ['post_production', 'released'].includes(m.project?.status)).map((m: Row) => m.id)
+  if (toDrop.length) {
+    await admin.from('project_members').delete().in('id', toDrop)
+    castingRemoved = toDrop.length
+  }
+
+  return NextResponse.json({ ok: true, deactivated: expired.length, castingRemoved })
 }

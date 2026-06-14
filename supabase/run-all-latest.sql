@@ -357,3 +357,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 20. PERSONAL bank account essentials ─────────────
 -- migration-personal-7.sql (account_no, ifsc, branch, bank_name).
+
+-- ───────────── 21. OFFICE per-project suite (characters/auditions/schedule/docs) ─────────────
+-- migration-office-1.sql + casting_director project role.

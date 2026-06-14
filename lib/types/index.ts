@@ -11,6 +11,7 @@ export type ProjectRole =
   | 'chief_ad'
   | 'associate_director'
   | 'screenwriter'
+  | 'casting_director'
   | 'production_designer'
   | 'music_director'
   | 'editor'

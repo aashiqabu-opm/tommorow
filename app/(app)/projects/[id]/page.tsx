@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { requireProfile } from '@/lib/auth'
 import { ProjectDetailClient } from './ProjectDetailClient'
+import { ProductionSuite } from './ProductionSuite'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -97,7 +98,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     addSpent(c.budget_line_id, paid)
   }
 
+  // Per-project edit rights for the production suite (casting/schedule/docs).
+  const myRole = (members ?? []).find((m: { user_id?: string | null; project_role?: string }) => m.user_id === profile.id)?.project_role
+  const isFounder = profile.role === 'founder'
+  const canEditDocs = isFounder || ['director', 'screenwriter', 'chief_ad', 'associate_director'].includes(myRole ?? '')
+  const canEditCasting = canEditDocs || isManagement || myRole === 'casting_director'
+
   return (
+    <>
     <ProjectDetailClient
       project={project}
       documents={documents ?? []}
@@ -120,5 +128,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       userId={profile.id}
       role={profile.role}
     />
+    <div className="mt-4">
+      <ProductionSuite projectId={id} projectStatus={project.status} userId={profile.id}
+        canEditCasting={canEditCasting} canEditDocs={canEditDocs} />
+    </div>
+    </>
   )
 }

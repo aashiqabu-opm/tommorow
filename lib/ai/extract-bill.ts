@@ -43,7 +43,10 @@ const SYSTEM = `You extract structured data from Indian vendor bills and invoice
 - "amount" is the taxable value BEFORE GST. If the bill only shows a single total with no tax split, put that total in "amount" and null for "gst_amount".
 - Dates must be YYYY-MM-DD. Indian bills are usually DD/MM/YYYY — interpret accordingly.
 - Use null for anything not clearly present. Do not guess PAN/GSTIN.
-- Pick "category" only from the allowed enum; use null if none fit.`
+- Pick "category" only from the allowed enum; use null if none fit.
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: vendor_name, amount, gst_amount, invoice_date, due_date, pan, gst_number, category, purpose (use null where not present).`
+
+void SCHEMA // shape documented above; we now prompt for JSON directly
 
 export interface ExtractResult {
   data: ExtractedBill | null
@@ -65,20 +68,20 @@ export async function extractBill(base64: string, mediaType: string): Promise<Ex
       model: 'claude-opus-4-8',
       max_tokens: 1024,
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
       messages: [
         {
           role: 'user',
           content: [
             docBlock,
-            { type: 'text', text: 'Extract the payment fields from this bill.' },
+            { type: 'text', text: 'Extract the payment fields from this bill. Respond with only the JSON object.' },
           ],
         },
       ],
     })
     const text = response.content.find((b) => b.type === 'text')
     if (!text || text.type !== 'text') return { data: null, error: 'No text in model response' }
-    const parsed = JSON.parse(text.text) as ExtractedBill
+    const jsonMatch = text.text.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text.text) as ExtractedBill
     // Normalize category to a known option (drop anything the model invented)
     if (parsed.category) {
       const match = PAYMENT_CATEGORY_OPTIONS.find(c => c.toLowerCase() === String(parsed.category).toLowerCase())

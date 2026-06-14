@@ -53,7 +53,10 @@ Rules:
 - Put every other notable date in key_dates with a clear label.
 - Capture identifiers exactly as printed (policy/account/registration numbers, PAN). Do not invent or guess.
 - amount: only if clearly printed; rupees, number only (no symbols/commas).
-- Use null / empty arrays for anything not clearly present. Never guess.`
+- Use null / empty arrays for anything not clearly present. Never guess.
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: title (string|null), doc_type (string|null), summary (string|null), expiry_date (string|null YYYY-MM-DD), key_dates (array of {label,date}), identifiers (array of {label,value}), amount (number|null).`
+
+void SCHEMA // shape documented above; we now prompt for JSON directly
 
 export interface ExtractResult { data: ExtractedPersonalDoc | null; error?: string }
 
@@ -70,12 +73,14 @@ export async function extractPersonalDoc(base64: string, mediaType: string): Pro
       model: 'claude-opus-4-8',
       max_tokens: 1500,
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
-      messages: [{ role: 'user', content: [docBlock, { type: 'text', text: 'Extract the vault fields from this personal document.' }] }],
+      messages: [{ role: 'user', content: [docBlock, { type: 'text', text: 'Extract the vault fields from this personal document. Respond with only the JSON object.' }] }],
     })
-    const text = response.content.find((b) => b.type === 'text')
-    if (!text || text.type !== 'text') return { data: null, error: 'No text in model response' }
-    return { data: JSON.parse(text.text) as ExtractedPersonalDoc }
+    const block = response.content.find((b) => b.type === 'text')
+    if (!block || block.type !== 'text') return { data: null, error: 'No text in model response' }
+    let raw = block.text.trim()
+    const m = raw.match(/\{[\s\S]*\}/)
+    if (m) raw = m[0]
+    return { data: JSON.parse(raw) as ExtractedPersonalDoc }
   } catch (e) {
     const err = e as { status?: number; message?: string; error?: { error?: { message?: string } } }
     const msg = err?.error?.error?.message || err?.message || 'Unknown error'

@@ -27,6 +27,7 @@ import {
   NotebookPen,
   ChevronDown,
   Scale,
+  Sparkles,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -72,6 +73,7 @@ const NAV: NavSection[] = [
     { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
   ] },
   { section: 'Intelligence', items: [
+    { href: '/assistant', label: 'Ask OPM', icon: Sparkles, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
     // Market (other-films tracker) is web-search powered — hidden while that's off
     ...(WEB_SEARCH_ENABLED ? [{ href: '/market', label: 'Market', icon: Newspaper, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] }] : []),
     { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },

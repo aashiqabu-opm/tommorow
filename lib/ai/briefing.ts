@@ -54,7 +54,9 @@ function snapshotToText(s: BriefingSnapshot): string {
   return lines.join('\n')
 }
 
-const SYSTEM = `You are the CFO assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Each morning you read a financial snapshot and write the founder a short briefing: only the things that genuinely need attention today, ordered by urgency and money at risk. Be specific — names and ₹ amounts. Plain and direct, no filler, no greetings. Call out cash-flow risk when upcoming committed outflows (approved-unpaid + overdue dues + near-term payroll) approach available cash. Also surface any time-sensitive contract dates (renewals, payment milestones, delivery deadlines) and high-risk clauses flagged from documents, and any film budget heads trending over their estimate (≥90% used, urgent if over 100%). When a cash runway is given, call it out if it falls below ~8 weeks (urgent below 4) — state the runway and the monthly burn. If something is fine, don't mention it.`
+const SYSTEM = `You are the CFO assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Each morning you read a financial snapshot and write the founder a short briefing: only the things that genuinely need attention today, ordered by urgency and money at risk. Be specific — names and ₹ amounts. Plain and direct, no filler, no greetings. Call out cash-flow risk when upcoming committed outflows (approved-unpaid + overdue dues + near-term payroll) approach available cash. Also surface any time-sensitive contract dates (renewals, payment milestones, delivery deadlines) and high-risk clauses flagged from documents, and any film budget heads trending over their estimate (≥90% used, urgent if over 100%). When a cash runway is given, call it out if it falls below ~8 weeks (urgent below 4) — state the runway and the monthly burn. If something is fine, don't mention it.
+
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: headline (string), items (array of objects each with keys "priority" being one of urgent/watch/fyi, and "text"), whatsapp (string, empty if nothing urgent).`
 
 const SCHEMA = {
   type: 'object',
@@ -78,6 +80,8 @@ const SCHEMA = {
   },
   required: ['headline', 'items', 'whatsapp'],
 }
+
+void SCHEMA // shape documented above; we now prompt for JSON directly
 
 function deterministicBriefing(s: BriefingSnapshot): Briefing {
   const items: { priority: string; text: string }[] = []
@@ -117,12 +121,12 @@ export async function generateBriefing(snapshot: BriefingSnapshot): Promise<Brie
       model: 'claude-opus-4-8',
       max_tokens: 1500,
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
-      messages: [{ role: 'user', content: `Today's snapshot:\n\n${snapshotToText(snapshot)}\n\nWrite the briefing.` }],
+      messages: [{ role: 'user', content: `Today's snapshot:\n\n${snapshotToText(snapshot)}\n\nWrite the briefing. Respond with only the JSON object.` }],
     })
     const block = response.content.find(b => b.type === 'text')
     if (!block || block.type !== 'text') return deterministicBriefing(snapshot)
-    const parsed = JSON.parse(block.text) as { headline: string; items: { priority: string; text: string }[]; whatsapp: string }
+    const jsonMatch = block.text.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : block.text) as { headline: string; items: { priority: string; text: string }[]; whatsapp: string }
     const items = (parsed.items ?? []).filter(i => i?.text)
     const hasUrgent = items.some(i => i.priority === 'urgent' || i.priority === 'watch')
     return {

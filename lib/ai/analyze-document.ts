@@ -72,6 +72,8 @@ const SCHEMA = {
   required: ['summary', 'doc_type', 'parties', 'key_dates', 'financial_terms', 'obligations', 'flags'],
 }
 
+void SCHEMA // shape documented above; we now prompt for JSON directly
+
 const SYSTEM = `You are a contracts analyst for an Indian film-production company (OPM Cinemas). You read legal/business documents — distribution & OTT agreements, artist/technician contracts, investor agreements, loan papers, GST/legal notices — and return a faithful structured analysis for the team to track.
 
 Rules:
@@ -79,7 +81,9 @@ Rules:
 - Dates must be YYYY-MM-DD. Indian documents are usually DD/MM/YYYY — interpret accordingly. Capture every date worth tracking (expiry, renewal, payment milestones, delivery deadlines, option windows).
 - Amounts are in Indian Rupees; return plain numbers (no ₹ or commas). Use null for amounts expressed only as a percentage.
 - For flags, surface real risks: auto-renewal clauses, exclusivity, territory/term limits, penalties, indemnities, unfavourable termination terms, missing signatures/dates, or anything time-sensitive. Rate severity high/medium/low.
-- Be concise and concrete.`
+- Be concise and concrete.
+
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: summary (string), doc_type (string), parties (array of strings), key_dates (array of objects with keys label, date, kind), financial_terms (array of objects with keys label, amount (number or null), note), obligations (array of strings), flags (array of objects with keys severity, note). Use empty arrays where a section has nothing.`
 
 export interface AnalyzeResult {
   data: DocumentAnalysis | null
@@ -106,18 +110,18 @@ export async function analyzeDocument(base64: string, mediaType: string, title?:
       // JSON. The whole ceiling now goes to the (schema-bounded) output.
       max_tokens: 8000,
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
       messages: [{
         role: 'user',
         content: [
           docBlock,
-          { type: 'text', text: `Analyze this document${title ? ` (titled "${title}")` : ''} and return the structured analysis.` },
+          { type: 'text', text: `Analyze this document${title ? ` (titled "${title}")` : ''} and return the structured analysis. Respond with only the JSON object.` },
         ],
       }],
     })
     const text = response.content.find((b) => b.type === 'text')
     if (!text || text.type !== 'text') return { data: null, error: 'No text in model response' }
-    return { data: JSON.parse(text.text) as DocumentAnalysis }
+    const jsonMatch = text.text.match(/\{[\s\S]*\}/)
+    return { data: JSON.parse(jsonMatch ? jsonMatch[0] : text.text) as DocumentAnalysis }
   } catch (e) {
     const err = e as { status?: number; message?: string; error?: { error?: { message?: string } } }
     const msg = err?.error?.error?.message || err?.message || 'Unknown error'

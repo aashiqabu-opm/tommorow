@@ -43,7 +43,9 @@ function snapshotToText(s: WeeklySnapshot): string {
   return lines.join('\n')
 }
 
-const SYSTEM = `You are the management accountant for OPM Cinemas, an Indian film-production company (amounts in ₹). Each week you write the founder a concise management report from the week's numbers. Cover: cash position & runway feel, collections vs spending, per-project activity, and what needs attention next week. Be specific with names and ₹ amounts, plain and direct, no filler or greetings. It's a status report a busy founder reads in 30 seconds.`
+const SYSTEM = `You are the management accountant for OPM Cinemas, an Indian film-production company (amounts in ₹). Each week you write the founder a concise management report from the week's numbers. Cover: cash position & runway feel, collections vs spending, per-project activity, and what needs attention next week. Be specific with names and ₹ amounts, plain and direct, no filler or greetings. It's a status report a busy founder reads in 30 seconds.
+
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: headline (string), sections (array of objects each with keys "title" (string) and "points" (array of strings)).`
 
 const SCHEMA = {
   type: 'object',
@@ -65,6 +67,8 @@ const SCHEMA = {
   },
   required: ['headline', 'sections'],
 }
+
+void SCHEMA // shape documented above; we now prompt for JSON directly
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -105,12 +109,12 @@ export async function generateWeeklyReport(snapshot: WeeklySnapshot): Promise<We
       model: 'claude-opus-4-8',
       max_tokens: 2000,
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
-      messages: [{ role: 'user', content: `This week's numbers:\n\n${snapshotToText(snapshot)}\n\nWrite the weekly report.` }],
+      messages: [{ role: 'user', content: `This week's numbers:\n\n${snapshotToText(snapshot)}\n\nWrite the weekly report. Respond with only the JSON object.` }],
     })
     const block = response.content.find(b => b.type === 'text')
     if (!block || block.type !== 'text') return deterministic(snapshot)
-    const parsed = JSON.parse(block.text) as { headline: string; sections: { title: string; points: string[] }[] }
+    const jsonMatch = block.text.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : block.text) as { headline: string; sections: { title: string; points: string[] }[] }
     const sections = (parsed.sections ?? []).filter(s => s?.title && Array.isArray(s.points))
     if (!sections.length) return deterministic(snapshot)
     return { headline: parsed.headline || 'Weekly summary', bodyHtml: renderHtml(parsed.headline || 'Weekly summary', sections) }

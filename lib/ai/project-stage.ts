@@ -40,13 +40,17 @@ const SCHEMA = {
   required: ['suggested_status', 'reason', 'confidence'],
 } as const
 
+void SCHEMA // shape documented above; we now prompt for JSON directly
+
 const SYSTEM = `You classify the production lifecycle stage of an Indian film for a producer's internal ops app. Stages:
 - development: pre-shoot. No shoot days logged yet, or only planning/paperwork activity.
 - active: actively shooting. Daily Production Reports are being logged recently (within ~2 weeks).
 - post_production: shoot has wrapped. Shoot days were logged but the last DPR is well in the past (~3+ weeks) and there's no release income yet — editing/VFX/sound stage.
 - released: the film has released. Release income recorded (theatrical/OTT/satellite), or end_date is clearly in the past with release income.
 
-Use the signals provided. Be conservative: only pick a later stage when the signals clearly support it. Return high confidence only when the picture is unambiguous. Keep the reason short and specific (mention the concrete signal, e.g. "Last shoot report 24 days ago, no release income — in post.").`
+Use the signals provided. Be conservative: only pick a later stage when the signals clearly support it. Return high confidence only when the picture is unambiguous. Keep the reason short and specific (mention the concrete signal, e.g. "Last shoot report 24 days ago, no release income — in post.").
+
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: suggested_status (one of development/active/post_production/released), reason (string), confidence (one of high/medium/low).`
 
 function deterministic(s: StageSignals): StageVerdict {
   if (s.has_release_income) return { suggested_status: 'released', reason: 'Release income recorded.', confidence: 'high' }
@@ -65,12 +69,12 @@ export async function assessProjectStage(signals: StageSignals): Promise<StageVe
       model: 'claude-opus-4-8',
       max_tokens: 1024,
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
-      messages: [{ role: 'user', content: `Signals:\n${JSON.stringify(signals, null, 2)}\n\nClassify the stage.` }],
+      messages: [{ role: 'user', content: `Signals:\n${JSON.stringify(signals, null, 2)}\n\nClassify the stage. Respond with only the JSON object.` }],
     })
     const text = response.content.find(b => b.type === 'text')
     if (!text || text.type !== 'text') return deterministic(signals)
-    const v = JSON.parse(text.text) as StageVerdict
+    const jsonMatch = text.text.match(/\{[\s\S]*\}/)
+    const v = JSON.parse(jsonMatch ? jsonMatch[0] : text.text) as StageVerdict
     if (!STAGE_ORDER.includes(v.suggested_status)) return deterministic(signals)
     return v
   } catch {

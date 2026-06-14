@@ -33,6 +33,8 @@ const SCHEMA = {
   required: ['findings'],
 } as const
 
+void SCHEMA // shape documented above; we now prompt for JSON directly
+
 const SYSTEM = `You are a sharp financial controller for an Indian film-production company (amounts in ₹). You are given AGGREGATED internal data. Flag GENUINE anomalies and risks a producer should know about — for example: a payment that's unusually large vs the norm for that party/category; the same party paid suspiciously similar amounts repeatedly (possible duplicate); heavy concentration of spend in one vendor; budget heads run over estimate; a sharp month-on-month spend spike; TDS deducted without a PAN, or large payments with no GST; tight cash vs upcoming obligations. Use the actual numbers. Do NOT invent data or flag normal activity. Prioritise by real impact; high severity only for clear, material issues. If nothing stands out, return an empty list. Respond with ONLY JSON: {"findings": [{"severity","category","title","detail"}]}.`
 
 export async function detectAnomalies(snapshot: unknown): Promise<AnomalyFinding[] | null> {
@@ -44,12 +46,12 @@ export async function detectAnomalies(snapshot: unknown): Promise<AnomalyFinding
       max_tokens: 3000,
       thinking: { type: 'adaptive' },
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
-      messages: [{ role: 'user', content: `Review this financial snapshot and flag anomalies:\n${JSON.stringify(snapshot)}` }],
+      messages: [{ role: 'user', content: `Review this financial snapshot and flag anomalies:\n${JSON.stringify(snapshot)}\n\nRespond with only the JSON object.` }],
     })
     const text = res.content.find(b => b.type === 'text')
     if (!text || text.type !== 'text') return null
-    const out = JSON.parse(text.text) as { findings?: AnomalyFinding[] }
+    const jsonMatch = text.text.match(/\{[\s\S]*\}/)
+    const out = JSON.parse(jsonMatch ? jsonMatch[0] : text.text) as { findings?: AnomalyFinding[] }
     return (out.findings ?? []).filter(f => f && f.title).slice(0, 20)
   } catch (e) {
     throw e   // let the route classify credit errors / cap

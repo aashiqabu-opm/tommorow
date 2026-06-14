@@ -25,6 +25,8 @@ const SCHEMA = {
   required: ['doc_number', 'issue_date', 'expiry_date'],
 }
 
+void SCHEMA // shape documented above; we now prompt for JSON directly
+
 const DOC_HINT: Record<string, string> = {
   rc: 'Registration Certificate (RC) — number is the registration number; expiry is registration/fitness validity if shown.',
   insurance: 'Motor insurance policy — number is the policy number; expiry is the policy end / valid-upto date.',
@@ -38,7 +40,9 @@ const DOC_HINT: Record<string, string> = {
 const SYSTEM = `You read Indian motor-vehicle documents and return only the requested fields. Rules:
 - Dates must be YYYY-MM-DD. Indian documents are usually DD/MM/YYYY or DD-MMM-YYYY — interpret accordingly.
 - "expiry_date" is the valid-upto / policy-end / valid-until date.
-- Use null for anything not clearly present. Do not guess numbers.`
+- Use null for anything not clearly present. Do not guess numbers.
+
+Respond with ONLY a JSON object (no prose, no code fences) with exactly these keys: doc_number, issue_date, expiry_date (use null where not present).`
 
 export interface VehicleDocResult { data: ExtractedVehicleDoc | null; error?: string }
 
@@ -58,15 +62,15 @@ export async function extractVehicleDoc(base64: string, mediaType: string, docTy
       model: 'claude-opus-4-8',
       max_tokens: 600,
       system: SYSTEM,
-      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
       messages: [{
         role: 'user',
-        content: [docBlock, { type: 'text', text: `This is a ${DOC_HINT[docType] ?? DOC_HINT.other} Extract the document number and dates.` }],
+        content: [docBlock, { type: 'text', text: `This is a ${DOC_HINT[docType] ?? DOC_HINT.other} Extract the document number and dates. Respond with only the JSON object.` }],
       }],
     })
     const text = response.content.find(b => b.type === 'text')
     if (!text || text.type !== 'text') return { data: null, error: 'No text in model response' }
-    return { data: JSON.parse(text.text) as ExtractedVehicleDoc }
+    const jsonMatch = text.text.match(/\{[\s\S]*\}/)
+    return { data: JSON.parse(jsonMatch ? jsonMatch[0] : text.text) as ExtractedVehicleDoc }
   } catch (e) {
     const err = e as { status?: number; message?: string; error?: { error?: { message?: string } } }
     const msg = err?.error?.error?.message || err?.message || 'Unknown error'

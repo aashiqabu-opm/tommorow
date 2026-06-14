@@ -48,6 +48,8 @@ async function run(request: Request) {
   }
   if (!ownerId) return NextResponse.json({ error: 'no owner profile found' }, { status: 422 })
 
+  const debug = new URL(request.url).searchParams.get('debug') === '1'
+  const samples: unknown[] = []
   const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user, pass }, logger: false })
   let scanned = 0, inserted = 0, skipped = 0
   try {
@@ -76,6 +78,7 @@ async function run(request: Request) {
         const parsed = await simpleParser(msg.source as Buffer)
         const body = (parsed.text || parsed.html || '').toString().replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
         const x = await extractTransaction({ from, subject, text: body, date: msg.envelope.date?.toISOString() })
+        if (debug) samples.push({ from, subject: subject.slice(0, 50), textLen: body.length, is_txn: x?.is_transaction ?? 'null', amount: x?.amount ?? null })
         if (!x || !x.is_transaction || !x.amount) { skipped++; continue }
 
         await admin.from('personal_transactions').insert({
@@ -100,5 +103,5 @@ async function run(request: Request) {
     try { await client.close() } catch { /* noop */ }
     throw e
   }
-  return NextResponse.json({ ok: true, scanned, inserted, skipped })
+  return NextResponse.json({ ok: true, scanned, inserted, skipped, ...(debug ? { samples } : {}) })
 }

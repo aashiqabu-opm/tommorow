@@ -4,6 +4,7 @@ import { validateTwilioSignature, twimlMessage, twimlEmpty, fetchTwilioMedia, pi
 import { extractBill } from '@/lib/ai/extract-bill'
 import { askOpm } from '@/lib/ai/assistant'
 import { reportError } from '@/lib/monitoring'
+import { isRateLimited } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -49,6 +50,12 @@ async function handleInbound(req: Request) {
   const numMedia = parseInt(params.NumMedia ?? '0') || 0
   const admin = createAdminClient()
   if (!admin) return xml(twimlMessage('OPM Office is not fully configured yet (service key missing).'))
+
+  // Throttle abusive senders before any AI call or draft creation (caps cost
+  // and spam). 10 messages/minute per number is generous for real use.
+  if (await isRateLimited(admin, from)) {
+    return xml(twimlMessage("You're sending messages too quickly — please wait a minute and try again."))
+  }
 
   // Match the sender to an active profile by WhatsApp number
   const fromNorm = normalizeWhatsApp(from)

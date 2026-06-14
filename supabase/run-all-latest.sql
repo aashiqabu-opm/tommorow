@@ -326,3 +326,10 @@ CREATE INDEX IF NOT EXISTS idx_error_logs_created ON error_logs(created_at DESC)
 ALTER TABLE error_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "error_logs_read" ON error_logs;
 CREATE POLICY "error_logs_read" ON error_logs FOR SELECT TO authenticated USING (public.is_founder());
+
+-- ───────────── 13. WHATSAPP INBOUND RATE LIMIT (lib/rate-limit.ts) ─────────────
+CREATE TABLE IF NOT EXISTS wa_rate_limit (
+  phone TEXT PRIMARY KEY,
+  count INT NOT NULL DEFAULT 0,
+  window_start TIMESTAMPTZ NOT NULL DEFAULT NOW());
+ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;

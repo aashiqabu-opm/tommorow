@@ -33,8 +33,10 @@ export async function GET(request: Request) {
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const debug = new URL(request.url).searchParams.get('debug') === '1'
-  return withCronErrorAlert('gmail-sync', () => performSync(debug))
+  const u = new URL(request.url)
+  const debug = u.searchParams.get('debug') === '1'
+  const days = Number(u.searchParams.get('days')) || 0   // one-time backfill override
+  return withCronErrorAlert('gmail-sync', () => performSync(debug, days))
 }
 
 // On-demand entry — founder clicks "Sync now" in the app.
@@ -44,11 +46,13 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { data: profile } = await supabase.from('profiles').select('role, is_active').eq('id', user.id).single()
   if (!profile?.is_active || profile.role !== 'founder') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  const debug = new URL(request.url).searchParams.get('debug') === '1'
-  return withCronErrorAlert('gmail-sync', () => performSync(debug))
+  const u = new URL(request.url)
+  const debug = u.searchParams.get('debug') === '1'
+  const days = Number(u.searchParams.get('days')) || 0
+  return withCronErrorAlert('gmail-sync', () => performSync(debug, days))
 }
 
-async function performSync(debug: boolean) {
+async function performSync(debug: boolean, daysOverride = 0) {
   const user = process.env.GMAIL_USER, pass = process.env.GMAIL_APP_PASSWORD
   if (!user || !pass) return NextResponse.json({ ok: true, skipped: 'GMAIL creds not set' })
 
@@ -73,9 +77,9 @@ async function performSync(debug: boolean) {
     await client.connect()
     const lock = await client.getMailboxLock('INBOX')
     try {
-      // Monthly cadence → look back ~40 days to catch the prior month's
-      // statements (which arrive a few days into the new month).
-      const since = new Date(Date.now() - 40 * 86400000)
+      // Monthly cadence → look back ~40 days (or a one-time backfill override).
+      const days = daysOverride > 0 ? daysOverride : 40
+      const since = new Date(Date.now() - days * 86400000)
       const uids = await client.search({ since }, { uid: true })
       for (const uid of (uids || []).slice(-300)) {
         const env = await client.fetchOne(String(uid), { envelope: true }, { uid: true })

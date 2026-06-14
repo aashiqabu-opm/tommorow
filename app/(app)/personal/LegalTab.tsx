@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, FileText, Upload, ExternalLink, CalendarClock } from 'lucide-react'
+import { Plus, Trash2, FileText, Upload, ExternalLink, CalendarClock, Sparkles, Loader2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -22,8 +22,57 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  // AI auto-fill state
+  const [analyzing, setAnalyzing] = useState(false)
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  const [keyDates, setKeyDates] = useState<{ label: string; date: string }[]>([])
+  const [aiFilled, setAiFilled] = useState(false)
 
-  function reset() { setTitle(''); setDocType('Agreement'); setExpiry(''); setNotes(''); setFile(null) }
+  function reset() { setTitle(''); setDocType('Agreement'); setExpiry(''); setNotes(''); setFile(null); setAiSummary(null); setKeyDates([]); setAiFilled(false) }
+
+  function fileToBase64(f: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(String(r.result).split(',')[1] ?? '')
+      r.onerror = reject
+      r.readAsDataURL(f)
+    })
+  }
+
+  // On file select: keep the file for upload AND let AI read it to pre-fill the form.
+  async function onFile(f: File | null) {
+    setFile(f)
+    if (!f) return
+    const okTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf']
+    if (!okTypes.includes(f.type)) return
+    if (f.size > 6_500_000) { toast.error('File too big for AI read (~6MB) — it will still upload.'); return }
+    setAnalyzing(true)
+    try {
+      const base64 = await fileToBase64(f)
+      const res = await fetch('/api/personal/analyze-doc', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, mediaType: f.type }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || "AI couldn't read it — fill manually"); return }
+      const x = data.extracted as { title: string | null; doc_type: string | null; summary: string | null; expiry_date: string | null; key_dates: { label: string; date: string }[]; identifiers: { label: string; value: string }[]; amount: number | null }
+      if (x.title && !title) setTitle(x.title)
+      if (x.doc_type && DOC_TYPES.includes(x.doc_type)) setDocType(x.doc_type)
+      if (x.expiry_date) setExpiry(x.expiry_date)
+      setKeyDates(x.key_dates ?? [])
+      setAiSummary(x.summary ?? null)
+      const idLines = (x.identifiers ?? []).map(i => `${i.label}: ${i.value}`).join('\n')
+      const amtLine = x.amount ? `Amount: ₹${Number(x.amount).toLocaleString('en-IN')}` : ''
+      const extra = [idLines, amtLine].filter(Boolean).join('\n')
+      if (extra) setNotes(prev => prev ? prev : extra)
+      setAiFilled(true)
+      toast.success('AI filled the form — review and save')
+    } catch {
+      toast.error("AI couldn't read it — fill manually")
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   async function save() {
     if (!title) { toast.error('Title required'); return }
@@ -40,6 +89,7 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
     }
     const { data, error } = await supabase.from('personal_documents').insert({
       owner_id: ownerId, title, doc_type: docType, expiry_date: expiry || null, notes: notes || null, file_path: filePath, file_name: fileName,
+      ai_summary: aiSummary, key_dates: keyDates.length ? keyDates : null,
     }).select().single()
     setSaving(false)
     if (error) { toast.error("Couldn't save"); return }
@@ -87,6 +137,7 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
                     {r.file_name && <span className="truncate">{r.file_name}</span>}
                     {!r.expiry_date && !r.file_name && <span>{r.notes ?? '—'}</span>}
                   </div>
+                  {r.ai_summary && <div className="text-xs text-[#aaaacc] mt-1 line-clamp-2">{r.ai_summary}</div>}
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
@@ -100,16 +151,28 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add document">
         <div className="space-y-3">
+          {/* Upload first — AI reads it and fills the rest */}
+          <div>
+            <label className="block text-xs font-medium text-[#8888aa] mb-1">File — AI reads it and fills the form</label>
+            <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#f5b301]/50 text-[#f5b301]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
+              {analyzing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+              {analyzing ? 'AI reading the document…' : file ? file.name : 'Choose a file (photo / PDF)'}
+              <input type="file" className="hidden" disabled={analyzing} onChange={e => onFile(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
+          {aiFilled && (
+            <div className="text-[11px] text-[#f5b301] flex items-center gap-1"><Sparkles size={12} /> AI-filled below — please review before saving.</div>
+          )}
           <Input label="Title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Flat sale deed — Kochi" />
           <Select label="Type" value={docType} onChange={e => setDocType(e.target.value)} options={DOC_TYPES.map(v => ({ value: v, label: v }))} />
           <Input label="Expiry / renewal date" type="date" value={expiry} onChange={e => setExpiry(e.target.value)} />
-          <div>
-            <label className="block text-xs font-medium text-[#8888aa] mb-1">File (optional)</label>
-            <label className="flex items-center gap-2 text-sm text-white bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-2 cursor-pointer hover:border-white/30">
-              <Upload size={15} /> {file ? file.name : 'Choose a file'}
-              <input type="file" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
-            </label>
-          </div>
+          {aiSummary && <div className="text-xs text-[#aaaacc] bg-[#1a1a24] border border-[#2a2a3a] rounded-lg p-2"><span className="text-[#8888aa]">AI summary:</span> {aiSummary}</div>}
+          {keyDates.length > 0 && (
+            <div className="text-xs text-[#aaaacc] bg-[#1a1a24] border border-[#2a2a3a] rounded-lg p-2">
+              <div className="text-[#8888aa] mb-1">Key dates found:</div>
+              {keyDates.map((k, i) => <div key={i}>• {k.label}: {k.date}</div>)}
+            </div>
+          )}
           <Textarea label="Notes" value={notes} onChange={e => setNotes(e.target.value)} />
           <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save} loading={saving}>Save</Button></div>
         </div>

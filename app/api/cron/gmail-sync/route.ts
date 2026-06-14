@@ -66,9 +66,11 @@ async function performSync(debug: boolean) {
     await client.connect()
     const lock = await client.getMailboxLock('INBOX')
     try {
-      const since = new Date(Date.now() - 21 * 86400000)
+      // Monthly cadence → look back ~40 days to catch the prior month's
+      // statements (which arrive a few days into the new month).
+      const since = new Date(Date.now() - 40 * 86400000)
       const uids = await client.search({ since }, { uid: true })
-      for (const uid of (uids || []).slice(-120)) {
+      for (const uid of (uids || []).slice(-300)) {
         const env = await client.fetchOne(String(uid), { envelope: true }, { uid: true })
         if (!env || !env.envelope) continue
         const from = (env.envelope.from?.[0]?.address ?? '').toLowerCase()

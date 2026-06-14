@@ -791,3 +791,12 @@ export interface PersonalDocument { id: string; owner_id: string; title: string;
 
 export const TAX_KIND_LABELS: Record<PersonalTaxItem['kind'], string> = { advance_tax: 'Advance tax', self_assessment: 'Self-assessment', tds: 'TDS', itr: 'ITR filing' }
 export const ROYALTY_SOURCE_LABELS: Record<PersonalRoyalty['source'], string> = { satellite: 'Satellite', ott: 'OTT', music: 'Music', theatrical: 'Theatrical', other: 'Other' }
+
+// ── Personal module Phase 3 trackers ──
+export interface PersonalRecurring { id: string; owner_id: string; label: string; category: 'rent' | 'utility' | 'subscription' | 'emi' | 'maintenance' | 'insurance' | 'other'; amount: number; due_day?: number | null; autopay: boolean; last_paid_month?: string | null; active: boolean; notes?: string | null; created_at: string }
+export interface PersonalVehicle { id: string; owner_id: string; name: string; reg_number?: string | null; vtype: 'car' | 'bike' | 'suv' | 'van' | 'other'; insurance_expiry?: string | null; road_tax_expiry?: string | null; puc_expiry?: string | null; fitness_expiry?: string | null; registration_expiry?: string | null; notes?: string | null; created_at: string }
+export interface PersonalHealthPolicy { id: string; owner_id: string; insurer: string; policy_number?: string | null; kind: 'health' | 'life' | 'term' | 'vehicle' | 'other'; sum_insured?: number | null; premium?: number | null; renewal_date?: string | null; members?: string | null; nominee?: string | null; notes?: string | null; created_at: string }
+export interface PersonalCard { id: string; owner_id: string; issuer: string; last4?: string | null; card_limit?: number | null; statement_day?: number | null; due_day?: number | null; notes?: string | null; created_at: string }
+export interface PersonalTransaction { id: string; owner_id: string; source: 'card' | 'bank'; account_label?: string | null; txn_date: string; merchant?: string | null; amount: number; direction: 'debit' | 'credit'; category?: string | null; notes?: string | null; email_ref?: string | null; created_at: string }
+
+export const RECURRING_CATEGORY_LABELS: Record<PersonalRecurring['category'], string> = { rent: 'Rent', utility: 'Utility', subscription: 'Subscription', emi: 'EMI', maintenance: 'Maintenance', insurance: 'Insurance', other: 'Other' }

@@ -341,3 +341,7 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 -- ───────────── 15. PERSONAL MODULE PHASE 2 (tax/film/legal) ─────────────
 -- See migration-personal-2.sql (tax_profile, tax_items, deductions,
 -- capital_gains, film_stakes, royalties, documents; owner-only RLS). Run it.
+
+-- ───────────── 16. PERSONAL MODULE PHASE 3 TRACKERS ─────────────
+-- See migration-personal-3.sql (recurring, vehicles, health_policies, cards,
+-- transactions; owner-only RLS). Run it.

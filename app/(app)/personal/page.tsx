@@ -6,6 +6,7 @@ import type {
   PersonalLedgerEntry, PersonalGuarantee, PersonalAccount,
   PersonalTaxProfile, PersonalTaxItem, PersonalDeduction, PersonalCapitalGain,
   PersonalFilmStake, PersonalRoyalty, PersonalDocument,
+  PersonalRecurring, PersonalVehicle, PersonalHealthPolicy, PersonalCard, PersonalTransaction,
 } from '@/lib/types'
 
 // Founder-only private workspace. RLS only ever returns the owner's own rows
@@ -15,7 +16,7 @@ export default async function PersonalPage() {
   if (profile.role !== 'founder') redirect('/dashboard')
 
   const supabase = await createClient()
-  const [ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents] = await Promise.all([
+  const [ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions] = await Promise.all([
     supabase.from('personal_company_ledger').select('*').order('txn_date', { ascending: false }),
     supabase.from('personal_guarantees').select('*').order('status').order('expiry_date'),
     supabase.from('personal_accounts').select('*').order('created_at'),
@@ -26,6 +27,11 @@ export default async function PersonalPage() {
     supabase.from('personal_film_stakes').select('*').order('created_at'),
     supabase.from('personal_royalties').select('*').order('status').order('expected_date'),
     supabase.from('personal_documents').select('*').order('expiry_date', { nullsFirst: false }),
+    supabase.from('personal_recurring').select('*').order('created_at'),
+    supabase.from('personal_vehicles').select('*').order('created_at'),
+    supabase.from('personal_health_policies').select('*').order('renewal_date', { nullsFirst: false }),
+    supabase.from('personal_cards').select('*').order('created_at'),
+    supabase.from('personal_transactions').select('*').order('txn_date', { ascending: false }).limit(200),
   ])
 
   return (
@@ -41,6 +47,11 @@ export default async function PersonalPage() {
       stakes={(stakes.data ?? []) as PersonalFilmStake[]}
       royalties={(royalties.data ?? []) as PersonalRoyalty[]}
       documents={(documents.data ?? []) as PersonalDocument[]}
+      recurring={(recurring.data ?? []) as PersonalRecurring[]}
+      vehicles={(vehicles.data ?? []) as PersonalVehicle[]}
+      policies={(policies.data ?? []) as PersonalHealthPolicy[]}
+      cards={(cards.data ?? []) as PersonalCard[]}
+      transactions={(transactions.data ?? []) as PersonalTransaction[]}
     />
   )
 }

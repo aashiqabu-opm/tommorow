@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText } from 'lucide-react'
+import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText, RefreshCw, Car, HeartPulse, CreditCard } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
@@ -19,8 +19,13 @@ import { LEDGER_KIND_LABELS, type PersonalLedgerEntry, type PersonalGuarantee, t
 import { TaxTab } from './TaxTab'
 import { FilmTab } from './FilmTab'
 import { LegalTab } from './LegalTab'
+import { RecurringTab } from './RecurringTab'
+import { VehicleTab } from './VehicleTab'
+import { HealthTab } from './HealthTab'
+import { CardsTab } from './CardsTab'
+import type { PersonalRecurring, PersonalVehicle, PersonalHealthPolicy, PersonalCard, PersonalTransaction } from '@/lib/types'
 
-type Tab = 'ledger' | 'guarantees' | 'accounts' | 'tax' | 'film' | 'legal'
+type Tab = 'ledger' | 'guarantees' | 'accounts' | 'recurring' | 'vehicles' | 'health' | 'cards' | 'tax' | 'film' | 'legal'
 
 interface Props {
   ownerId: string
@@ -34,9 +39,14 @@ interface Props {
   stakes: PersonalFilmStake[]
   royalties: PersonalRoyalty[]
   documents: PersonalDocument[]
+  recurring: PersonalRecurring[]
+  vehicles: PersonalVehicle[]
+  policies: PersonalHealthPolicy[]
+  cards: PersonalCard[]
+  transactions: PersonalTransaction[]
 }
 
-export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents }: Props) {
+export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [tab, setTab] = useState<Tab>('ledger')
@@ -79,7 +89,7 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 border-b border-[#2a2a3a] overflow-x-auto">
-        {([['ledger', 'Founder ↔ Company', ArrowLeftRight], ['guarantees', 'Guarantees', ShieldAlert], ['accounts', 'Accounts', Wallet], ['tax', 'Tax', Receipt], ['film', 'Film income', Clapperboard], ['legal', 'Legal vault', FileText]] as const).map(([id, label, Icon]) => (
+        {([['ledger', 'Founder ↔ Company', ArrowLeftRight], ['guarantees', 'Guarantees', ShieldAlert], ['accounts', 'Accounts', Wallet], ['recurring', 'Monthly', RefreshCw], ['vehicles', 'Vehicles', Car], ['health', 'Health', HeartPulse], ['cards', 'Cards', CreditCard], ['tax', 'Tax', Receipt], ['film', 'Film income', Clapperboard], ['legal', 'Legal vault', FileText]] as const).map(([id, label, Icon]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${tab === id ? 'border-[#f5b301] text-white' : 'border-transparent text-[#8888aa] hover:text-white'}`}>
             <Icon size={15} /> {label}
@@ -90,6 +100,10 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
       {tab === 'ledger' && <LedgerTab ownerId={ownerId} rows={ledger} onChange={() => router.refresh()} toast={toast} />}
       {tab === 'guarantees' && <GuaranteesTab ownerId={ownerId} rows={guarantees} onChange={() => router.refresh()} toast={toast} />}
       {tab === 'accounts' && <AccountsTab ownerId={ownerId} rows={accounts} onChange={() => router.refresh()} toast={toast} />}
+      {tab === 'recurring' && <RecurringTab ownerId={ownerId} rows={recurring} onChange={() => router.refresh()} />}
+      {tab === 'vehicles' && <VehicleTab ownerId={ownerId} rows={vehicles} onChange={() => router.refresh()} />}
+      {tab === 'health' && <HealthTab ownerId={ownerId} rows={policies} onChange={() => router.refresh()} />}
+      {tab === 'cards' && <CardsTab ownerId={ownerId} cards={cards} txns={transactions} onChange={() => router.refresh()} />}
       {tab === 'tax' && <TaxTab ownerId={ownerId} profile={taxProfile} items={taxItems} deductions={deductions} gains={gains} onChange={() => router.refresh()} />}
       {tab === 'film' && <FilmTab ownerId={ownerId} stakes={stakes} royalties={royalties} onChange={() => router.refresh()} />}
       {tab === 'legal' && <LegalTab ownerId={ownerId} rows={documents} onChange={() => router.refresh()} />}

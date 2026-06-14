@@ -18,12 +18,14 @@ const thisMonth = () => new Date().toISOString().slice(0, 7)
 export function CardsTab({ ownerId, cards, txns, onChange }: { ownerId: string; cards: PersonalCard[]; txns: PersonalTransaction[]; onChange: () => void }) {
   const toast = useToast()
   const month = thisMonth()
-  const monthSpend = txns.filter(t => t.direction === 'debit' && t.txn_date.startsWith(month)).reduce((s, t) => s + Number(t.amount), 0)
+  // Exclude reconciled duplicates so spend isn't double-counted.
+  const monthSpend = txns.filter(t => t.direction === 'debit' && t.txn_date.startsWith(month) && !t.dup_of).reduce((s, t) => s + Number(t.amount), 0)
+  const dupCount = txns.filter(t => t.dup_of).length
 
   return (
     <div className="space-y-6">
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-lg p-3 flex items-center gap-2 text-xs text-[#8888aa]">
-        <Mail size={14} className="text-[#f5b301]" /> Bank & card alerts will auto-import from your Gmail once the email connection is set up. For now you can add entries manually.
+        <Mail size={14} className="text-[#f5b301]" /> Auto-imported from Gmail every 6h — bank/card alerts, statements (incl. password-protected PDFs) & merchant receipts. Duplicates across sources are auto-reconciled{dupCount ? ` (${dupCount} matched)` : ''}.
       </div>
       <CardsBlock ownerId={ownerId} rows={cards} onChange={onChange} toast={toast} />
       <TxnsBlock ownerId={ownerId} rows={txns} cards={cards} monthSpend={monthSpend} onChange={onChange} toast={toast} />
@@ -115,13 +117,23 @@ function TxnsBlock({ ownerId, rows, cards, monthSpend, onChange, toast }: { owne
   return (
     <Section title={`Transactions · ${formatCurrency(monthSpend)} spent this month`} action={<Button icon={Plus} onClick={() => setOpen(true)}>Add</Button>}>
       {rows.length === 0 ? <Empty text="No transactions yet. These will auto-import from your bank/card emails once Gmail is connected." /> : (
-        <div className="space-y-2">{rows.slice(0, 50).map(r => (
-          <div key={r.id} className="flex items-center justify-between bg-[#13131a] border border-[#2a2a3a] rounded-lg px-4 py-2.5">
-            <div className="min-w-0"><div className="text-sm text-white truncate">{r.merchant ?? r.account_label ?? r.source} {r.category ? <span className="text-[#8888aa]">· {r.category}</span> : ''}</div>
-              <div className="text-xs text-[#8888aa] mt-0.5">{formatDate(r.txn_date)} · {r.source}{r.account_label ? ` · ${r.account_label}` : ''}</div></div>
-            <div className="flex items-center gap-3 shrink-0"><span className={`text-sm font-semibold ${r.direction === 'credit' ? 'text-emerald-300' : 'text-white'}`}>{r.direction === 'credit' ? '+' : '−'}{formatCurrency(Number(r.amount))}</span>
+        <div className="space-y-2">{rows.slice(0, 80).map(r => {
+          const isDup = !!r.dup_of
+          return (
+          <div key={r.id} className={`flex items-center justify-between border rounded-lg px-4 py-2.5 ${isDup ? 'bg-[#0f0f15] border-[#1f1f2a] opacity-60' : 'bg-[#13131a] border-[#2a2a3a]'}`}>
+            <div className="min-w-0">
+              <div className="text-sm text-white truncate flex items-center gap-2">
+                {r.merchant ?? r.account_label ?? r.source}
+                {r.category ? <span className="text-[#8888aa] font-normal">· {r.category}</span> : ''}
+                {r.origin && r.origin !== 'manual' && <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-white/5 text-[#8888aa]">{r.origin}</span>}
+                {isDup && <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">duplicate</span>}
+              </div>
+              <div className="text-xs text-[#8888aa] mt-0.5">{formatDate(r.txn_date)} · {r.source}{r.account_label ? ` · ${r.account_label}` : ''}</div>
+            </div>
+            <div className="flex items-center gap-3 shrink-0"><span className={`text-sm font-semibold ${isDup ? 'text-[#8888aa] line-through' : r.direction === 'credit' ? 'text-emerald-300' : 'text-white'}`}>{r.direction === 'credit' ? '+' : '−'}{formatCurrency(Number(r.amount))}</span>
               <button onClick={() => remove(r)} className="text-[#8888aa] hover:text-red-400"><Trash2 size={15} /></button></div>
-          </div>))}
+          </div>)
+        })}
         </div>
       )}
       <Modal open={open} onClose={() => setOpen(false)} title="Add transaction">

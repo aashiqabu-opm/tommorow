@@ -345,3 +345,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 -- ───────────── 16. PERSONAL MODULE PHASE 3 TRACKERS ─────────────
 -- See migration-personal-3.sql (recurring, vehicles, health_policies, cards,
 -- transactions; owner-only RLS). Run it.
+
+-- ───────────── 17. PERSONAL txn ingestion/reconciliation cols ─────────────
+-- See migration-personal-4.sql (origin, dup_of, reconciled + fingerprint idx).

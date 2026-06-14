@@ -20,6 +20,8 @@ export interface BriefingSnapshot {
   docKeyDates?: { title: string; label: string; date: string }[]
   docFlags?: { title: string; severity: string; note: string }[]
   budgetAlerts?: { project: string; head: string; budget: number; actual: number; pct: number }[]
+  monthlyBurn?: number              // trailing-90d net operating outflow / month
+  runwayWeeks?: number | null       // weeks of runway at current burn; null = burn ≤ 0 (cash-positive)
 }
 
 export interface Briefing {
@@ -34,6 +36,10 @@ function snapshotToText(s: BriefingSnapshot): string {
   lines.push(`Date: ${s.dateStr}`)
   lines.push(`Cash in hand: ${inr(s.cashOnHand)}; Bank balance: ${inr(s.bankBalance)}; Total available: ${inr(s.cashOnHand + s.bankBalance)}`)
   lines.push(`Recurring monthly payroll: ${inr(s.monthlyPayroll)}`)
+  if (s.monthlyBurn !== undefined) {
+    const runway = s.runwayWeeks === null ? 'cash-positive (no burn)' : s.runwayWeeks === undefined ? 'n/a' : `${s.runwayWeeks} weeks of runway`
+    lines.push(`Monthly burn (trailing 90d, payroll + paid bills − income received): ${inr(s.monthlyBurn)}; cash runway: ${runway}`)
+  }
   const committed = s.approvedUnpaid.reduce((a, b) => a + b.amount, 0)
   lines.push(`Approved-but-unpaid (committed outflow): ${inr(committed)} across ${s.approvedUnpaid.length}`)
   lines.push(`Pending approvals: ${s.pendingApprovals.length} totalling ${inr(s.pendingApprovals.reduce((a, b) => a + b.amount, 0))}`)
@@ -48,7 +54,7 @@ function snapshotToText(s: BriefingSnapshot): string {
   return lines.join('\n')
 }
 
-const SYSTEM = `You are the CFO assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Each morning you read a financial snapshot and write the founder a short briefing: only the things that genuinely need attention today, ordered by urgency and money at risk. Be specific — names and ₹ amounts. Plain and direct, no filler, no greetings. Call out cash-flow risk when upcoming committed outflows (approved-unpaid + overdue dues + near-term payroll) approach available cash. Also surface any time-sensitive contract dates (renewals, payment milestones, delivery deadlines) and high-risk clauses flagged from documents, and any film budget heads trending over their estimate (≥90% used, urgent if over 100%). If something is fine, don't mention it.`
+const SYSTEM = `You are the CFO assistant for OPM Cinemas, a film-production company in India (amounts in ₹). Each morning you read a financial snapshot and write the founder a short briefing: only the things that genuinely need attention today, ordered by urgency and money at risk. Be specific — names and ₹ amounts. Plain and direct, no filler, no greetings. Call out cash-flow risk when upcoming committed outflows (approved-unpaid + overdue dues + near-term payroll) approach available cash. Also surface any time-sensitive contract dates (renewals, payment milestones, delivery deadlines) and high-risk clauses flagged from documents, and any film budget heads trending over their estimate (≥90% used, urgent if over 100%). When a cash runway is given, call it out if it falls below ~8 weeks (urgent below 4) — state the runway and the monthly burn. If something is fine, don't mention it.`
 
 const SCHEMA = {
   type: 'object',
@@ -80,6 +86,9 @@ function deterministicBriefing(s: BriefingSnapshot): Briefing {
     s.overdueLiabilities.reduce((a, b) => a + b.amount, 0)
   if (committed > available * 0.8 && committed > 0) {
     items.push({ priority: 'urgent', text: `Cash watch: ${inr(committed)} committed/overdue vs ${inr(available)} available.` })
+  }
+  if (typeof s.runwayWeeks === 'number' && s.runwayWeeks <= 8) {
+    items.push({ priority: s.runwayWeeks <= 4 ? 'urgent' : 'watch', text: `Cash runway ~${s.runwayWeeks} week(s) at current burn (${inr(s.monthlyBurn ?? 0)}/mo).` })
   }
   if (s.overdueLiabilities.length) items.push({ priority: 'urgent', text: `${s.overdueLiabilities.length} overdue ${s.overdueLiabilities.length === 1 ? 'liability' : 'liabilities'}: ${s.overdueLiabilities.slice(0, 3).map(l => `${l.party} ${inr(l.amount)}`).join(', ')}.` })
   if (s.pendingApprovals.length) items.push({ priority: 'watch', text: `${s.pendingApprovals.length} payment ${s.pendingApprovals.length === 1 ? 'request' : 'requests'} awaiting approval (${inr(s.pendingApprovals.reduce((a, b) => a + b.amount, 0))}).` })

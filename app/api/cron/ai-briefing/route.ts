@@ -90,11 +90,28 @@ async function run(request: Request) {
     }
   }
 
+  // ── Burn rate & cash runway (trailing 90 days) ──
+  const since90 = iso(new Date(today.getTime() - 90 * 86400000))
+  const [paidPays, incomeRecv] = await Promise.all([
+    admin.from('payment_requests').select('amount, net_payable').eq('payment_status', 'paid').gte('paid_at', since90).then(r => r.data ?? []),
+    admin.from('project_income').select('amount').eq('status', 'received').gte('income_date', since90).then(r => r.data ?? []),
+  ])
+  const paid90 = (paidPays as { amount: number; net_payable: number | null }[]).reduce((s, p) => s + Number(p.net_payable ?? p.amount ?? 0), 0)
+  const income90 = (incomeRecv as { amount: number }[]).reduce((s, p) => s + Number(p.amount || 0), 0)
+  const cashOnHand = Number(lastCash.data?.[0]?.closing_cash ?? 0)
+  const bankBalance = (banks.data ?? []).reduce((s, b) => s + Number(b.current_balance ?? 0), 0)
+  const monthlyPayroll = (payroll.data ?? []).reduce((s, p) => s + Number(p.monthly_salary ?? 0), 0)
+  const monthlyBurn = Math.max(0, monthlyPayroll + paid90 / 3 - income90 / 3)
+  const available = cashOnHand + bankBalance
+  const runwayWeeks = monthlyBurn > 0 ? Math.round((available / monthlyBurn) * 4.33) : null
+
   const snapshot: BriefingSnapshot = {
     dateStr: today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }),
-    cashOnHand: lastCash.data?.[0]?.closing_cash ?? 0,
-    bankBalance: (banks.data ?? []).reduce((s, b) => s + Number(b.current_balance ?? 0), 0),
-    monthlyPayroll: (payroll.data ?? []).reduce((s, p) => s + Number(p.monthly_salary ?? 0), 0),
+    cashOnHand,
+    bankBalance,
+    monthlyPayroll,
+    monthlyBurn,
+    runwayWeeks,
     pendingApprovals: pay.filter(p => p.approval_status === 'pending').map(p => ({ payee: p.payee, amount: Number(p.amount), purpose: p.purpose })),
     approvedUnpaid: pay.filter(p => p.approval_status === 'approved' && p.payment_status === 'unpaid').map(p => ({ payee: p.payee, amount: Number(p.amount) })),
     overdueLiabilities: liab.filter(l => (l.due_date as string) < todayStr).map(l => ({ party: l.party_name, amount: Number(l.balance_remaining), due: l.due_date as string })),

@@ -21,6 +21,9 @@ export const maxDuration = 300
 
 const BANK = ['hdfcbank', 'icicibank', 'icici.bank', 'axisbank', 'axis.bank', 'sbi', 'sbicard', 'kotak', 'federalbank', 'southindianbank', 'yesbank', 'idfcfirstbank', 'rblbank', 'aubank', 'indusind', 'pnb', 'bankofbaroda', 'amex', 'americanexpress', 'onecard', 'slice', 'cred', 'card', 'alerts']
 const MERCHANTS = ['amazon', 'swiggy', 'zomato', 'flipkart', 'myntra']
+// Vendor tax-invoice senders (GST inputs): insurance, utilities, telecom, etc.
+const VENDORS = ['hdfcergo', 'icicilombard', 'tataaig', 'bajajallianz', 'starhealth', 'nivabupa', 'religare', 'insurance', 'licindia', 'airtel', 'jio', 'bsnl', 'vodafone', 'tatapower', 'adani', 'kseb', 'gail', 'indane', 'actcorp', 'invoice', 'gst']
+const GSTIN_RE = /\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]\b/
 const STMT_WORDS = ['statement', 'e-statement', 'estatement', 'account statement']
 const TXN_WORDS = ['debited', 'credited', 'spent', 'transaction', 'txn', 'paid', 'purchase', 'withdrawn', 'received', 'payment of', 'charged', 'order', 'invoice', 'receipt']
 
@@ -80,9 +83,10 @@ async function performSync(debug: boolean) {
         const sl = subject.toLowerCase()
         const isBank = BANK.some(h => from.includes(h) || name.includes(h))
         const isMerchant = MERCHANTS.some(h => from.includes(h) || name.includes(h))
+        const isVendor = VENDORS.some(h => from.includes(h) || name.includes(h) || sl.includes(h))
         const isStmt = STMT_WORDS.some(w => sl.includes(w))
         const isTxn = TXN_WORDS.some(w => sl.includes(w))
-        if (!isBank && !isMerchant && !isStmt && !isTxn) continue
+        if (!isBank && !isMerchant && !isVendor && !isStmt && !isTxn) continue
 
         const full = await client.fetchOne(String(uid), { source: true }, { uid: true })
         if (!full || !full.source) continue
@@ -104,23 +108,34 @@ async function performSync(debug: boolean) {
           continue
         }
 
-        // RECEIPT path: big-merchant order/invoice (body, or its PDF if present)
-        if (isMerchant) {
+        // RECEIPT / VENDOR-INVOICE path: merchant orders + vendor tax-invoices
+        // (insurance, utilities…). Reads the invoice PDF so GST is captured.
+        if (isMerchant || isVendor) {
           const { data: existing } = await admin.from('personal_transactions').select('id').eq('owner_id', ownerId).eq('email_ref', messageId).maybeSingle()
           if (existing) continue
+          // Pick the PDF that actually carries a GSTIN (real tax-invoice), else the first.
           let text = body
-          if (pdfs.length) { const r = readPdf(pdfs[0].content as Buffer, pwCandidates); if (r.text) text = r.text }
+          let gstPdf: Buffer | null = null
+          for (const a of pdfs) {
+            const r = readPdf(a.content as Buffer, pwCandidates)
+            if (!r.text) continue
+            if (GSTIN_RE.test(r.text)) { text = r.text; gstPdf = a.content as Buffer; break }
+            if (text === body) text = r.text // fallback to first readable PDF
+          }
           const { data: x } = await extractTransaction({ from, subject, text, date: env.envelope.date?.toISOString() })
           if (x?.is_transaction && x.amount) {
             const gstEligible = !!x.gstin
             // Snapshot GST/business receipts (page 1, small PNG) for the accounts dept.
             let snapshotUrl: string | null = null
-            if (gstEligible && pdfs.length) {
-              const png = renderFirstPagePng(pdfs[0].content as Buffer, pwCandidates)
-              if (png) {
-                const path = `gst-snapshots/${ownerId}/${Date.now()}.png`
-                const up = await admin.storage.from('documents').upload(path, png, { contentType: 'image/png', upsert: false })
-                if (!up.error) snapshotUrl = admin.storage.from('documents').getPublicUrl(path).data.publicUrl
+            if (gstEligible) {
+              const src = gstPdf ?? (pdfs[0]?.content as Buffer | undefined)
+              if (src) {
+                const png = renderFirstPagePng(src, pwCandidates)
+                if (png) {
+                  const path = `gst-snapshots/${ownerId}/${Date.now()}.png`
+                  const up = await admin.storage.from('documents').upload(path, png, { contentType: 'image/png', upsert: false })
+                  if (!up.error) snapshotUrl = admin.storage.from('documents').getPublicUrl(path).data.publicUrl
+                }
               }
             }
             await admin.from('personal_transactions').insert({

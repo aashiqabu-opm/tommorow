@@ -44,7 +44,7 @@ export async function extractTransaction(input: { from: string; subject: string;
   const content = `From: ${input.from}\nSubject: ${input.subject}\nReceived: ${input.date ?? ''}\n\n${input.text.slice(0, 4000)}`
   try {
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-opus-4-8',
       max_tokens: 400,
       system: SYSTEM,
       output_config: { format: { type: 'json_schema', schema: SCHEMA } },

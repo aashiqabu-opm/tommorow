@@ -54,9 +54,9 @@ async function run(request: Request) {
     await client.connect()
     const lock = await client.getMailboxLock('INBOX')
     try {
-      const since = new Date(Date.now() - 4 * 86400000)
+      const since = new Date(Date.now() - 7 * 86400000)
       const uids = await client.search({ since }, { uid: true })
-      const recent = (uids || []).slice(-60) // cap volume/cost per run
+      const recent = (uids || []).slice(-80) // cap volume/cost per run
       for (const uid of recent) {
         const msg = await client.fetchOne(String(uid), { envelope: true, source: true }, { uid: true })
         if (!msg || !msg.envelope) continue

@@ -737,3 +737,45 @@ export interface Template {
   created_by?: string
   created_at: string
 }
+
+// ── Personal / Founder module (Phase 1) ──
+export interface PersonalLedgerEntry {
+  id: string
+  owner_id: string
+  entity: string
+  direction: 'to_company' | 'from_company'
+  kind: 'loan' | 'capital' | 'drawing' | 'dividend' | 'repayment' | 'reimbursement'
+  amount: number
+  txn_date: string
+  status: 'open' | 'settled'
+  notes?: string | null
+  created_at: string
+}
+
+export interface PersonalGuarantee {
+  id: string
+  owner_id: string
+  lender: string
+  borrower: string
+  amount: number
+  start_date?: string | null
+  expiry_date?: string | null
+  status: 'active' | 'released'
+  notes?: string | null
+  created_at: string
+}
+
+export interface PersonalAccount {
+  id: string
+  owner_id: string
+  name: string
+  type: 'bank' | 'cash' | 'wallet' | 'investment'
+  balance: number
+  notes?: string | null
+  created_at: string
+}
+
+export const LEDGER_KIND_LABELS: Record<PersonalLedgerEntry['kind'], string> = {
+  loan: 'Loan to company', capital: 'Capital introduced', drawing: 'Drawing',
+  dividend: 'Dividend', repayment: 'Loan repayment', reimbursement: 'Reimbursement',
+}

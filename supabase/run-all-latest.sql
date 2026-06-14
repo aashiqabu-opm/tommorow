@@ -333,3 +333,7 @@ CREATE TABLE IF NOT EXISTS wa_rate_limit (
   count INT NOT NULL DEFAULT 0,
   window_start TIMESTAMPTZ NOT NULL DEFAULT NOW());
 ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
+
+-- ───────────── 14. PERSONAL / FOUNDER MODULE (Phase 1) ─────────────
+-- See migration-personal.sql for the full block (tables, can_view_personal(),
+-- owner-only RLS, private storage bucket). Run that file as part of setup.

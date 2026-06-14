@@ -28,6 +28,7 @@ import {
   ChevronDown,
   Scale,
   Sparkles,
+  Lock,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -47,6 +48,8 @@ type NavSection = { section: string | null; items: NavItem[] }
 
 const NAV: NavSection[] = [
   { section: null, items: [
+    // Founder-only private workspace, pinned above everything.
+    { href: '/personal', label: 'Personal', icon: Lock, roles: ['founder'] },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
   ] },
   { section: 'Finance', items: [
@@ -161,6 +164,7 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
                   <div className="space-y-0.5">
                     {s.items.map((item) => {
                       const active = isActive(item.href)
+                      const isPersonal = item.href === '/personal'
                       return (
                         <Link
                           key={item.href}
@@ -168,12 +172,17 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
                           onClick={onClose}
                           className={cn(
                             'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                            isPersonal && 'border',
                             active
-                              ? 'bg-white/10 text-white border border-white/15'
-                              : 'text-[#8888aa] hover:text-white hover:bg-[#1a1a24]'
+                              ? (isPersonal
+                                  ? 'bg-[#f5b301]/15 text-[#f5b301] border-[#f5b301]/40'
+                                  : 'bg-white/10 text-white border border-white/15')
+                              : (isPersonal
+                                  ? 'text-[#f5b301] border-[#f5b301]/25 hover:bg-[#f5b301]/10'
+                                  : 'text-[#8888aa] hover:text-white hover:bg-[#1a1a24]')
                           )}
                         >
-                          <item.icon size={17} className={active ? 'text-white/70' : ''} />
+                          <item.icon size={17} className={active && !isPersonal ? 'text-white/70' : ''} />
                           {item.label}
                         </Link>
                       )

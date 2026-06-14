@@ -181,10 +181,13 @@ async function reconcile(admin: SupabaseClient, ownerId: string): Promise<number
       // origins, and either a statement is involved or the merchants agree.
       if (a.origin === b.origin) continue
       const oneStatement = a.origin === 'statement' || b.origin === 'statement'
+      const alertReceipt = (a.origin === 'alert' && b.origin === 'receipt') || (a.origin === 'receipt' && b.origin === 'alert')
+      // Only a statement (authoritative re-list) or a matching alert↔receipt pair
+      // is a real duplicate. Never two same-channel rows; never touch manual.
+      if (!oneStatement && !alertReceipt) continue
       const ta = token(a.merchant), tb = token(b.merchant)
       const merchAgree = ta && tb && ta === tb
-      if (!oneStatement && !merchAgree) continue
-      if (oneStatement && ta && tb && !merchAgree) continue // statement merchant known but differs
+      if (!merchAgree && !(oneStatement && (!ta || !tb))) continue // need merchant agreement unless statement side lacks a merchant
       const aRank = rank[a.origin as string] ?? 0, bRank = rank[b.origin as string] ?? 0
       const dup = aRank >= bRank ? b : a
       const canon = aRank >= bRank ? a : b

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Printer, Download, FileText, Trash2, Upload } from 'lucide-react'
+import { Plus, Printer, Download, FileText, Trash2, Upload, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -28,6 +28,10 @@ export function TemplatesClient({ templates, userId, canManage, role }: Props) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ name: '', category: 'agreement', description: '' })
   const [file, setFile] = useState<File | null>(null)
+  const [editing, setEditing] = useState<Row | null>(null)
+
+  function openNew() { setEditing(null); setForm({ name: '', category: 'agreement', description: '' }); setFile(null); setOpen(true) }
+  function openEdit(t: Row) { setEditing(t); setForm({ name: t.name, category: t.category, description: t.description ?? '' }); setFile(null); setOpen(true) }
 
   function printTemplate(html: string) {
     const w = window.open('', '_blank')
@@ -45,9 +49,26 @@ export function TemplatesClient({ templates, userId, canManage, role }: Props) {
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) return toast.error('Enter a name')
+    const supabase = createClient()
+    // Edit: update metadata (and file only if a new one was chosen).
+    if (editing) {
+      setSaving(true)
+      const patch: Row = { name: form.name.trim(), category: form.category, description: form.description || null }
+      if (file) {
+        const ext2 = file.name.split('.').pop()
+        const path2 = `templates/${Date.now()}.${ext2}`
+        const { data: up2, error: e2 } = await supabase.storage.from('documents').upload(path2, file)
+        if (e2) { toast.error('Upload failed'); setSaving(false); return }
+        if (up2) { patch.file_url = supabase.storage.from('documents').getPublicUrl(path2).data.publicUrl; patch.file_name = file.name; patch.file_size = file.size }
+      }
+      const { error } = await supabase.from('templates').update(patch).eq('id', editing.id)
+      if (error) { toast.error("Couldn't save"); setSaving(false); return }
+      await logAction('update', 'templates', editing.id, undefined, patch)
+      toast.success('Template updated'); setSaving(false); setOpen(false); setEditing(null); router.refresh()
+      return
+    }
     if (!file) return toast.error('Choose a file to upload')
     setSaving(true)
-    const supabase = createClient()
     const ext = file.name.split('.').pop()
     const path = `templates/${Date.now()}.${ext}`
     const { data: up, error: upErr } = await supabase.storage.from('documents').upload(path, file)
@@ -79,7 +100,7 @@ export function TemplatesClient({ templates, userId, canManage, role }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader title="Templates & Forms" subtitle="Standard formats to print or download, and your own uploaded templates"
-        action={canManage ? <Button icon={Upload} onClick={() => setOpen(true)}>Upload Template</Button> : undefined} />
+        action={canManage ? <Button icon={Upload} onClick={openNew}>Upload Template</Button> : undefined} />
 
       {/* Built-in printable formats */}
       <div>
@@ -128,7 +149,10 @@ export function TemplatesClient({ templates, userId, canManage, role }: Props) {
                 <div className="flex items-center gap-3 shrink-0">
                   <a href={t.file_url} target="_blank" rel="noreferrer" download className="text-xs text-white/80 hover:text-white inline-flex items-center gap-1"><Download size={14} /> Download</a>
                   {(role === 'founder' || t.created_by === userId) && (
-                    <button onClick={() => remove(t)} className="text-[#5a5a7a] hover:text-red-400"><Trash2 size={14} /></button>
+                    <>
+                      <button onClick={() => openEdit(t)} className="text-[#5a5a7a] hover:text-white"><Pencil size={14} /></button>
+                      <button onClick={() => remove(t)} className="text-[#5a5a7a] hover:text-red-400"><Trash2 size={14} /></button>
+                    </>
                   )}
                 </div>
               </div>
@@ -137,7 +161,7 @@ export function TemplatesClient({ templates, userId, canManage, role }: Props) {
         )}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Upload Template">
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Template' : 'Upload Template'}>
         <form onSubmit={handleUpload} className="space-y-4">
           <Input label="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Artist Agreement (final)" />
           <div className="grid grid-cols-2 gap-3">
@@ -145,10 +169,10 @@ export function TemplatesClient({ templates, userId, canManage, role }: Props) {
               options={[{ value: 'agreement', label: 'Agreement' }, { value: 'voucher', label: 'Voucher' }, { value: 'form', label: 'Form' }, { value: 'hr', label: 'HR' }, { value: 'other', label: 'Other' }]} />
           </div>
           <Textarea label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} />
-          <FilePicker label="File *" file={file} onChange={setFile} accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" />
+          <FilePicker label={editing ? 'Replace file (optional)' : 'File *'} file={file} onChange={setFile} accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving} icon={Plus}>Upload</Button>
+            <Button type="submit" loading={saving} icon={editing ? Pencil : Plus}>{editing ? 'Save' : 'Upload'}</Button>
           </div>
         </form>
       </Modal>

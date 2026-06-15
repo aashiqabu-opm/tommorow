@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Clapperboard, TrendingUp, TrendingDown, Star } from 'lucide-react'
+import { Plus, Clapperboard, TrendingUp, TrendingDown, Star, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -55,9 +55,17 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState<Project | null>(null)
   const [form, setForm] = useState(INITIAL_FORM)
 
   const canCreate = role === 'founder'
+
+  function openNew() { setEditing(null); setForm(INITIAL_FORM); setOpen(true) }
+  function openEdit(p: Project) {
+    setEditing(p)
+    setForm({ name: p.name, status: p.status, description: p.description ?? '', start_date: p.start_date ?? '', end_date: p.end_date ?? '', budget: p.budget ? String(p.budget) : '', is_priority: !!p.is_priority })
+    setOpen(true)
+  }
 
   // Priority projects float to the top
   const sortedProjects = [...projects].sort(
@@ -82,16 +90,24 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
     e.preventDefault()
     setSaving(true)
     const supabase = createClient()
-    const slug = form.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    const { data, error } = await supabase.from('projects').insert({
-      name: form.name, slug, status: form.status,
+    const core = {
+      name: form.name, status: form.status,
       description: form.description || null,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       budget: parseFloat(form.budget) || null,
       is_priority: form.is_priority,
-      created_by: userId,
-    }).select().single()
+    }
+    if (editing) {
+      const { error } = await supabase.from('projects').update(core).eq('id', editing.id)
+      if (error) { toast.error("Couldn't update project"); setSaving(false); return }
+      await logAction('update', 'projects', editing.id, undefined, core)
+      toast.success('Project updated')
+      setSaving(false); setOpen(false); setEditing(null); router.refresh()
+      return
+    }
+    const slug = form.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const { data, error } = await supabase.from('projects').insert({ ...core, slug, created_by: userId }).select().single()
     if (error) { toast.error("Couldn't create project"); setSaving(false); return }
     if (data) await logAction('create', 'projects', data.id, undefined, data)
     toast.success('Project created')
@@ -106,7 +122,7 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
       <PageHeader
         title="Projects"
         subtitle="OPM Cinemas film projects — P&L per project"
-        action={canCreate ? <Button icon={Plus} onClick={() => setOpen(true)}>New Project</Button> : undefined}
+        action={canCreate ? <Button icon={Plus} onClick={openNew}>New Project</Button> : undefined}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -132,6 +148,9 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
                       </span>
                     )}
                     <StatusBadge label={cfg.label} variant={cfg.variant} />
+                    {canCreate && (
+                      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(project) }} className="text-[#5a5a7a] hover:text-white ml-0.5" title="Edit project"><Pencil size={14} /></button>
+                    )}
                   </div>
                 </div>
 
@@ -183,7 +202,7 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
       </div>
 
       {/* New Project Modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title="New Project" size="lg">
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Project' : 'New Project'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Project Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Rifle Club 2" />
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} options={STATUS_OPTIONS} />
@@ -204,7 +223,7 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving}>Create Project</Button>
+            <Button type="submit" loading={saving}>{editing ? 'Save Changes' : 'Create Project'}</Button>
           </div>
         </form>
       </Modal>

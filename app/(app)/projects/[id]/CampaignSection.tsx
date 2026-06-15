@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Megaphone, Plus, Sparkles, ExternalLink, Trash2, RefreshCw, Clock } from 'lucide-react'
+import { Megaphone, Plus, Sparkles, ExternalLink, Trash2, RefreshCw, Clock, Pencil } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
@@ -37,17 +37,26 @@ export function CampaignSection({ projectId, assets, userId, canManage }: Props)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState<string | null>(null)
+  const [editing, setEditing] = useState<CampaignAsset | null>(null)
   const [form, setForm] = useState({ asset_type: 'trailer', title: '', url: '', released_on: new Date().toISOString().split('T')[0] })
+
+  function openNew() { setEditing(null); setForm({ asset_type: 'trailer', title: '', url: '', released_on: new Date().toISOString().split('T')[0] }); setOpen(true) }
+  function openEdit(a: CampaignAsset) { setEditing(a); setForm({ asset_type: a.asset_type, title: a.title, url: a.url ?? '', released_on: a.released_on ?? '' }); setOpen(true) }
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
     if (!form.title.trim()) return toast.error('Enter a title')
     setSaving(true)
     const supabase = createClient()
-    const { data, error } = await supabase.from('campaign_assets').insert({
-      project_id: projectId, asset_type: form.asset_type, title: form.title.trim(),
-      url: form.url.trim() || null, released_on: form.released_on || null, created_by: userId,
-    }).select().single()
+    const payload = { asset_type: form.asset_type, title: form.title.trim(), url: form.url.trim() || null, released_on: form.released_on || null }
+    if (editing) {
+      const { error } = await supabase.from('campaign_assets').update(payload).eq('id', editing.id)
+      if (error) { toast.error("Couldn't save"); setSaving(false); return }
+      await logAction('update', 'campaign_assets', editing.id, undefined, payload)
+      toast.success('Asset updated'); setSaving(false); setOpen(false); setEditing(null); router.refresh()
+      return
+    }
+    const { data, error } = await supabase.from('campaign_assets').insert({ project_id: projectId, ...payload, created_by: userId }).select().single()
     if (error) {
       const hint = /relation .*campaign_assets.* does not exist/i.test(error.message) ? 'run migration-tracking2.sql first' : error.message
       toast.error(`Couldn't add — ${String(hint).slice(0, 80)}`); setSaving(false); return
@@ -88,7 +97,7 @@ export function CampaignSection({ projectId, assets, userId, canManage }: Props)
           <h3 className="text-sm font-semibold text-white">Campaign & Buzz</h3>
           <span className="text-xs text-[#8888aa]">· {assets.length}</span>
         </div>
-        {canManage && <Button size="sm" icon={Plus} onClick={() => setOpen(true)}>Add asset</Button>}
+        {canManage && <Button size="sm" icon={Plus} onClick={openNew}>Add asset</Button>}
       </div>
 
       {assets.length === 0 ? (
@@ -127,6 +136,7 @@ export function CampaignSection({ projectId, assets, userId, canManage }: Props)
                         <RefreshCw size={14} className={refreshing === a.id ? 'animate-spin' : ''} />
                       </button>
                     )}
+                    <button onClick={() => openEdit(a)} className="text-[#3a3a4a] hover:text-white"><Pencil size={13} /></button>
                     <button onClick={() => remove(a)} className="text-[#3a3a4a] hover:text-red-400"><Trash2 size={13} /></button>
                   </div>
                 )}
@@ -136,7 +146,7 @@ export function CampaignSection({ projectId, assets, userId, canManage }: Props)
         </div>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Add Campaign Asset" size="sm">
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Campaign Asset' : 'Add Campaign Asset'} size="sm">
         <form onSubmit={add} className="space-y-4">
           <Select label="Type" value={form.asset_type} onChange={e => setForm({ ...form, asset_type: e.target.value })} options={TYPES} />
           <Input label="Title *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Official Trailer" />
@@ -144,7 +154,7 @@ export function CampaignSection({ projectId, assets, userId, canManage }: Props)
           <Input label="Released on" type="date" value={form.released_on} onChange={e => setForm({ ...form, released_on: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving} icon={WEB_SEARCH_ENABLED ? Sparkles : Plus}>{WEB_SEARCH_ENABLED ? 'Add & track' : 'Add'}</Button>
+            <Button type="submit" loading={saving} icon={editing ? Pencil : WEB_SEARCH_ENABLED ? Sparkles : Plus}>{editing ? 'Save' : WEB_SEARCH_ENABLED ? 'Add & track' : 'Add'}</Button>
           </div>
         </form>
       </Modal>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, FileText, AlertTriangle, Clock, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, FileText, AlertTriangle, Clock, Sparkles, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge, getDocumentStatusBadge } from '@/components/ui/StatusBadge'
@@ -117,6 +117,19 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
   const [projectFilter, setProjectFilter] = useState('')
   const [analyzingId, setAnalyzingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editing, setEditing] = useState<Document | null>(null)
+
+  function openNew() { setEditing(null); setForm(INITIAL_FORM); setFile(null); setOpen(true) }
+  function openEdit(d: Document) {
+    setEditing(d)
+    setForm({
+      title: d.title, document_type: d.document_type, project_id: d.project_id ?? '', party_name: d.party_name ?? '',
+      document_date: d.document_date ?? '', expiry_date: d.expiry_date ?? '', renewal_date: d.renewal_date ?? '',
+      amount_linked: d.amount_linked != null ? String(d.amount_linked) : '', status: d.status,
+      access_level: d.access_level ?? 'project_team', notes: d.notes ?? '',
+    })
+    setFile(null); setOpen(true)
+  }
 
   async function analyze(documentId: string) {
     setAnalyzingId(documentId)
@@ -172,6 +185,34 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
     e.preventDefault()
     setSaving(true)
     const supabase = createClient()
+
+    // Edit: update metadata (and add a file if one was chosen). Access level is
+    // left as-is on edit to avoid locking the editor out of their own row.
+    if (editing) {
+      const patch = {
+        title: form.title, document_type: form.document_type, project_id: form.project_id || null,
+        party_name: form.party_name || null, document_date: form.document_date || null,
+        expiry_date: form.expiry_date || null, renewal_date: form.renewal_date || null,
+        amount_linked: parseFloat(form.amount_linked) || null, status: form.status,
+        access_level: form.access_level, notes: form.notes || null,
+      }
+      const { error } = await supabase.from('documents').update(patch).eq('id', editing.id)
+      if (error) { toast.error("Couldn't save document"); setSaving(false); return }
+      if (file) {
+        const upload = await compressImage(file)
+        const path = `documents/${editing.id}/${upload.name}`
+        const { data: up, error: upErr } = await supabase.storage.from('documents').upload(path, upload, { upsert: true })
+        if (upErr) { toast.error('File upload failed'); setSaving(false); return }
+        if (up) {
+          const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
+          await supabase.from('document_files').insert({ document_id: editing.id, file_name: upload.name, file_url: urlData.publicUrl, file_size: upload.size, uploaded_by: userId })
+        }
+      }
+      await logAction('update', 'documents', editing.id, undefined, patch as unknown as Record<string, unknown>)
+      toast.success('Document updated')
+      setSaving(false); setOpen(false); setEditing(null); setForm(INITIAL_FORM); setFile(null); router.refresh()
+      return
+    }
 
     // Generate the id client-side so we never read the row back: a "Founder
     // Only" (or finance) document uploaded by a non-founder can't be SELECTed
@@ -233,7 +274,7 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
       <PageHeader
         title="Document Vault"
         subtitle="Organize and manage all company documents"
-        action={canUpload ? <Button icon={Plus} onClick={() => setOpen(true)}>Upload Document</Button> : undefined}
+        action={canUpload ? <Button icon={Plus} onClick={openNew}>Upload Document</Button> : undefined}
       />
 
       {/* Stats */}
@@ -277,7 +318,10 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
                     <FileText size={16} className="text-white/70" />
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <StatusBadge label={statusB.label} variant={statusB.variant} />
+                    <div className="flex items-center gap-2">
+                      {canUpload && <button onClick={() => openEdit(doc)} className="text-[#5a5a7a] hover:text-white" title="Edit document"><Pencil size={13} /></button>}
+                      <StatusBadge label={statusB.label} variant={statusB.variant} />
+                    </div>
                     {expiryS === 'expired' && <StatusBadge label="Expired" variant="red" />}
                     {expiryS === 'warning' && <StatusBadge label="Expiring" variant="yellow" />}
                   </div>
@@ -335,7 +379,7 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
       )}
 
       {/* Upload Modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title="Upload Document" size="lg">
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Document' : 'Upload Document'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Document Title *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
           <div className="grid grid-cols-2 gap-3">
@@ -369,11 +413,11 @@ export function DocumentsClient({ documents, projects, userId, role }: Props) {
               <span>With this access level, you won&apos;t be able to see this document after uploading — only {form.access_level === 'founder_only' ? 'founders' : 'founders and the finance team'} can. It still saves correctly.</span>
             </div>
           )}
-          <FilePicker label="File Upload" file={file} onChange={setFile} accept=".pdf,.doc,.docx,image/*" />
+          <FilePicker label={editing ? 'Add / replace file (optional)' : 'File Upload'} file={file} onChange={setFile} accept=".pdf,.doc,.docx,image/*" />
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving}>Upload Document</Button>
+            <Button type="submit" loading={saving}>{editing ? 'Save Changes' : 'Upload Document'}</Button>
           </div>
         </form>
       </Modal>

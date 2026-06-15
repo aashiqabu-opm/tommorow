@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, FileText, Upload, ExternalLink, CalendarClock, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, Trash2, FileText, Upload, ExternalLink, CalendarClock, Sparkles, Loader2, Pencil } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -27,8 +27,11 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
   const [aiSummary, setAiSummary] = useState<string | null>(null)
   const [keyDates, setKeyDates] = useState<{ label: string; date: string }[]>([])
   const [aiFilled, setAiFilled] = useState(false)
+  const [editing, setEditing] = useState<PersonalDocument | null>(null)
 
-  function reset() { setTitle(''); setDocType('Agreement'); setExpiry(''); setNotes(''); setFile(null); setAiSummary(null); setKeyDates([]); setAiFilled(false) }
+  function reset() { setTitle(''); setDocType('Agreement'); setExpiry(''); setNotes(''); setFile(null); setAiSummary(null); setKeyDates([]); setAiFilled(false); setEditing(null) }
+  function openNew() { reset(); setOpen(true) }
+  function openEdit(r: PersonalDocument) { reset(); setEditing(r); setTitle(r.title); setDocType(r.doc_type); setExpiry(r.expiry_date ?? ''); setNotes(r.notes ?? ''); setAiSummary(r.ai_summary ?? null); setKeyDates(r.key_dates ?? []); setOpen(true) }
 
   function fileToBase64(f: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -78,6 +81,22 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
     if (!title) { toast.error('Title required'); return }
     setSaving(true)
     const supabase = createClient()
+    if (editing) {
+      const patch: Record<string, unknown> = { title, doc_type: docType, expiry_date: expiry || null, notes: notes || null }
+      if (file) {
+        const ext2 = file.name.split('.').pop()
+        const path2 = `${ownerId}/${Date.now()}.${ext2}`
+        const { error: e2 } = await supabase.storage.from('personal').upload(path2, file, { upsert: false })
+        if (e2) { toast.error("Couldn't upload file"); setSaving(false); return }
+        patch.file_path = path2; patch.file_name = file.name
+      }
+      const { error } = await supabase.from('personal_documents').update(patch).eq('id', editing.id)
+      setSaving(false)
+      if (error) { toast.error("Couldn't save"); return }
+      await logAction('update', 'personal_documents', editing.id)
+      setOpen(false); reset(); toast.success('Document updated'); onChange()
+      return
+    }
     let filePath: string | null = null
     let fileName: string | null = null
     if (file) {
@@ -118,7 +137,7 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
     <div>
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-[#8888aa]">Private, encrypted vault — files are owner-only with signed links. AI summaries arrive in Phase 3.</p>
-        <Button icon={Plus} onClick={() => setOpen(true)}>Add document</Button>
+        <Button icon={Plus} onClick={openNew}>Add document</Button>
       </div>
       {rows.length === 0 ? (
         <div className="text-center text-sm text-[#8888aa] bg-[#13131a] border border-dashed border-[#2a2a3a] rounded-xl py-10 px-6">
@@ -142,6 +161,7 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 {r.file_path && <button onClick={() => view(r)} className="text-[#8888aa] hover:text-white" title="Open"><ExternalLink size={15} /></button>}
+                <button onClick={() => openEdit(r)} className="text-[#8888aa] hover:text-white" title="Edit"><Pencil size={15} /></button>
                 <button onClick={() => remove(r)} className="text-[#8888aa] hover:text-red-400"><Trash2 size={15} /></button>
               </div>
             </div>
@@ -149,7 +169,7 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
         </div>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Add document">
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit document' : 'Add document'}>
         <div className="space-y-3">
           {/* Upload first — AI reads it and fills the rest */}
           <div>

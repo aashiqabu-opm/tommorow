@@ -14,6 +14,8 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase.from('profiles').select('role, is_active').eq('id', user.id).single()
   if (!profile?.is_active) return NextResponse.json({ error: 'Inactive account' }, { status: 403 })
+  // Founder-only — Ask OPM is a metered, costly resource.
+  if (profile.role !== 'founder') return NextResponse.json({ error: 'Ask OPM is restricted to the founder.' }, { status: 403 })
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: 'not_configured' }, { status: 503 })
 
   let body: { messages?: unknown }

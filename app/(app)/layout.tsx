@@ -6,7 +6,8 @@ import { requireProfile } from '@/lib/auth'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile()
-  const isFinance = ['founder', 'accountant'].includes(profile.role)
+  // Ask OPM (incl. the floating button) is founder-only — it's a metered, costly resource.
+  const canAsk = profile.role === 'founder'
 
   return (
     <AppShell profile={profile}>
@@ -15,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="p-4 lg:p-6">
         {children}
       </div>
-      <FloatingAssistant firstName={(profile.full_name as string)?.split(' ')[0] ?? 'there'} finance={isFinance} />
+      {canAsk && <FloatingAssistant firstName={(profile.full_name as string)?.split(' ')[0] ?? 'there'} finance={true} />}
     </AppShell>
   )
 }

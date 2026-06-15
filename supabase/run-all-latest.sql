@@ -375,3 +375,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 26. OFFICE Wave C: rights & deals + release fields ─────────────
 -- migration-office-6.sql (project_deals + projects.release_screens/territory).
+
+-- ───────────── 27. payment confirmation fields ─────────────
+-- migration-payment-confirm.sql (payment_requests.paid_mode, paid_reference).

@@ -61,6 +61,10 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
   const [bill, setBill] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'paid'>('all')
+  // Confirm-payment (accountant records how/when it was actually paid)
+  const [payTarget, setPayTarget] = useState<PaymentRequest | null>(null)
+  const [payForm, setPayForm] = useState<{ date: string; mode: string; reference: string }>({ date: new Date().toISOString().slice(0, 10), mode: 'bank', reference: '' })
+  const [paying, setPaying] = useState(false)
   const [commentsFor, setCommentsFor] = useState<string | null>(null)
   const [commentText, setCommentText] = useState('')
   const [postingComment, setPostingComment] = useState(false)
@@ -85,7 +89,8 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
     if (activeTab === 'pending') return r.approval_status === 'pending'
     if (activeTab === 'approved') return r.approval_status === 'approved' && r.payment_status === 'unpaid'
     if (activeTab === 'paid') return r.payment_status === 'paid'
-    return true
+    // "Active" (default) hides paid bills — they live in the Paid tab (archive).
+    return r.payment_status !== 'paid'
   })
 
   const pendingCount = requests.filter(r => r.approval_status === 'pending').length
@@ -415,23 +420,34 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
     router.refresh()
   }
 
-  async function handleMarkPaid(req: PaymentRequest) {
+  function openMarkPaid(req: PaymentRequest) {
     if (req.approval_status !== 'approved') return toast.error('Cannot mark paid — not yet approved')
+    setPayForm({ date: new Date().toISOString().slice(0, 10), mode: 'bank', reference: '' })
+    setPayTarget(req)
+  }
+  async function confirmPaid() {
+    const req = payTarget
+    if (!req) return
+    setPaying(true)
     const supabase = createClient()
     const update = {
       payment_status: 'paid',
       paid_by: userId,
-      paid_at: new Date().toISOString(),
+      paid_at: new Date(payForm.date).toISOString(),
+      paid_mode: payForm.mode,
+      paid_reference: payForm.reference || null,
     }
-    await supabase.from('payment_requests').update(update).eq('id', req.id)
+    const { error } = await supabase.from('payment_requests').update(update).eq('id', req.id)
+    if (error) { toast.error("Couldn't confirm payment"); setPaying(false); return }
     await logAction('update', 'payment_requests', req.id, { payment_status: 'unpaid' }, update)
     if (req.requested_by !== userId) {
       await notifyUsers([req.requested_by],
         `Payment completed: ${req.payee}`,
-        `${formatCurrency(req.amount)} has been paid`,
+        `${formatCurrency(req.amount)} paid via ${payForm.mode}${payForm.reference ? ` (ref ${payForm.reference})` : ''}`,
         'payment_requests', req.id, true)
     }
-    toast.success(`Marked paid: ${req.payee}`)
+    setPaying(false); setPayTarget(null)
+    toast.success(`Payment confirmed: ${req.payee}`)
     router.refresh()
   }
 
@@ -549,7 +565,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${activeTab === tab ? 'bg-white text-black' : 'text-[#8888aa] hover:text-white'}`}
           >
-            {tab}
+            {tab === 'all' ? 'Active' : tab === 'paid' ? 'Paid Bills' : tab}
             {tab === 'pending' && pendingCount > 0 && (
               <span className="ml-1.5 bg-amber-500 text-black text-[10px] font-bold rounded-full px-1.5 py-0.5">{pendingCount}</span>
             )}
@@ -620,7 +636,10 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
                       ) : null
                     )}
                     {canVerify && req.approval_status === 'approved' && req.payment_status === 'unpaid' && (
-                      <button onClick={() => handleMarkPaid(req)} className="text-xs text-white/70 hover:text-white flex items-center gap-1"><CheckCircle size={12} /> Mark Paid</button>
+                      <button onClick={() => openMarkPaid(req)} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium"><CheckCircle size={12} /> Confirm Paid</button>
+                    )}
+                    {req.payment_status === 'paid' && (req.paid_reference || req.paid_mode) && (
+                      <span className="text-[11px] text-[#8888aa]">Paid{req.paid_mode ? ` · ${req.paid_mode}` : ''}{req.paid_reference ? ` · ${req.paid_reference}` : ''}</span>
                     )}
                     {req.payment_status === 'paid' && (
                       <button onClick={() => openVoucher(req)} className="text-xs text-[#8888aa] hover:text-white flex items-center gap-1"><Printer size={12} /> Voucher</button>
@@ -869,6 +888,21 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
             <Button type="submit" variant="danger" loading={rejecting}>Reject Request</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Confirm payment — accountant records how & when it was actually paid */}
+      <Modal open={!!payTarget} onClose={() => setPayTarget(null)} title="Confirm payment">
+        {payTarget && (
+          <div className="space-y-3">
+            <p className="text-sm text-[#8888aa]">Recording payment of <span className="text-white font-medium">{formatCurrency(payTarget.amount)}</span> to <span className="text-white font-medium">{payTarget.payee}</span>. This moves the bill to Paid Bills.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Paid on" type="date" value={payForm.date} onChange={e => setPayForm({ ...payForm, date: e.target.value })} />
+              <Select label="Mode" value={payForm.mode} onChange={e => setPayForm({ ...payForm, mode: e.target.value })} options={[{ value: 'bank', label: 'Bank transfer' }, { value: 'upi', label: 'UPI' }, { value: 'cheque', label: 'Cheque' }, { value: 'cash', label: 'Cash' }]} />
+            </div>
+            <Input label="Reference (UTR / cheque no / UPI ref)" value={payForm.reference} onChange={e => setPayForm({ ...payForm, reference: e.target.value })} placeholder="Optional but recommended" />
+            <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setPayTarget(null)}>Cancel</Button><Button onClick={confirmPaid} loading={paying}>Confirm paid</Button></div>
+          </div>
+        )}
       </Modal>
     </div>
   )

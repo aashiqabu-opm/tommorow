@@ -336,6 +336,8 @@ export interface PaymentRequest {
   payment_status: 'unpaid' | 'paid'
   paid_by?: string
   paid_at?: string
+  paid_mode?: string | null
+  paid_reference?: string | null
   receipt_url?: string
   notes?: string
   created_at: string

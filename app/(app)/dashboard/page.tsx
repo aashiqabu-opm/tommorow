@@ -21,6 +21,9 @@ export default async function DashboardPage() {
   const isFinance = role === 'founder' || role === 'accountant'
 
   const sixMonthsAgo = new Date(new Date().setMonth(new Date().getMonth() - 6))
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const in7Str = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+  const since90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
 
   // Fetch everything in one parallel wave — including the monthly chart data,
   // which previously ran as two extra sequential round-trips after this batch.
@@ -34,16 +37,25 @@ export default async function DashboardPage() {
     monthlySpendResult,
     monthlyIncomeResult,
     fundingResult,
+    upcomingShootResult,
+    payrollResult,
+    paid90Result,
+    income90Result,
   ] = await Promise.all([
     isFinance ? supabase.from('cash_entries').select('closing_cash').order('entry_date', { ascending: false }).order('created_at', { ascending: false }).limit(1) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('liabilities').select('amount_owed, amount_paid, balance_remaining, status, priority, due_date') : Promise.resolve({ data: null }),
-    supabase.from('payment_requests').select('approval_status, payment_status').eq('approval_status', 'pending'),
+    supabase.from('payment_requests').select('approval_status, payment_status, amount').eq('approval_status', 'pending'),
     supabase.from('documents').select('status, expiry_date'),
     supabase.from('projects').select('id, name, status, is_priority'),
     isFinance ? supabase.from('bank_accounts').select('current_balance').eq('is_active', true) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('payment_requests').select('created_at, amount').eq('approval_status', 'approved').gte('created_at', sixMonthsAgo.toISOString()) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('project_income').select('income_date, amount').gte('income_date', sixMonthsAgo.toISOString().split('T')[0]) : Promise.resolve({ data: null }),
     isFinance ? supabase.from('project_funding').select('*, transactions:funding_transactions(*)').then(r => ({ data: r.data })) : Promise.resolve({ data: null }),
+    // Shoot days in the next 7 days (all roles) — graceful if not migrated
+    supabase.from('project_schedule').select('shoot_date, call_time, project:projects(name), location:locations(name)').gte('shoot_date', todayStr).lte('shoot_date', in7Str).order('shoot_date').then(r => ({ data: r.data })).then(r => r, () => ({ data: null })),
+    isFinance ? supabase.from('staff_salaries').select('monthly_salary').eq('is_active', true) : Promise.resolve({ data: null }),
+    isFinance ? supabase.from('payment_requests').select('amount, net_payable').eq('payment_status', 'paid').gte('paid_at', since90) : Promise.resolve({ data: null }),
+    isFinance ? supabase.from('project_income').select('amount').eq('status', 'received').gte('income_date', since90) : Promise.resolve({ data: null }),
   ])
 
   const funding = (fundingResult.data ?? []) as ProjectFunding[]
@@ -61,6 +73,17 @@ export default async function DashboardPage() {
     .filter(l => l.status !== 'cleared')
     .reduce((s, l) => s + (l.balance_remaining ?? 0), 0)
   const pendingApprovals = paymentRequestsResult.data?.length ?? 0
+  const pendingApprovalTotal = (paymentRequestsResult.data ?? []).reduce((s, p) => s + Number((p as { amount?: number }).amount ?? 0), 0)
+
+  // "First eyeball" signals
+  const available = Number(cashInHand) + Number(bankBalance)
+  const monthlyPayroll = (payrollResult.data ?? []).reduce((s, p) => s + Number(p.monthly_salary ?? 0), 0)
+  const paid90 = (paid90Result.data ?? []).reduce((s, p) => s + Number((p as { net_payable?: number; amount?: number }).net_payable ?? (p as { amount?: number }).amount ?? 0), 0)
+  const income90 = (income90Result.data ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0)
+  const monthlyBurn = Math.max(0, monthlyPayroll + paid90 / 3 - income90 / 3)
+  const runwayWeeks = monthlyBurn > 0 ? Math.round((available / monthlyBurn) * 4.33) : null
+  type ShootRow = { shoot_date: string; call_time?: string | null; project?: { name?: string } | null; location?: { name?: string } | null }
+  const upcomingShoot = (upcomingShootResult.data ?? []) as ShootRow[]
 
   const today = new Date()
   const in30 = new Date(today.getTime() + 30 * 86400000)
@@ -117,8 +140,59 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       {/* Welcome */}
       <div>
-        <h1 className="text-xl font-bold text-white">Company Overview</h1>
-        <p className="text-sm text-[#8888aa] mt-0.5">Everything at a glance</p>
+        <h1 className="text-xl font-bold text-white">Hi {(profile.full_name as string)?.split(' ')[0] ?? 'there'} 👋</h1>
+        <p className="text-sm text-[#8888aa] mt-0.5">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })} — here's what needs you.</p>
+      </div>
+
+      {/* HEADLINE — first eyeball */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {isFinance ? (
+          <>
+            <HeroTile label="Available now" value={formatCurrency(available)} status={available > 500000 ? 'green' : available > 100000 ? 'yellow' : 'red'} sub="Cash + bank" />
+            <HeroTile label="Cash runway" value={runwayWeeks === null ? '∞' : `${runwayWeeks} wk`} status={runwayWeeks === null ? 'green' : runwayWeeks <= 4 ? 'red' : runwayWeeks <= 8 ? 'yellow' : 'green'} sub={`Burn ${formatCurrency(Math.round(monthlyBurn))}/mo`} />
+            <HeroTile label="Approvals pending" value={String(pendingApprovals)} status={pendingApprovals === 0 ? 'green' : pendingApprovals > 5 ? 'red' : 'yellow'} sub={pendingApprovalTotal ? formatCurrency(pendingApprovalTotal) : 'all clear'} href="/payments" />
+            <HeroTile label="Shoot this week" value={String(upcomingShoot.length)} status="default" sub={upcomingShoot.filter(s => s.shoot_date === todayStr).length ? 'shooting today' : 'next 7 days'} href="/projects" />
+          </>
+        ) : (
+          <>
+            <HeroTile label="Active films" value={String(projects.filter(p => p.status === 'active').length)} status="default" sub="In production" href="/projects" />
+            <HeroTile label="Shoot this week" value={String(upcomingShoot.length)} status="default" sub={upcomingShoot.filter(s => s.shoot_date === todayStr).length ? 'shooting today' : 'next 7 days'} href="/projects" />
+            <HeroTile label="Approvals pending" value={String(pendingApprovals)} status={pendingApprovals === 0 ? 'green' : 'yellow'} sub="Payment requests" href="/payments" />
+            <HeroTile label="Expiring agreements" value={String(expiringDocs.length)} status={expiringDocs.length === 0 ? 'green' : 'yellow'} sub="Within 30 days" href="/documents" />
+          </>
+        )}
+      </div>
+
+      {/* NEEDS YOU NOW + SHOOT THIS WEEK */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-[#13131a] border border-[#2a2a3a] rounded-xl p-4">
+          <h2 className="text-xs font-semibold text-[#8888aa] uppercase tracking-wider mb-3">Needs you now</h2>
+          {(() => {
+            const items: { text: string; href: string; tone: string }[] = []
+            if (pendingApprovals > 0) items.push({ text: `${pendingApprovals} payment ${pendingApprovals === 1 ? 'request' : 'requests'} to approve${pendingApprovalTotal ? ` (${formatCurrency(pendingApprovalTotal)})` : ''}`, href: '/payments', tone: 'amber' })
+            if (isFinance && urgentLiabilities.length) items.push({ text: `${urgentLiabilities.length} urgent due${urgentLiabilities.length === 1 ? '' : 's'}`, href: '/liabilities', tone: 'red' })
+            if (isFinance && runwayWeeks !== null && runwayWeeks <= 8) items.push({ text: `Cash runway ~${runwayWeeks} weeks at current burn`, href: '/forecast', tone: runwayWeeks <= 4 ? 'red' : 'amber' })
+            if (expiringDocs.length) items.push({ text: `${expiringDocs.length} agreement${expiringDocs.length === 1 ? '' : 's'} expiring in 30 days`, href: '/documents', tone: 'amber' })
+            if (!items.length) return <p className="text-sm text-emerald-300">All clear — nothing pressing right now. ✅</p>
+            return <div className="space-y-2">{items.map((it, i) => (
+              <Link key={i} href={it.href} className="flex items-center justify-between bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-2.5 hover:border-white/20">
+                <span className="text-sm text-white/90">{it.text}</span>
+                <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded ${it.tone === 'red' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>{it.tone === 'red' ? 'urgent' : 'review'}</span>
+              </Link>
+            ))}</div>
+          })()}
+        </div>
+        <div className="bg-[#13131a] border border-[#2a2a3a] rounded-xl p-4">
+          <h2 className="text-xs font-semibold text-[#8888aa] uppercase tracking-wider mb-3">Shoot this week</h2>
+          {upcomingShoot.length === 0 ? <p className="text-sm text-[#8888aa]">No shoot days scheduled in the next 7 days.</p> : (
+            <div className="space-y-2">{upcomingShoot.slice(0, 6).map((s, i) => (
+              <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 ${s.shoot_date === todayStr ? 'bg-[#f5b301]/10 border border-[#f5b301]/30' : 'bg-[#1a1a24] border border-[#2a2a3a]'}`}>
+                <div className="text-sm text-white">{s.project?.name ?? 'Film'} <span className="text-[#8888aa]">· {s.location?.name ?? '—'}</span></div>
+                <div className="text-xs text-[#8888aa]">{s.shoot_date === todayStr ? 'TODAY' : formatDate(s.shoot_date)}{s.call_time ? ` · ${s.call_time}` : ''}</div>
+              </div>
+            ))}</div>
+          )}
+        </div>
       </div>
 
       {/* Proactive watchlist + on-demand AI review — finance only */}
@@ -325,4 +399,17 @@ function ProjectCard({ project }: { project: { id: string; name: string; status:
       </div>
     </Link>
   )
+}
+
+function HeroTile({ label, value, status, sub, href }: { label: string; value: string; status: 'green' | 'yellow' | 'red' | 'default'; sub?: string; href?: string }) {
+  const ring = status === 'green' ? 'border-emerald-500/25' : status === 'yellow' ? 'border-amber-500/25' : status === 'red' ? 'border-red-500/30' : 'border-[#2a2a3a]'
+  const val = status === 'green' ? 'text-emerald-300' : status === 'yellow' ? 'text-amber-300' : status === 'red' ? 'text-red-300' : 'text-white'
+  const inner = (
+    <div className={`bg-gradient-to-br from-[#1a1a24] to-[#13131a] border ${ring} rounded-2xl p-4 h-full ${href ? 'hover:border-white/25 transition-colors' : ''}`}>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-[#8888aa]">{label}</div>
+      <div className={`text-2xl lg:text-3xl font-bold mt-1.5 ${val}`}>{value}</div>
+      {sub && <div className="text-xs text-[#8888aa] mt-1">{sub}</div>}
+    </div>
+  )
+  return href ? <Link href={href}>{inner}</Link> : inner
 }

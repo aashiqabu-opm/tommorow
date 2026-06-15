@@ -103,6 +103,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const isFounder = profile.role === 'founder'
   const canEditDocs = isFounder || ['director', 'screenwriter', 'chief_ad', 'associate_director'].includes(myRole ?? '')
   const canEditCasting = canEditDocs || isManagement || myRole === 'casting_director'
+  const mgmt = isFounder || ['general_manager', 'executive_producer'].includes(profile.role)
+  const canEditPost = mgmt || ['director', 'production_controller', 'editor', 'assistant_editor', 'sound_designer', 'vfx_director', 'colorist', 'music_director'].includes(myRole ?? '')
+  const canEditDeliv = mgmt || ['director', 'production_controller'].includes(myRole ?? '')
 
   return (
     <>
@@ -130,7 +133,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     />
     <div className="mt-4">
       <ProductionSuite projectId={id} projectStatus={project.status} userId={profile.id}
-        canEditCasting={canEditCasting} canEditDocs={canEditDocs} />
+        canEditCasting={canEditCasting} canEditDocs={canEditDocs} canEditPost={canEditPost} canEditDeliv={canEditDeliv} />
     </div>
     </>
   )

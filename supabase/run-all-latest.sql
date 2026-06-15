@@ -369,3 +369,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 24. OFFICE call sheets log ─────────────
 -- migration-office-4.sql (call_sheets).
+
+-- ───────────── 25. OFFICE Wave B: post pipeline + deliverables + deal memos ─────────────
+-- migration-office-5.sql (project_post_tasks, project_deliverables, project_deal_memos).

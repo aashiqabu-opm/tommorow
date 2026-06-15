@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation'
 interface Props {
   profiles: Profile[]
   currentUserId: string
+  crew?: Record<string, { project: string; role: string }[]>
 }
 
 const ROLE_OPTIONS = [
@@ -46,7 +47,7 @@ type PendingAction =
   | { type: 'role'; profile: Profile; newRole: Role }
   | { type: 'active'; profile: Profile }
 
-export function UsersClient({ profiles, currentUserId }: Props) {
+export function UsersClient({ profiles, currentUserId, crew }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -110,6 +111,13 @@ export function UsersClient({ profiles, currentUserId }: Props) {
     router.refresh()
   }
 
+  // A login is "project crew" if it's a staff role that maps to project membership —
+  // these shouldn't sit in the company-user list mislabelled as office assistants.
+  const crewMap: Record<string, { project: string; role: string }[]> = crew ?? {}
+  const isCrew = (p: Profile) => p.role === 'staff' && Array.isArray(crewMap[p.id]) && crewMap[p.id].length > 0
+  const companyUsers = profiles.filter(p => !isCrew(p))
+  const projectCrew = profiles.filter(isCrew)
+
   const active = profiles.filter(p => p.is_active)
   const inactive = profiles.filter(p => !p.is_active)
 
@@ -147,10 +155,11 @@ export function UsersClient({ profiles, currentUserId }: Props) {
 
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-[#2a2a3a]">
-          <h3 className="text-sm font-semibold text-white">All Users</h3>
+          <h3 className="text-sm font-semibold text-white">Company Users</h3>
+          <p className="text-xs text-[#8888aa] mt-0.5">Staff with company-wide roles. Project crew appear in their own section below.</p>
         </div>
         <div className="divide-y divide-[#2a2a3a]">
-          {profiles.map((profile) => (
+          {companyUsers.map((profile) => (
             <div key={profile.id} className="px-5 py-4 flex items-center gap-4">
               {/* Avatar */}
               <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center text-sm font-bold text-white shrink-0">
@@ -212,11 +221,56 @@ export function UsersClient({ profiles, currentUserId }: Props) {
               </button>
             </div>
           ))}
-          {profiles.length === 0 && (
-            <div className="py-8 text-center text-[#8888aa] text-sm">No users found</div>
+          {companyUsers.length === 0 && (
+            <div className="py-8 text-center text-[#8888aa] text-sm">No company users found</div>
           )}
         </div>
       </div>
+
+      {/* Project crew logins — provisioned via a project's Core Team. Shown with
+          their real project designation, not a company role. */}
+      {projectCrew.length > 0 && (
+        <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#2a2a3a]">
+            <h3 className="text-sm font-semibold text-white">Project Crew Logins</h3>
+            <p className="text-xs text-[#8888aa] mt-0.5">Project-scoped accounts. They only see the projects they&apos;re assigned to — manage their role from each project&apos;s Core Team.</p>
+          </div>
+          <div className="divide-y divide-[#2a2a3a]">
+            {projectCrew.map((profile) => (
+              <div key={profile.id} className="px-5 py-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold text-white shrink-0">
+                  {profile.full_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-medium text-white">{profile.full_name}</span>
+                    {!profile.is_active && <StatusBadge label="Inactive" variant="red" />}
+                  </div>
+                  <div className="text-xs text-[#8888aa] truncate">{profile.email}</div>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {(crewMap[profile.id] ?? []).map((c, i) => (
+                      <span key={i} className="text-[10px] text-white/80 bg-white/10 border border-white/15 rounded px-1.5 py-0.5">
+                        {c.project} · {c.role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPending({ type: 'active', profile })}
+                  disabled={updating === profile.id}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 shrink-0 ${
+                    profile.is_active
+                      ? 'text-red-400 border-red-500/20 hover:bg-red-500/10'
+                      : 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10'
+                  }`}
+                >
+                  {profile.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5">
         <h3 className="text-sm font-semibold text-white mb-3">Access Control Summary</h3>

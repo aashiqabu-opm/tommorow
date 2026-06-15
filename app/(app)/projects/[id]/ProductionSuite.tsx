@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Film, CalendarDays, FileText, Plus, Pencil, Trash2, Upload, Loader2, Sparkles, ExternalLink, UserPlus, Megaphone, Link2, Scissors } from 'lucide-react'
+import { Users, Film, CalendarDays, FileText, Plus, Pencil, Trash2, Upload, Loader2, Sparkles, ExternalLink, UserPlus, Megaphone, Link2, Scissors, Handshake } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
 import { ScheduleModule } from './ScheduleModule'
 import { PostModule } from './PostModule'
+import { ReleaseModule } from './ReleaseModule'
 
 interface Character { id: string; name: string; description?: string | null; age_range?: string | null; gender?: string | null; importance?: string | null; status: string; cast_actor?: string | null; notes?: string | null }
 interface Audition { id: string; character_id?: string | null; applicant_name: string; contact?: string | null; age?: string | null; location?: string | null; photo_url?: string | null; video_url?: string | null; ai_score?: number | null; status: string; notes?: string | null }
@@ -16,11 +17,11 @@ interface Doc { id: string; title: string; doc_type: string; file_path?: string 
 interface PressItem { id: string; kind: string; title: string; file_path?: string | null; link?: string | null; notes?: string | null }
 interface Channel { id: string; platform: string; handle?: string | null; url: string; notes?: string | null }
 
-type Tab = 'characters' | 'auditions' | 'schedule' | 'post' | 'documents' | 'press' | 'channels'
+type Tab = 'characters' | 'auditions' | 'schedule' | 'post' | 'release' | 'documents' | 'press' | 'channels'
 const IMPORTANCE = ['lead', 'supporting', 'cameo', 'extra']
 
-export function ProductionSuite({ projectId, projectStatus, userId, canEditCasting, canEditDocs, canEditPost, canEditDeliv }: {
-  projectId: string; projectStatus: string; userId: string; canEditCasting: boolean; canEditDocs: boolean; canEditPost: boolean; canEditDeliv: boolean
+export function ProductionSuite({ projectId, projectStatus, userId, canEditCasting, canEditDocs, canEditPost, canEditDeliv, canEditDeals }: {
+  projectId: string; projectStatus: string; userId: string; canEditCasting: boolean; canEditDocs: boolean; canEditPost: boolean; canEditDeliv: boolean; canEditDeals: boolean
 }) {
   const toast = useToast()
   const supabase = createClient()
@@ -45,7 +46,7 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
   }, [projectId, supabase])
   useEffect(() => { load() }, [load])
 
-  const TABS: [Tab, string, typeof Users][] = [['characters', 'Characters', Users], ['auditions', 'Auditions', Film], ['schedule', 'Shoot Schedule', CalendarDays], ['post', 'Post & Delivery', Scissors], ['documents', 'Documents', FileText], ['press', 'Press Kit', Megaphone], ['channels', 'Channels', Link2]]
+  const TABS: [Tab, string, typeof Users][] = [['characters', 'Characters', Users], ['auditions', 'Auditions', Film], ['schedule', 'Shoot Schedule', CalendarDays], ['post', 'Post & Delivery', Scissors], ['release', 'Release & Deals', Handshake], ['documents', 'Documents', FileText], ['press', 'Press Kit', Megaphone], ['channels', 'Channels', Link2]]
 
   return (
     <div className="bg-[#13131a] border border-[#2a2a3a] rounded-xl p-4">
@@ -62,6 +63,7 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
       {tab === 'auditions' && <Auditions projectId={projectId} rows={auditions} characters={characters} canEdit={canEditCasting} onChange={load} supabase={supabase} toast={toast} />}
       {tab === 'schedule' && <ScheduleModule projectId={projectId} canEdit={canEditCasting} />}
       {tab === 'post' && <PostModule projectId={projectId} canEditPost={canEditPost} canEditDeliv={canEditDeliv} />}
+      {tab === 'release' && <ReleaseModule projectId={projectId} canEdit={canEditDeals} />}
       {tab === 'documents' && <Documents projectId={projectId} rows={docs} canEdit={canEditDocs} userId={userId} onChange={load} supabase={supabase} toast={toast} addCharacters={async (chars) => {
         const payload = chars.map(c => ({ project_id: projectId, name: c.name, description: c.description, status: 'open' }))
         const { error } = await supabase.from('project_characters').insert(payload)

@@ -372,3 +372,6 @@ ALTER TABLE wa_rate_limit ENABLE ROW LEVEL SECURITY;
 
 -- ───────────── 25. OFFICE Wave B: post pipeline + deliverables + deal memos ─────────────
 -- migration-office-5.sql (project_post_tasks, project_deliverables, project_deal_memos).
+
+-- ───────────── 26. OFFICE Wave C: rights & deals + release fields ─────────────
+-- migration-office-6.sql (project_deals + projects.release_screens/territory).

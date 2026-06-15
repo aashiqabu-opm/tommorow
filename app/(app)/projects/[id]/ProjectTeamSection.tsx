@@ -80,7 +80,12 @@ export function ProjectTeamSection({ projectId, members, userId, canManage }: Pr
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Could not add'); setSaving(false); return }
       await logAction('create', 'project_members', data.member?.id ?? projectId, undefined, { name: form.name, role: form.project_role })
-      toast.success(data.invited ? `${form.name} added — project login emailed` : `${form.name} added to the team`)
+      const sent: string[] = []
+      if (data.channels?.email) sent.push('email')
+      if (data.channels?.whatsapp) sent.push('WhatsApp')
+      if (data.invited && sent.length) toast.success(`${form.name} added — login sent via ${sent.join(' & ')}`)
+      else if (data.inviteNote) toast.success(`${form.name} added. ${data.inviteNote}`)
+      else toast.success(`${form.name} added to the team`)
       setSaving(false); setOpen(false)
       setForm({ name: '', email: '', phone: '', project_role: 'production_assistant', team_group: 'production', title: '' })
       router.refresh()

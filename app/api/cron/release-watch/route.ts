@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured } from '@/lib/alerts/channels'
+import { sendEmail, emailTemplate, emailConfigured } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
 import { fetchCollectionEstimate, scanOnline, trackCampaignAsset, intelConfigured } from '@/lib/ai/release-intel'
 import { releaseWindow } from '@/lib/phases'
@@ -96,10 +96,9 @@ async function run(request: Request) {
       `<p style="margin:0 0 12px;">Today's scan flagged high-severity items:</p>` +
       `<ul style="margin:0;padding-left:18px;line-height:1.7;">${rows}</ul>` +
       `<p style="margin:16px 0 0;font-size:11px;color:#a1a1aa;">Open the project's Release Watch to see links and full detail. The app never acts on these automatically.</p>`)
-    const waText = `*OPM Office — Release Watch (${dateStr})*\n` + alerts.map(a => `⚠️ ${a.film} — ${a.category}: ${a.title}`).join('\n')
+    // Email-only: release-watch digest is non-utility content for WhatsApp's platform.
     for (const f of founders) {
       if (emailConfigured() && f.email_alerts && f.email) await sendEmail(f.email, `OPM Office — Release Watch: ${alerts.length} urgent`, html)
-      if (whatsappConfigured() && f.whatsapp_alerts && f.whatsapp_number) await sendWhatsApp(f.whatsapp_number, waText)
     }
   }
 

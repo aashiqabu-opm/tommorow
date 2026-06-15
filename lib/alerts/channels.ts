@@ -75,6 +75,41 @@ export async function sendWhatsApp(toNumber: string, text: string): Promise<bool
   }
 }
 
+// Send a pre-approved WhatsApp template (required for business-initiated
+// messages outside the 24h customer-service window once we move off the Twilio
+// sandbox onto a verified WhatsApp Business number). `contentSid` is the
+// approved Content Template SID (HXxxxx); `vars` maps the template's numbered
+// placeholders ({{1}}, {{2}}…) to values. Returns false if Twilio/the SID is
+// not configured, so callers can fall back to free-form text.
+export async function sendWhatsAppTemplate(
+  toNumber: string,
+  contentSid: string,
+  vars: Record<string, string>,
+): Promise<boolean> {
+  if (!whatsappConfigured() || !contentSid) return false
+  try {
+    const sid = process.env.TWILIO_ACCOUNT_SID!
+    const auth = Buffer.from(`${sid}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')
+    const body = new URLSearchParams({
+      From: process.env.TWILIO_WHATSAPP_FROM!,
+      To: `whatsapp:${normalizeWhatsApp(toNumber)}`,
+      ContentSid: contentSid,
+      ContentVariables: JSON.stringify(vars),
+    })
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 // Minimal branded email wrapper — light background for email-client compatibility.
 export function emailTemplate(title: string, bodyHtml: string): string {
   return `<!DOCTYPE html>

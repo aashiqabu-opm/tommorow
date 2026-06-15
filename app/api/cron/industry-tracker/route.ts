@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured } from '@/lib/alerts/channels'
+import { sendEmail, emailTemplate, emailConfigured } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
 import { trackMalayalamReleases, intelConfigured } from '@/lib/ai/release-intel'
 
@@ -74,10 +74,9 @@ export async function GET(request: Request) {
       `<p style="margin:0 0 12px;">New in cinemas, now tracking day 1–7:</p>` +
       `<ul style="margin:0;padding-left:18px;line-height:1.7;">${newFilms.map(f => `<li><b>${escapeHtml(f)}</b></li>`).join('')}</ul>` +
       `<p style="margin:16px 0 0;font-size:11px;color:#a1a1aa;">Follow their first-week run in Market in the app.</p>`)
-    const waText = `*OPM Office — New Malayalam releases (${dateStr})*\n${newFilms.map(f => `• ${f}`).join('\n')}`
+    // Email-only: industry-news content isn't an approvable WhatsApp utility template.
     for (const t of team ?? []) {
       if (emailConfigured() && t.email_alerts && t.email) await sendEmail(t.email, `OPM Office — New Malayalam releases (${dateStr})`, html)
-      if (whatsappConfigured() && t.whatsapp_alerts && t.whatsapp_number) await sendWhatsApp(t.whatsapp_number, waText)
     }
   }
 

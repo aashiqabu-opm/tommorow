@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmail, sendWhatsApp, emailTemplate, emailConfigured, whatsappConfigured, sleep, EMAIL_THROTTLE_MS } from '@/lib/alerts/channels'
+import { sendEmail, emailTemplate, emailConfigured, sleep, EMAIL_THROTTLE_MS } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  if (!emailConfigured() && !whatsappConfigured()) {
+  if (!emailConfigured()) {
     return NextResponse.json({ ok: true, skipped: 'no alert channel configured' })
   }
 
@@ -111,18 +111,15 @@ export async function GET(request: Request) {
 
   const dateStr = today.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
   const html = emailTemplate(`Daily Digest — ${dateStr}`, sections.join(''))
-  // WhatsApp is reserved for urgent matters — only fires when something is overdue
-  const urgentText = `*OPM Office — Urgent (${dateStr})*\n🔴 ${overdue.length} overdue liabilit${overdue.length === 1 ? 'y' : 'ies'}:\n${overdue.slice(0, 5).map((l) => `• ${l.party_name} — ${inr(Number(l.balance_remaining))} (due ${l.due_date})`).join('\n')}${pending.length > 0 ? `\n⏳ ${pending.length} payment${pending.length === 1 ? '' : 's'} awaiting approval` : ''}`
 
-  // Sequential with a throttle to stay under Resend's ~2/sec rate limit.
+  // Email-only: the digest is a multi-item summary that doesn't map to a fixed
+  // WhatsApp utility template. Time-sensitive bill approvals still reach people
+  // on WhatsApp in real time via the inbound webhook flow.
   let sent = 0
   for (let i = 0; i < recipients.length; i++) {
     const r = recipients[i]
     if (r.email_alerts && r.email) {
       if (await sendEmail(r.email, `OPM Office — Daily Digest (${dateStr})`, html)) sent++
-    }
-    if (overdue.length > 0 && r.whatsapp_alerts && r.whatsapp_number) {
-      if (await sendWhatsApp(r.whatsapp_number, urgentText)) sent++
     }
     if (i < recipients.length - 1) await sleep(EMAIL_THROTTLE_MS)
   }

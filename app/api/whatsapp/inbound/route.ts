@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { whatsappConfigured, normalizeWhatsApp, sendWhatsApp, sendEmail, emailTemplate, sleep } from '@/lib/alerts/channels'
+import { whatsappConfigured, normalizeWhatsApp, sendWhatsApp, sendWhatsAppTemplate, sendEmail, emailTemplate, sleep } from '@/lib/alerts/channels'
 import { validateTwilioSignature, twimlMessage, twimlEmpty, fetchTwilioMedia, pickProject } from '@/lib/whatsapp'
 import { extractBill } from '@/lib/ai/extract-bill'
 import { askOpm } from '@/lib/ai/assistant'
@@ -127,8 +127,20 @@ async function handleInbound(req: Request) {
       `<p style="margin:0 0 8px;"><strong>${profile.full_name}</strong> submitted a bill via WhatsApp.</p>` +
       `<p style="margin:0;">Payee: ${payeeLabel}<br/>Amount: ${amt}<br/>Project: ${proj.name}</p>` +
       `<p style="margin:12px 0 0;">It's a draft pending your approval.</p>`)
+    // On a production WhatsApp Business number, this approver ping is
+    // business-initiated and outside the 24h window, so it must go as the
+    // approved "new_bill_review" template. Falls back to free-form text on the
+    // sandbox / until the template SID is configured.
+    const billTemplateSid = process.env.TWILIO_TEMPLATE_NEW_BILL_SID
     for (const a of approvers) {
-      if (a.whatsapp_alerts && a.whatsapp_number) await sendWhatsApp(a.whatsapp_number, waText)
+      if (a.whatsapp_alerts && a.whatsapp_number) {
+        const sent = billTemplateSid && code
+          ? await sendWhatsAppTemplate(a.whatsapp_number, billTemplateSid, {
+              '1': profile.full_name, '2': payeeLabel, '3': amt, '4': proj.name, '5': code,
+            })
+          : false
+        if (!sent) await sendWhatsApp(a.whatsapp_number, waText)
+      }
       if (a.email_alerts && a.email) { await sendEmail(a.email, 'New WhatsApp bill to review — OPM Office', html); await sleep(600) }
     }
 
@@ -175,7 +187,17 @@ async function handleInbound(req: Request) {
     const submitter = (profiles ?? []).find(p => p.id === target.requested_by)
     if (submitter && submitter.id !== profile.id) {
       const msg = `❌ Your payment request — ${target.payee} (${inr(Number(target.amount))}) — was rejected by ${profile.full_name}${reason ? `: ${reason}` : ''}.`
-      if (submitter.whatsapp_alerts && submitter.whatsapp_number) await sendWhatsApp(submitter.whatsapp_number, msg)
+      if (submitter.whatsapp_alerts && submitter.whatsapp_number) {
+        // Business-initiated + may be >24h after submission → use the approved
+        // "payment_rejected" template on production, free-form as fallback.
+        const rejectTemplateSid = process.env.TWILIO_TEMPLATE_REJECTED_SID
+        const sent = rejectTemplateSid
+          ? await sendWhatsAppTemplate(submitter.whatsapp_number, rejectTemplateSid, {
+              '1': target.payee, '2': inr(Number(target.amount)), '3': profile.full_name, '4': reason || 'No reason given',
+            })
+          : false
+        if (!sent) await sendWhatsApp(submitter.whatsapp_number, msg)
+      }
       if (submitter.email_alerts && submitter.email) await sendEmail(submitter.email, 'Payment request rejected — OPM Office', emailTemplate('Payment request rejected', `<p style="margin:0;">${msg}</p>`))
     }
     return xml(twimlMessage(`Rejected: ${target.payee} (${inr(Number(target.amount))}).${submitter && submitter.id !== profile.id ? ' The submitter has been notified.' : ''}`))

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, UserPlus, Trash2, ShieldCheck, Mail, Phone } from 'lucide-react'
+import { Users, UserPlus, Trash2, ShieldCheck, Mail, Phone, Pencil } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
@@ -39,12 +39,40 @@ export function ProjectTeamSection({ projectId, members, userId, canManage }: Pr
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState<ProjectMember | null>(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', project_role: 'production_assistant' as ProjectRole, team_group: 'production', title: '' })
 
-  async function addMember(e: React.FormEvent) {
+  function openNew() {
+    setEditing(null)
+    setForm({ name: '', email: '', phone: '', project_role: 'production_assistant', team_group: 'production', title: '' })
+    setOpen(true)
+  }
+  function openEdit(m: ProjectMember) {
+    setEditing(m)
+    setForm({
+      name: m.member_name ?? m.profile?.full_name ?? '', email: m.member_email ?? '', phone: m.member_phone ?? '',
+      project_role: m.project_role, team_group: m.team_group ?? 'production', title: m.title ?? '',
+    })
+    setOpen(true)
+  }
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) return toast.error('Enter a name')
     setSaving(true)
+    // Edit existing member — update the row directly (RLS gates write).
+    if (editing) {
+      const supabase = createClient()
+      const patch: Record<string, unknown> = { project_role: form.project_role, team_group: form.team_group, title: form.title || null, member_phone: form.phone || null }
+      // Only update the contact name/email for contact-only members (no linked login).
+      if (!editing.user_id) { patch.member_name = form.name; patch.member_email = form.email || null }
+      const { error } = await supabase.from('project_members').update(patch).eq('id', editing.id)
+      if (error) { toast.error("Couldn't save — you may not have permission"); setSaving(false); return }
+      await logAction('update', 'project_members', editing.id, undefined, patch)
+      toast.success('Member updated')
+      setSaving(false); setOpen(false); setEditing(null); router.refresh()
+      return
+    }
     try {
       const res = await fetch(`/api/projects/${projectId}/team`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
@@ -79,7 +107,7 @@ export function ProjectTeamSection({ projectId, members, userId, canManage }: Pr
           <h3 className="text-sm font-semibold text-white">Core Team</h3>
           <span className="text-xs text-[#8888aa]">· {members.length}</span>
         </div>
-        {canManage && <Button size="sm" icon={UserPlus} onClick={() => setOpen(true)}>Add Member</Button>}
+        {canManage && <Button size="sm" icon={UserPlus} onClick={openNew}>Add Member</Button>}
       </div>
 
       {members.length === 0 ? (
@@ -115,7 +143,10 @@ export function ProjectTeamSection({ projectId, members, userId, canManage }: Pr
                         </div>
                       </div>
                       {canManage && (
-                        <button onClick={() => remove(m)} className="text-[#5a5a7a] hover:text-red-400 shrink-0"><Trash2 size={15} /></button>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <button onClick={() => openEdit(m)} className="text-[#5a5a7a] hover:text-white"><Pencil size={15} /></button>
+                          <button onClick={() => remove(m)} className="text-[#5a5a7a] hover:text-red-400"><Trash2 size={15} /></button>
+                        </div>
                       )}
                     </div>
                   )
@@ -126,11 +157,12 @@ export function ProjectTeamSection({ projectId, members, userId, canManage }: Pr
         </div>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Add Team Member">
-        <form onSubmit={addMember} className="space-y-4">
-          <Input label="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Full name" />
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Team Member' : 'Add Team Member'}>
+        <form onSubmit={submit} className="space-y-4">
+          <Input label="Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Full name" disabled={!!editing?.user_id} />
+          {editing?.user_id && <p className="text-[11px] text-[#5a5a7a] -mt-2">Name & email come from this member&apos;s login account and can&apos;t be changed here.</p>}
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="name@example.com" />
+            <Input label="Email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="name@example.com" disabled={!!editing?.user_id} />
             <Input label="Mobile" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+91…" />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -139,10 +171,10 @@ export function ProjectTeamSection({ projectId, members, userId, canManage }: Pr
           </div>
           <p className="text-[11px] text-[#5a5a7a] -mt-1">{capSummary(form.project_role)}</p>
           <Input label="Title / Designation (optional)" placeholder="e.g. 2nd Unit DOP" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          <p className="text-[11px] text-[#8888aa] bg-[#1a1a24] rounded-lg p-2.5">With an email, they get a <span className="text-white">project-only login</span> + the team channel — auto-switched off a week after release.</p>
+          {!editing && <p className="text-[11px] text-[#8888aa] bg-[#1a1a24] rounded-lg p-2.5">With an email, they get a <span className="text-white">project-only login</span> + the team channel — auto-switched off a week after release.</p>}
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving} icon={UserPlus}>Add</Button>
+            <Button type="submit" loading={saving} icon={editing ? Pencil : UserPlus}>{editing ? 'Save' : 'Add'}</Button>
           </div>
         </form>
       </Modal>

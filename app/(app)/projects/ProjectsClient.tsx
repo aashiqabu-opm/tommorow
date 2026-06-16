@@ -68,7 +68,7 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
   const [form, setForm] = useState(INITIAL_FORM)
-  const [companyFilter, setCompanyFilter] = useState<'all' | 'OPM Cinemas Proprietorship' | 'OPM Dream Mill Cinemas PVT LTD' | 'Tomorrow Smartcity Ventures Pvt Ltd'>('all')
+  const [companyFilter, setCompanyFilter] = useState<'all' | 'OPM Cinemas Proprietorship' | 'OPM Dream Mill Cinemas PVT LTD' | 'Tomorrow Smartcity Ventures Pvt Ltd' | 'OPM Records'>('all')
 
   const canCreate = role === 'founder'
 
@@ -163,7 +163,8 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
           { value: 'all', label: 'All Projects' },
           { value: 'OPM Cinemas Proprietorship', label: 'OPM Cinemas Proprietorship' },
           { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'OPM Dream Mill Cinemas PVT LTD' },
-          { value: 'Tomorrow Smartcity Ventures Pvt Ltd', label: 'Tomorrow Smartcity Ventures Pvt Ltd' }
+          { value: 'Tomorrow Smartcity Ventures Pvt Ltd', label: 'Tomorrow Smartcity Ventures Pvt Ltd' },
+          { value: 'OPM Records', label: 'OPM Records' }
         ] as const).map(c => (
           <button
             key={c.value}
@@ -279,7 +280,8 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
             options={[
               { value: 'OPM Cinemas Proprietorship', label: 'OPM Cinemas Proprietorship' },
               { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'OPM Dream Mill Cinemas PVT LTD' },
-              { value: 'Tomorrow Smartcity Ventures Pvt Ltd', label: 'Tomorrow Smartcity Ventures Pvt Ltd' }
+              { value: 'Tomorrow Smartcity Ventures Pvt Ltd', label: 'Tomorrow Smartcity Ventures Pvt Ltd' },
+              { value: 'OPM Records', label: 'OPM Records (Music Label)' }
             ]}
           />
           <Input label="Release Year" type="number" value={form.release_year} onChange={e => setForm({ ...form, release_year: e.target.value })} placeholder="e.g. 2026" />

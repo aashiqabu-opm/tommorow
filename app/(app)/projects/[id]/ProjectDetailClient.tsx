@@ -29,6 +29,7 @@ import { ProjectTeamSection } from './ProjectTeamSection'
 import { ProjectChannelSection } from './ProjectChannelSection'
 import { ProjectCheckinSection } from './ProjectCheckinSection'
 import { ProjectDocsSection } from './ProjectDocsSection'
+import { ArchivalModule } from './ArchivalModule'
 import { useRouter } from 'next/navigation'
 
 interface PaymentRequest {
@@ -442,6 +443,9 @@ export function ProjectDetailClient({ project, documents, payments, liabilities,
 
       {/* Documents & Formats — OPM-branded, pre-filled legal/finance formats */}
       <ProjectDocsSection projectName={project.name} />
+
+      {/* Archival Vault — censor certs, master copy logs, posters, awards */}
+      <ArchivalModule projectId={project.id} canEdit={canManageTeam} userId={userId} />
 
       {/* Daily Check-ins — team reports to the producer */}
       <ProjectCheckinSection

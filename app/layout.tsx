@@ -6,7 +6,8 @@ export const metadata: Metadata = {
   description: 'Internal office operating system for OPM Cinemas',
   manifest: '/manifest.json',
   icons: {
-    apple: '/icon-192.png',
+    icon: '/favicon-32.png',
+    apple: '/apple-touch-icon.png',
   },
   appleWebApp: {
     capable: true,

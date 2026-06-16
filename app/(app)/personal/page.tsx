@@ -7,6 +7,7 @@ import type {
   PersonalTaxProfile, PersonalTaxItem, PersonalDeduction, PersonalCapitalGain,
   PersonalFilmStake, PersonalRoyalty, PersonalDocument,
   PersonalRecurring, PersonalVehicle, PersonalHealthPolicy, PersonalCard, PersonalTransaction,
+  LegalCase,
 } from '@/lib/types'
 
 // Founder-only private workspace. RLS only ever returns the owner's own rows
@@ -16,7 +17,7 @@ export default async function PersonalPage() {
   if (profile.role !== 'founder') redirect('/dashboard')
 
   const supabase = await createClient()
-  const [ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions] = await Promise.all([
+  const [ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions, cases] = await Promise.all([
     supabase.from('personal_company_ledger').select('*').order('txn_date', { ascending: false }),
     supabase.from('personal_guarantees').select('*').order('status').order('expiry_date'),
     supabase.from('personal_accounts').select('*').order('created_at'),
@@ -32,6 +33,7 @@ export default async function PersonalPage() {
     supabase.from('personal_health_policies').select('*').order('renewal_date', { nullsFirst: false }),
     supabase.from('personal_cards').select('*').order('created_at'),
     supabase.from('personal_transactions').select('*').order('txn_date', { ascending: false }).limit(200),
+    supabase.from('personal_legal_cases').select('*').order('next_hearing_date', { nullsFirst: false }),
   ])
 
   return (
@@ -52,6 +54,7 @@ export default async function PersonalPage() {
       policies={(policies.data ?? []) as PersonalHealthPolicy[]}
       cards={(cards.data ?? []) as PersonalCard[]}
       transactions={(transactions.data ?? []) as PersonalTransaction[]}
+      cases={(cases.data ?? []) as LegalCase[]}
     />
   )
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText, RefreshCw, Car, HeartPulse, CreditCard, ArrowLeft } from 'lucide-react'
+import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText, RefreshCw, Car, HeartPulse, CreditCard, ArrowLeft, Scale } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
@@ -15,8 +15,9 @@ import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { LEDGER_KIND_LABELS, type PersonalLedgerEntry, type PersonalGuarantee, type PersonalAccount,
   type PersonalTaxProfile, type PersonalTaxItem, type PersonalDeduction, type PersonalCapitalGain,
-  type PersonalFilmStake, type PersonalRoyalty, type PersonalDocument } from '@/lib/types'
+  type PersonalFilmStake, type PersonalRoyalty, type PersonalDocument, type LegalCase } from '@/lib/types'
 import { TaxTab } from './TaxTab'
+import { LegalCasesTab } from './LegalCasesTab'
 import { FilmTab } from './FilmTab'
 import { LegalTab } from './LegalTab'
 import { RecurringTab } from './RecurringTab'
@@ -25,7 +26,7 @@ import { HealthTab } from './HealthTab'
 import { CardsTab } from './CardsTab'
 import type { PersonalRecurring, PersonalVehicle, PersonalHealthPolicy, PersonalCard, PersonalTransaction } from '@/lib/types'
 
-type Tab = 'ledger' | 'guarantees' | 'accounts' | 'recurring' | 'vehicles' | 'health' | 'cards' | 'tax' | 'film' | 'legal'
+type Tab = 'ledger' | 'guarantees' | 'accounts' | 'recurring' | 'vehicles' | 'health' | 'cards' | 'tax' | 'film' | 'legal' | 'cases'
 
 interface Props {
   ownerId: string
@@ -44,9 +45,10 @@ interface Props {
   policies: PersonalHealthPolicy[]
   cards: PersonalCard[]
   transactions: PersonalTransaction[]
+  cases: LegalCase[]
 }
 
-export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions }: Props) {
+export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions, cases }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [activeTab, setActiveTab] = useState<Tab | null>(null)
@@ -135,6 +137,13 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
       icon: FileText,
       summary: `${documents.length} document(s) saved`,
     },
+    {
+      id: 'cases' as const,
+      title: 'Legal Cases & Disputes',
+      description: 'Track court cases, co-producer disputes and legal obligations — with AI document analysis and hearing-date alerts.',
+      icon: Scale,
+      summary: `${cases.filter(c => ['active', 'on_hold'].includes(c.status)).length} active case(s)`,
+    },
   ]
 
   return (
@@ -209,6 +218,7 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
           {activeTab === 'tax' && <TaxTab ownerId={ownerId} profile={taxProfile} items={taxItems} deductions={deductions} gains={gains} onChange={() => router.refresh()} />}
           {activeTab === 'film' && <FilmTab ownerId={ownerId} stakes={stakes} royalties={royalties} onChange={() => router.refresh()} />}
           {activeTab === 'legal' && <LegalTab ownerId={ownerId} rows={documents} onChange={() => router.refresh()} />}
+          {activeTab === 'cases' && <LegalCasesTab ownerId={ownerId} rows={cases} onChange={() => router.refresh()} />}
         </div>
       )}
     </div>

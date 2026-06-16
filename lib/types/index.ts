@@ -811,6 +811,44 @@ export interface PersonalTransaction { id: string; owner_id: string; source: 'ca
 
 export const RECURRING_CATEGORY_LABELS: Record<PersonalRecurring['category'], string> = { rent: 'Rent', utility: 'Utility', subscription: 'Subscription', emi: 'EMI', maintenance: 'Maintenance', insurance: 'Insurance', other: 'Other' }
 
+// ── Personal Legal Cases tracker ──
+export interface LegalCase {
+  id: string
+  owner_id: string
+  title: string
+  case_type: 'civil' | 'criminal' | 'arbitration' | 'recovery' | 'cheque_bounce' | 'company' | 'ip_copyright' | 'labour' | 'tax' | 'other'
+  our_role: 'petitioner' | 'plaintiff' | 'complainant' | 'respondent' | 'defendant' | 'accused' | 'third_party'
+  opposing_party?: string | null
+  related_entity?: string | null
+  related_project_id?: string | null
+  court?: string | null
+  case_number?: string | null
+  jurisdiction?: string | null
+  amount_involved?: number | null
+  status: 'active' | 'on_hold' | 'won' | 'lost' | 'settled' | 'closed'
+  filing_date?: string | null
+  next_hearing_date?: string | null
+  lawyer_name?: string | null
+  lawyer_contact?: string | null
+  ai_summary?: string | null
+  ai_key_dates?: { label: string; date: string }[] | null
+  notes?: string | null
+  file_path?: string | null
+  file_name?: string | null
+  created_at: string
+}
+
+export const LEGAL_CASE_TYPE_LABELS: Record<LegalCase['case_type'], string> = {
+  civil: 'Civil', criminal: 'Criminal', arbitration: 'Arbitration', recovery: 'Recovery', cheque_bounce: 'Cheque bounce (138)',
+  company: 'Company / NCLT', ip_copyright: 'IP / Copyright', labour: 'Labour', tax: 'Tax', other: 'Other',
+}
+export const LEGAL_ROLE_LABELS: Record<LegalCase['our_role'], string> = {
+  petitioner: 'Petitioner', plaintiff: 'Plaintiff', complainant: 'Complainant', respondent: 'Respondent', defendant: 'Defendant', accused: 'Accused', third_party: 'Third party',
+}
+export const LEGAL_STATUS_LABELS: Record<LegalCase['status'], string> = {
+  active: 'Active', on_hold: 'On hold', won: 'Won', lost: 'Lost', settled: 'Settled', closed: 'Closed',
+}
+
 // ── Project Archival Vault types ──
 export interface ProjectArchival {
   id: string

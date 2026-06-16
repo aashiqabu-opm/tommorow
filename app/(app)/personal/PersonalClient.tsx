@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText, RefreshCw, Car, HeartPulse, CreditCard } from 'lucide-react'
+import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText, RefreshCw, Car, HeartPulse, CreditCard, ArrowLeft } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
@@ -49,7 +49,7 @@ interface Props {
 export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions }: Props) {
   const router = useRouter()
   const toast = useToast()
-  const [tab, setTab] = useState<Tab>('ledger')
+  const [activeTab, setActiveTab] = useState<Tab | null>(null)
 
   // Summary
   const owedByCompany = ledger.filter(l => l.status === 'open')
@@ -63,6 +63,79 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
   const taxDueSoon = taxItems.filter(t => t.status === 'pending' && t.due_date && t.due_date >= today && t.due_date <= in90)
     .reduce((s, t) => s + Number(t.amount), 0)
   const royaltiesPending = royalties.filter(r => r.status !== 'received').reduce((s, r) => s + Number(r.amount), 0)
+
+  const BLOCK_ITEMS = [
+    {
+      id: 'ledger' as const,
+      title: 'Founder ↔ Company Ledger',
+      description: 'Capital contributions, personal loans, and repayments between you and the company.',
+      icon: ArrowLeftRight,
+      summary: owedByCompany >= 0 ? `Company owes you ${formatCurrency(owedByCompany)}` : `You owe company ${formatCurrency(Math.abs(owedByCompany))}`,
+    },
+    {
+      id: 'guarantees' as const,
+      title: 'Personal Guarantees',
+      description: 'Guarantees given to banks or third parties on behalf of company projects.',
+      icon: ShieldAlert,
+      summary: exposure > 0 ? `Active exposure: ${formatCurrency(exposure)}` : 'No active exposure',
+    },
+    {
+      id: 'accounts' as const,
+      title: 'Personal Bank Accounts',
+      description: 'Private savings and current accounts details for personal transaction monitoring.',
+      icon: Wallet,
+      summary: `${accounts.length} linked account(s) · Bal: ${formatCurrency(cash)}`,
+    },
+    {
+      id: 'recurring' as const,
+      title: 'Monthly Recurring Bills',
+      description: 'Track fixed monthly bills, EMIs, insurance premiums, and utilities with autopay status.',
+      icon: RefreshCw,
+      summary: `${recurring.filter(r => r.active).length} active · ${recurring.filter(r => r.autopay).length} autopay`,
+    },
+    {
+      id: 'vehicles' as const,
+      title: 'Vehicles & Registration',
+      description: 'Keep track of vehicle documents, tax renewals, insurance, and fitness certificates.',
+      icon: Car,
+      summary: `${vehicles.length} vehicle(s) registered`,
+    },
+    {
+      id: 'health' as const,
+      title: 'Health & Life Insurance',
+      description: 'Manage family health insurance policies, policy numbers, premium dues, and renewals.',
+      icon: HeartPulse,
+      summary: `${policies.length} active insurance policy/policies`,
+    },
+    {
+      id: 'cards' as const,
+      title: 'Cards & Personal Spend',
+      description: 'Monitor credit/debit card limits, statement cycles, and verify manual or automatic charges.',
+      icon: CreditCard,
+      summary: `${cards.length} card(s) · ${transactions.length} recent transactions`,
+    },
+    {
+      id: 'tax' as const,
+      title: 'Tax & Compliance',
+      description: 'Manage personal tax profile, advance tax installments, capital gains, and ITR documents.',
+      icon: Receipt,
+      summary: `${taxItems.filter(t => t.status === 'pending').length} pending tax items`,
+    },
+    {
+      id: 'film' as const,
+      title: 'Film Stakes & Royalties',
+      description: 'Review personal equity/profit sharing stakes in releases and platform royalties.',
+      icon: Clapperboard,
+      summary: royaltiesPending > 0 ? `₹${royaltiesPending.toLocaleString()} pending royalties` : 'All royalties received',
+    },
+    {
+      id: 'legal' as const,
+      title: 'Legal Document Vault',
+      description: 'Secure personal documents repository for agreements, legal notices, registrations, and certificates.',
+      icon: FileText,
+      summary: `${documents.length} document(s) saved`,
+    },
+  ]
 
   return (
     <div>
@@ -87,26 +160,57 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
           status={royaltiesPending > 0 ? 'green' : 'default'} subtitle="Expected / overdue" />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-[#2a2a3a] overflow-x-auto">
-        {([['ledger', 'Founder ↔ Company', ArrowLeftRight], ['guarantees', 'Guarantees', ShieldAlert], ['accounts', 'Accounts', Wallet], ['recurring', 'Monthly', RefreshCw], ['vehicles', 'Vehicles', Car], ['health', 'Health', HeartPulse], ['cards', 'Cards', CreditCard], ['tax', 'Tax', Receipt], ['film', 'Film income', Clapperboard], ['legal', 'Legal vault', FileText]] as const).map(([id, label, Icon]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${tab === id ? 'border-[#f5b301] text-white' : 'border-transparent text-[#8888aa] hover:text-white'}`}>
-            <Icon size={15} /> {label}
-          </button>
-        ))}
-      </div>
+      {/* Workspace Hub Grid or Active Tab Content */}
+      {!activeTab ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {BLOCK_ITEMS.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="bg-[#13131a] border border-[#2a2a3a] hover:border-white/20 hover:bg-[#181824] p-5 rounded-2xl text-left transition-all group flex flex-col h-full focus:outline-none focus:ring-1 focus:ring-[#f5b301] cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-3 group-hover:bg-[#f5b301]/10 group-hover:border-[#f5b301]/30 transition-all">
+                  <Icon size={18} className="text-[#8888aa] group-hover:text-[#f5b301] transition-all" />
+                </div>
+                <h3 className="text-white font-semibold text-sm mb-1 group-hover:text-[#f5b301] transition-all">{item.title}</h3>
+                <p className="text-[11px] text-[#8888aa] mb-4 flex-grow line-clamp-2">{item.description}</p>
+                <div className="mt-auto pt-2.5 border-t border-[#2a2a3a] w-full flex justify-between items-center text-[10px]">
+                  <span className="text-[#5a5a7a] uppercase tracking-wider font-semibold">Status</span>
+                  <span className="font-semibold text-white/90 truncate max-w-[200px]">{item.summary}</span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 pb-3 border-b border-[#2a2a3a]">
+            <button
+              onClick={() => setActiveTab(null)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#1a1a24] border border-[#2a2a3a] rounded-lg text-[#8888aa] hover:text-white transition-all cursor-pointer"
+            >
+              <ArrowLeft size={13} /> Back to Hub
+            </button>
+            <span className="text-[#5a5a7a] text-xs">/</span>
+            <span className="text-white font-semibold text-sm flex items-center gap-2">
+              {BLOCK_ITEMS.find(item => item.id === activeTab)?.title}
+            </span>
+          </div>
 
-      {tab === 'ledger' && <LedgerTab ownerId={ownerId} rows={ledger} onChange={() => router.refresh()} toast={toast} />}
-      {tab === 'guarantees' && <GuaranteesTab ownerId={ownerId} rows={guarantees} onChange={() => router.refresh()} toast={toast} />}
-      {tab === 'accounts' && <AccountsTab ownerId={ownerId} rows={accounts} onChange={() => router.refresh()} toast={toast} />}
-      {tab === 'recurring' && <RecurringTab ownerId={ownerId} rows={recurring} onChange={() => router.refresh()} />}
-      {tab === 'vehicles' && <VehicleTab ownerId={ownerId} rows={vehicles} onChange={() => router.refresh()} />}
-      {tab === 'health' && <HealthTab ownerId={ownerId} rows={policies} onChange={() => router.refresh()} />}
-      {tab === 'cards' && <CardsTab ownerId={ownerId} cards={cards} txns={transactions} onChange={() => router.refresh()} />}
-      {tab === 'tax' && <TaxTab ownerId={ownerId} profile={taxProfile} items={taxItems} deductions={deductions} gains={gains} onChange={() => router.refresh()} />}
-      {tab === 'film' && <FilmTab ownerId={ownerId} stakes={stakes} royalties={royalties} onChange={() => router.refresh()} />}
-      {tab === 'legal' && <LegalTab ownerId={ownerId} rows={documents} onChange={() => router.refresh()} />}
+          {activeTab === 'ledger' && <LedgerTab ownerId={ownerId} rows={ledger} onChange={() => router.refresh()} toast={toast} />}
+          {activeTab === 'guarantees' && <GuaranteesTab ownerId={ownerId} rows={guarantees} onChange={() => router.refresh()} toast={toast} />}
+          {activeTab === 'accounts' && <AccountsTab ownerId={ownerId} rows={accounts} onChange={() => router.refresh()} toast={toast} />}
+          {activeTab === 'recurring' && <RecurringTab ownerId={ownerId} rows={recurring} onChange={() => router.refresh()} />}
+          {activeTab === 'vehicles' && <VehicleTab ownerId={ownerId} rows={vehicles} onChange={() => router.refresh()} />}
+          {activeTab === 'health' && <HealthTab ownerId={ownerId} rows={policies} onChange={() => router.refresh()} />}
+          {activeTab === 'cards' && <CardsTab ownerId={ownerId} cards={cards} txns={transactions} onChange={() => router.refresh()} />}
+          {activeTab === 'tax' && <TaxTab ownerId={ownerId} profile={taxProfile} items={taxItems} deductions={deductions} gains={gains} onChange={() => router.refresh()} />}
+          {activeTab === 'film' && <FilmTab ownerId={ownerId} stakes={stakes} royalties={royalties} onChange={() => router.refresh()} />}
+          {activeTab === 'legal' && <LegalTab ownerId={ownerId} rows={documents} onChange={() => router.refresh()} />}
+        </div>
+      )}
     </div>
   )
 }

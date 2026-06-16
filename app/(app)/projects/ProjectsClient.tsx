@@ -48,7 +48,18 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'green' | 'yellow'
   cancelled: { label: 'Cancelled', variant: 'red' },
 }
 
-const INITIAL_FORM = { name: '', status: 'development', description: '', start_date: '', end_date: '', budget: '', is_priority: false }
+const INITIAL_FORM = {
+  name: '',
+  status: 'development',
+  description: '',
+  start_date: '',
+  end_date: '',
+  budget: '',
+  is_priority: false,
+  production_company: 'OPM Cinemas Proprietorship',
+  release_year: '',
+  has_liabilities: false
+}
 
 export function ProjectsClient({ projects, payments, liabilities, income, userId, role }: Props) {
   const router = useRouter()
@@ -57,13 +68,25 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
   const [form, setForm] = useState(INITIAL_FORM)
+  const [companyFilter, setCompanyFilter] = useState<'all' | 'OPM Cinemas Proprietorship' | 'OPM Dream Mill Cinemas PVT LTD'>('all')
 
   const canCreate = role === 'founder'
 
   function openNew() { setEditing(null); setForm(INITIAL_FORM); setOpen(true) }
   function openEdit(p: Project) {
     setEditing(p)
-    setForm({ name: p.name, status: p.status, description: p.description ?? '', start_date: p.start_date ?? '', end_date: p.end_date ?? '', budget: p.budget ? String(p.budget) : '', is_priority: !!p.is_priority })
+    setForm({
+      name: p.name,
+      status: p.status,
+      description: p.description ?? '',
+      start_date: p.start_date ?? '',
+      end_date: p.end_date ?? '',
+      budget: p.budget ? String(p.budget) : '',
+      is_priority: !!p.is_priority,
+      production_company: p.production_company ?? 'OPM Cinemas Proprietorship',
+      release_year: p.release_year ? String(p.release_year) : '',
+      has_liabilities: !!p.has_liabilities
+    })
     setOpen(true)
   }
 
@@ -71,6 +94,11 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
   const sortedProjects = [...projects].sort(
     (a, b) => Number(b.is_priority ?? false) - Number(a.is_priority ?? false)
   )
+
+  const filteredProjects = sortedProjects.filter(p => {
+    if (companyFilter === 'all') return true
+    return p.production_company === companyFilter
+  })
 
   function plForProject(id: string) {
     // Only realized (received) income counts toward P&L; receivables are pending.
@@ -91,12 +119,16 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
     setSaving(true)
     const supabase = createClient()
     const core = {
-      name: form.name, status: form.status,
+      name: form.name,
+      status: form.status,
       description: form.description || null,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       budget: parseFloat(form.budget) || null,
       is_priority: form.is_priority,
+      production_company: form.production_company,
+      release_year: parseInt(form.release_year) || null,
+      has_liabilities: form.has_liabilities
     }
     if (editing) {
       const { error } = await supabase.from('projects').update(core).eq('id', editing.id)
@@ -125,8 +157,27 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
         action={canCreate ? <Button icon={Plus} onClick={openNew}>New Project</Button> : undefined}
       />
 
+      {/* Company Filter Tabs */}
+      <div className="flex gap-1 border-b border-[#2a2a3a] pb-px overflow-x-auto">
+        {([
+          { value: 'all', label: 'All Projects' },
+          { value: 'OPM Cinemas Proprietorship', label: 'Proprietorship' },
+          { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'Dream Mill PVT LTD' }
+        ] as const).map(c => (
+          <button
+            key={c.value}
+            onClick={() => setCompanyFilter(c.value)}
+            className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors cursor-pointer ${
+              companyFilter === c.value ? 'border-[#f5b301] text-white' : 'border-transparent text-[#8888aa] hover:text-white'
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedProjects.map((project) => {
+        {filteredProjects.map((project) => {
           const cfg = STATUS_CONFIG[project.status] ?? { label: project.status, variant: 'gray' as const }
           const { totalIncome, totalCommitted, net } = plForProject(project.id)
           const budget = project.budget ?? 0
@@ -147,6 +198,11 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
                         <Star size={9} fill="currentColor" /> PRIORITY
                       </span>
                     )}
+                    {project.has_liabilities && (
+                      <span className="flex items-center gap-1 text-[10px] font-semibold text-red-400 bg-red-500/10 border border-red-500/25 px-2 py-0.5 rounded-full">
+                        ⚠️ LIABILITIES
+                      </span>
+                    )}
                     <StatusBadge label={cfg.label} variant={cfg.variant} />
                     {canCreate && (
                       <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(project) }} className="text-[#5a5a7a] hover:text-white ml-0.5" title="Edit project"><Pencil size={14} /></button>
@@ -154,7 +210,16 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
                   </div>
                 </div>
 
-                <h3 className="text-base font-semibold text-white mb-1">{project.name}</h3>
+                <h3 className="text-base font-semibold text-white mb-1">
+                  {project.name} {project.release_year ? <span className="text-sm font-normal text-[#8888aa]">({project.release_year})</span> : ''}
+                </h3>
+                
+                {project.production_company && (
+                  <span className="text-[10px] font-semibold tracking-wider text-[#f5b301] uppercase mb-2 block">
+                    {project.production_company === 'OPM Cinemas Proprietorship' ? 'Proprietorship' : 'Dream Mill PVT LTD'}
+                  </span>
+                )}
+
                 {project.description && (
                   <p className="text-xs text-[#8888aa] line-clamp-2 mb-3">{project.description}</p>
                 )}
@@ -194,9 +259,9 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
           )
         })}
 
-        {projects.length === 0 && (
+        {filteredProjects.length === 0 && (
           <div className="col-span-3 py-16 text-center text-[#8888aa] text-sm">
-            No projects yet. {canCreate && 'Create your first project.'}
+            No projects found for this company. {canCreate && 'Create a project.'}
           </div>
         )}
       </div>
@@ -206,21 +271,44 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Project Name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Rifle Club 2" />
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} options={STATUS_OPTIONS} />
+          <Select
+            label="Production Company"
+            value={form.production_company}
+            onChange={e => setForm({ ...form, production_company: e.target.value })}
+            options={[
+              { value: 'OPM Cinemas Proprietorship', label: 'OPM Cinemas Proprietorship' },
+              { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'OPM Dream Mill Cinemas PVT LTD' }
+            ]}
+          />
+          <Input label="Release Year" type="number" value={form.release_year} onChange={e => setForm({ ...form, release_year: e.target.value })} placeholder="e.g. 2026" />
           <Textarea label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Start Date" type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} />
             <Input label="End Date" type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} />
           </div>
           <MoneyInput label="Total Budget (₹)" value={form.budget} onChange={v => setForm({ ...form, budget: v })} />
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-white">
-            <input
-              type="checkbox"
-              checked={form.is_priority}
-              onChange={e => setForm({ ...form, is_priority: e.target.checked })}
-              className="h-4 w-4 accent-amber-400 shrink-0"
-            />
-            <Star size={13} className="text-amber-400" /> Priority project
-          </label>
+          
+          <div className="flex flex-col gap-2 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-white">
+              <input
+                type="checkbox"
+                checked={form.is_priority}
+                onChange={e => setForm({ ...form, is_priority: e.target.checked })}
+                className="h-4 w-4 accent-amber-400 shrink-0"
+              />
+              <Star size={13} className="text-amber-400 animate-pulse" /> Priority project
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-white">
+              <input
+                type="checkbox"
+                checked={form.has_liabilities}
+                onChange={e => setForm({ ...form, has_liabilities: e.target.checked })}
+                className="h-4 w-4 accent-red-500 shrink-0"
+              />
+              <span className="text-red-400 font-semibold text-xs">⚠️ Has unsettled liabilities</span>
+            </label>
+          </div>
+          
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" loading={saving}>{editing ? 'Save Changes' : 'Create Project'}</Button>

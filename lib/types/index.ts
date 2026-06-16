@@ -228,6 +228,9 @@ export interface Project {
   release_date?: string | null
   ai_status_reason?: string | null
   ai_status_at?: string | null
+  production_company?: string | null
+  release_year?: number | null
+  has_liabilities?: boolean | null
   created_by: string
   created_at: string
   updated_at: string
@@ -807,3 +810,56 @@ export interface PersonalCard { id: string; owner_id: string; issuer: string; la
 export interface PersonalTransaction { id: string; owner_id: string; source: 'card' | 'bank'; account_label?: string | null; txn_date: string; merchant?: string | null; amount: number; direction: 'debit' | 'credit'; category?: string | null; notes?: string | null; email_ref?: string | null; origin?: 'manual' | 'alert' | 'receipt' | 'statement'; dup_of?: string | null; reconciled?: boolean; gstin?: string | null; gst_amount?: number | null; taxable_value?: number | null; invoice_no?: string | null; snapshot_url?: string | null; gst_eligible?: boolean; sent_to_accounts?: boolean; created_at: string }
 
 export const RECURRING_CATEGORY_LABELS: Record<PersonalRecurring['category'], string> = { rent: 'Rent', utility: 'Utility', subscription: 'Subscription', emi: 'EMI', maintenance: 'Maintenance', insurance: 'Insurance', other: 'Other' }
+
+// ── Project Archival Vault types ──
+export interface ProjectArchival {
+  id: string
+  project_id: string
+  category: 'censor_certificate' | 'master_copy_log' | 'poster' | 'award' | 'other'
+  title: string
+  file_path?: string | null
+  file_name?: string | null
+  notes?: string | null
+  uploaded_by?: string | null
+  created_at: string
+}
+
+// ── OPM Records Music Label types ──
+export interface OpmRecordTitle {
+  id: string
+  title: string
+  album_movie: string
+  release_date?: string | null
+  artists?: string | null
+  isrc?: string | null
+  notes?: string | null
+  created_at: string
+}
+
+export interface OpmRecordChannel {
+  id: string
+  name: string
+  platform: 'youtube' | 'spotify' | 'apple_music' | 'instagram' | 'facebook' | 'other'
+  handle?: string | null
+  url: string
+  subscriber_count: number
+  views_count: number
+  status: 'active' | 'inactive'
+  notes?: string | null
+  created_at: string
+}
+
+export interface OpmRecordRoyalty {
+  id: string
+  title_id?: string | null
+  platform: 'youtube' | 'spotify' | 'apple_music' | 'distrokid' | 'other'
+  period: string
+  amount: number
+  streams_count?: number | null
+  payout_status: 'pending' | 'received'
+  statement_file_path?: string | null
+  notes?: string | null
+  created_at: string
+  title?: OpmRecordTitle | null // joined relation
+}
+

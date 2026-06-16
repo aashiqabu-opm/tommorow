@@ -29,6 +29,7 @@ import {
   Scale,
   Sparkles,
   Lock,
+  Music,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -56,6 +57,7 @@ const NAV: NavSection[] = [
   ] },
   { section: 'Production', items: [
     { href: '/projects', label: 'Films & Projects', icon: Clapperboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
+    { href: '/records', label: 'OPM Records', icon: Music, roles: ['founder', 'accountant', 'general_manager'] },
     { href: '/documents', label: 'Documents', icon: FileText, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },
     { href: '/vehicles', label: 'Vehicles', icon: Car, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
     { href: '/templates', label: 'Templates', icon: FileBox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer'] },

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Film, CalendarDays, FileText, Plus, Pencil, Trash2, Upload, Loader2, Sparkles, ExternalLink, UserPlus, Megaphone, Link2, Scissors, Handshake } from 'lucide-react'
+import { Users, Film, CalendarDays, FileText, Plus, Pencil, Trash2, Upload, Loader2, Sparkles, ExternalLink, UserPlus, Megaphone, Link2, Scissors, Handshake, Archive } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ScheduleModule } from './ScheduleModule'
 import { PostModule } from './PostModule'
 import { ReleaseModule } from './ReleaseModule'
+import { ArchivalModule } from './ArchivalModule'
 
 interface Character { id: string; name: string; description?: string | null; age_range?: string | null; gender?: string | null; importance?: string | null; status: string; cast_actor?: string | null; notes?: string | null }
 interface Audition { id: string; character_id?: string | null; applicant_name: string; contact?: string | null; age?: string | null; location?: string | null; photo_url?: string | null; video_url?: string | null; ai_score?: number | null; status: string; notes?: string | null }
@@ -17,7 +18,7 @@ interface Doc { id: string; title: string; doc_type: string; file_path?: string 
 interface PressItem { id: string; kind: string; title: string; file_path?: string | null; link?: string | null; notes?: string | null }
 interface Channel { id: string; platform: string; handle?: string | null; url: string; notes?: string | null }
 
-type Tab = 'characters' | 'auditions' | 'schedule' | 'post' | 'release' | 'documents' | 'press' | 'channels'
+type Tab = 'characters' | 'auditions' | 'schedule' | 'post' | 'release' | 'documents' | 'press' | 'channels' | 'archival'
 const IMPORTANCE = ['lead', 'supporting', 'cameo', 'extra']
 
 export function ProductionSuite({ projectId, projectStatus, userId, canEditCasting, canEditDocs, canEditPost, canEditDeliv, canEditDeals }: {
@@ -46,7 +47,17 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
   }, [projectId, supabase])
   useEffect(() => { load() }, [load])
 
-  const TABS: [Tab, string, typeof Users][] = [['characters', 'Characters', Users], ['auditions', 'Auditions', Film], ['schedule', 'Shoot Schedule', CalendarDays], ['post', 'Post & Delivery', Scissors], ['release', 'Release & Deals', Handshake], ['documents', 'Documents', FileText], ['press', 'Press Kit', Megaphone], ['channels', 'Channels', Link2]]
+  const TABS: [Tab, string, typeof Users][] = [
+    ['characters', 'Characters', Users],
+    ['auditions', 'Auditions', Film],
+    ['schedule', 'Shoot Schedule', CalendarDays],
+    ['post', 'Post & Delivery', Scissors],
+    ['release', 'Release & Deals', Handshake],
+    ['documents', 'Documents', FileText],
+    ['press', 'Press Kit', Megaphone],
+    ['channels', 'Channels', Link2],
+    ['archival', 'Archival Vault', Archive]
+  ]
 
   return (
     <div className="bg-[#13131a] border border-[#2a2a3a] rounded-xl p-4">
@@ -71,6 +82,7 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
       }} />}
       {tab === 'press' && <PressKit projectId={projectId} rows={press} canEdit={canEditCasting} userId={userId} projectStatus={projectStatus} onChange={load} supabase={supabase} toast={toast} />}
       {tab === 'channels' && <Channels projectId={projectId} rows={channels} canEdit={canEditCasting} onChange={load} supabase={supabase} toast={toast} />}
+      {tab === 'archival' && <ArchivalModule projectId={projectId} canEdit={canEditDocs || canEditDeliv} userId={userId} />}
       {projectStatus === 'post_production' && <p className="text-[11px] text-[#8888aa] mt-3">Casting director is auto-removed from the core team now the film is in post-production.</p>}
     </div>
   )

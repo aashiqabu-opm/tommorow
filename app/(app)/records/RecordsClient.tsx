@@ -196,11 +196,11 @@ export function RecordsClient({ titles, channels, royalties, userId, role }: Pro
     <div className="space-y-6">
       <div className="flex items-center gap-2 mb-1">
         <Music size={16} className="text-[#f5b301]" />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f5b301]">OPM Records</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f5b301]">OPM Records · Separate Company</span>
       </div>
       <PageHeader
         title="OPM Records"
-        subtitle="Music label company titles catalog, channel statistics, and royalty trackers."
+        subtitle="End-to-end professional record label. Proprietor: Aashiq Abu. Managed separately under OPM."
       />
 
       {/* Summary Cards */}

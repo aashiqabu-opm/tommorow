@@ -36,7 +36,9 @@ async function run() {
     UPDATE projects 
     SET 
       production_company = 'Tomorrow Smartcity Ventures Pvt Ltd', 
-      description = 'Real estate project under Tomorrow Smartcity Ventures Pvt Ltd. Founder & Chairman: Aashiq Abu. Separate company run by OPM.' 
+      status = 'development',
+      budget = 2000000000,
+      description = 'Real estate project under Tomorrow Smartcity Ventures Pvt Ltd. Founder & Chairman: Aashiq Abu. Currently under planning (200 Crore budget). Active members/consultants: Designers, Contractors, KPMG. Needs funding to move forward; negotiations are ongoing. Aashiq Abu has already spent personal capital on early-stage development.' 
     WHERE slug = 'tomorrow';
   `;
   try {
@@ -44,6 +46,49 @@ async function run() {
     console.log('Update successful, rows affected:', res.rowCount);
   } catch (err) {
     console.error('Error running update on project:', err);
+  }
+
+  // Get project ID for tomorrow
+  let projectId = '';
+  try {
+    const idRes = await client.query("SELECT id FROM projects WHERE slug = 'tomorrow';");
+    if (idRes.rows.length > 0) {
+      projectId = idRes.rows[0].id;
+    }
+  } catch (err) {
+    console.error('Error getting project ID:', err);
+  }
+
+  if (projectId) {
+    console.log('Checking project funding for tomorrow...');
+    try {
+      const checkRes = await client.query('SELECT count(*)::int as count FROM project_funding WHERE project_id = $1;', [projectId]);
+      const count = checkRes.rows[0].count;
+      console.log('Current project funding count for tomorrow:', count);
+      
+      if (count === 0) {
+        console.log('Seeding initial project funding by Aashiq Abu...');
+        const fundRes = await client.query(`
+          INSERT INTO project_funding (project_id, kind, name, amount, status, notes) 
+          VALUES ($1, 'opm', 'Aashiq Abu (Initial Capital)', 5000000.00, 'active', 'Initial capital spent by founder Aashiq Abu for planning and early development. Active negotiations for further funding.')
+          RETURNING id;
+        `, [projectId]);
+        
+        const fundingId = fundRes.rows[0].id;
+        console.log('Successfully seeded project funding record:', fundingId);
+
+        // Insert transaction
+        await client.query(`
+          INSERT INTO funding_transactions (funding_id, txn_date, type, amount, notes) 
+          VALUES ($1, '2026-06-10', 'capital_in', 5000000.00, 'Initial capital in');
+        `, [fundingId]);
+        console.log('Successfully seeded capital in transaction.');
+      } else {
+        console.log('Project funding already exists for tomorrow.');
+      }
+    } catch (err) {
+      console.error('Error seeding project funding:', err);
+    }
   }
 
   console.log('Checking bank accounts...');

@@ -161,9 +161,9 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
       <div className="flex gap-1 border-b border-[#2a2a3a] pb-px overflow-x-auto">
         {([
           { value: 'all', label: 'All Projects' },
-          { value: 'OPM Cinemas Proprietorship', label: 'Proprietorship' },
-          { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'Dream Mill PVT LTD' },
-          { value: 'Tomorrow Smartcity Ventures Pvt Ltd', label: 'Tomorrow Smartcity' }
+          { value: 'OPM Cinemas Proprietorship', label: 'OPM Cinemas Proprietorship' },
+          { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'OPM Dream Mill Cinemas PVT LTD' },
+          { value: 'Tomorrow Smartcity Ventures Pvt Ltd', label: 'Tomorrow Smartcity Ventures Pvt Ltd' }
         ] as const).map(c => (
           <button
             key={c.value}
@@ -217,11 +217,7 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
                 
                 {project.production_company && (
                   <span className="text-[10px] font-semibold tracking-wider text-[#f5b301] uppercase mb-2 block">
-                    {project.production_company === 'OPM Cinemas Proprietorship'
-                      ? 'Proprietorship'
-                      : project.production_company === 'OPM Dream Mill Cinemas PVT LTD'
-                      ? 'Dream Mill PVT LTD'
-                      : 'Tomorrow Smartcity'}
+                    {project.production_company}
                   </span>
                 )}
 

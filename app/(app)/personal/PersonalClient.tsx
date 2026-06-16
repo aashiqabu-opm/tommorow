@@ -229,7 +229,7 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
 function LedgerTab({ ownerId, rows, onChange, toast }: { ownerId: string; rows: PersonalLedgerEntry[]; onChange: () => void; toast: ReturnType<typeof useToast> }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<PersonalLedgerEntry | null>(null)
-  const [entity, setEntity] = useState('OPM Cinemas')
+  const [entity, setEntity] = useState('OPM Cinemas Proprietorship')
   const [direction, setDirection] = useState<'to_company' | 'from_company'>('to_company')
   const [kind, setKind] = useState<PersonalLedgerEntry['kind']>('loan')
   const [amount, setAmount] = useState('')
@@ -239,7 +239,7 @@ function LedgerTab({ ownerId, rows, onChange, toast }: { ownerId: string; rows: 
   const [saving, setSaving] = useState(false)
 
   function openNew() {
-    setEditing(null); setEntity('OPM Cinemas'); setDirection('to_company'); setKind('loan')
+    setEditing(null); setEntity('OPM Cinemas Proprietorship'); setDirection('to_company'); setKind('loan')
     setAmount(''); setTxnDate(new Date().toISOString().slice(0, 10)); setStatus('open'); setNotes(''); setOpen(true)
   }
   function openEdit(r: PersonalLedgerEntry) {
@@ -322,7 +322,7 @@ function GuaranteesTab({ ownerId, rows, onChange, toast }: { ownerId: string; ro
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<PersonalGuarantee | null>(null)
   const [lender, setLender] = useState('')
-  const [borrower, setBorrower] = useState('OPM Cinemas')
+  const [borrower, setBorrower] = useState('OPM Cinemas Proprietorship')
   const [amount, setAmount] = useState('')
   const [startDate, setStartDate] = useState('')
   const [expiryDate, setExpiryDate] = useState('')
@@ -330,7 +330,7 @@ function GuaranteesTab({ ownerId, rows, onChange, toast }: { ownerId: string; ro
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
-  function openNew() { setEditing(null); setLender(''); setBorrower('OPM Cinemas'); setAmount(''); setStartDate(''); setExpiryDate(''); setStatus('active'); setNotes(''); setOpen(true) }
+  function openNew() { setEditing(null); setLender(''); setBorrower('OPM Cinemas Proprietorship'); setAmount(''); setStartDate(''); setExpiryDate(''); setStatus('active'); setNotes(''); setOpen(true) }
   function openEdit(r: PersonalGuarantee) { setEditing(r); setLender(r.lender); setBorrower(r.borrower); setAmount(String(r.amount)); setStartDate(r.start_date ?? ''); setExpiryDate(r.expiry_date ?? ''); setStatus(r.status); setNotes(r.notes ?? ''); setOpen(true) }
 
   async function save() {

@@ -68,7 +68,7 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
   const [form, setForm] = useState(INITIAL_FORM)
-  const [companyFilter, setCompanyFilter] = useState<'all' | 'OPM Cinemas Proprietorship' | 'OPM Dream Mill Cinemas PVT LTD'>('all')
+  const [companyFilter, setCompanyFilter] = useState<'all' | 'OPM Cinemas Proprietorship' | 'OPM Dream Mill Cinemas PVT LTD' | 'Tomorrow Smartcity Ventures Pvt Ltd'>('all')
 
   const canCreate = role === 'founder'
 
@@ -162,7 +162,8 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
         {([
           { value: 'all', label: 'All Projects' },
           { value: 'OPM Cinemas Proprietorship', label: 'Proprietorship' },
-          { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'Dream Mill PVT LTD' }
+          { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'Dream Mill PVT LTD' },
+          { value: 'Tomorrow Smartcity Ventures Pvt Ltd', label: 'Tomorrow Smartcity' }
         ] as const).map(c => (
           <button
             key={c.value}
@@ -216,7 +217,11 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
                 
                 {project.production_company && (
                   <span className="text-[10px] font-semibold tracking-wider text-[#f5b301] uppercase mb-2 block">
-                    {project.production_company === 'OPM Cinemas Proprietorship' ? 'Proprietorship' : 'Dream Mill PVT LTD'}
+                    {project.production_company === 'OPM Cinemas Proprietorship'
+                      ? 'Proprietorship'
+                      : project.production_company === 'OPM Dream Mill Cinemas PVT LTD'
+                      ? 'Dream Mill PVT LTD'
+                      : 'Tomorrow Smartcity'}
                   </span>
                 )}
 
@@ -277,7 +282,8 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
             onChange={e => setForm({ ...form, production_company: e.target.value })}
             options={[
               { value: 'OPM Cinemas Proprietorship', label: 'OPM Cinemas Proprietorship' },
-              { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'OPM Dream Mill Cinemas PVT LTD' }
+              { value: 'OPM Dream Mill Cinemas PVT LTD', label: 'OPM Dream Mill Cinemas PVT LTD' },
+              { value: 'Tomorrow Smartcity Ventures Pvt Ltd', label: 'Tomorrow Smartcity Ventures Pvt Ltd' }
             ]}
           />
           <Input label="Release Year" type="number" value={form.release_year} onChange={e => setForm({ ...form, release_year: e.target.value })} placeholder="e.g. 2026" />

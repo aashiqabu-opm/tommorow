@@ -71,7 +71,7 @@ export default async function DashboardPage() {
   const totalPaid = liabilities.reduce((s, l) => s + (l.amount_paid ?? 0), 0)
   const outstanding = liabilities
     .filter(l => l.status !== 'cleared')
-    .reduce((s, l) => s + (l.balance_remaining ?? 0), 0)
+    .reduce((s, l) => s + ((l.amount_owed ?? 0) - (l.amount_paid ?? 0)), 0)
   const pendingApprovals = paymentRequestsResult.data?.length ?? 0
   const pendingApprovalTotal = (paymentRequestsResult.data ?? []).reduce((s, p) => s + Number((p as { amount?: number }).amount ?? 0), 0)
 
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
   const monthlyPayroll = (payrollResult.data ?? []).reduce((s, p) => s + Number(p.monthly_salary ?? 0), 0)
   const paid90 = (paid90Result.data ?? []).reduce((s, p) => s + Number((p as { net_payable?: number; amount?: number }).net_payable ?? (p as { amount?: number }).amount ?? 0), 0)
   const income90 = (income90Result.data ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0)
-  const monthlyBurn = Math.max(0, monthlyPayroll + paid90 / 3 - income90 / 3)
+  const monthlyBurn = Math.max(0, monthlyPayroll + (paid90 / 3))
   const runwayWeeks = monthlyBurn > 0 ? Math.round((available / monthlyBurn) * 4.33) : null
   type ShootRow = { shoot_date: string; call_time?: string | null; project?: { name?: string } | null; location?: { name?: string } | null }
   const upcomingShoot = (upcomingShootResult.data ?? []) as ShootRow[]
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
         const d = new Date(p.created_at)
         return d.getFullYear() === m.year && d.getMonth() === m.month
       })
-      .reduce((s, p) => s + (p.amount ?? 0), 0)
+      .reduce((s, p) => s + Number(p.amount ?? 0), 0)
     return { label: m.label, value: total }
   })
 
@@ -126,7 +126,7 @@ export default async function DashboardPage() {
         const d = new Date(p.income_date)
         return d.getFullYear() === m.year && d.getMonth() === m.month
       })
-      .reduce((s, p) => s + (p.amount ?? 0), 0)
+      .reduce((s, p) => s + Number(p.amount ?? 0), 0)
     return { label: m.label, value: total }
   })
 

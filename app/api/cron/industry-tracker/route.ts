@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail, emailTemplate, emailConfigured } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
 import { trackMalayalamReleases, intelConfigured } from '@/lib/ai/release-intel'
+import { withCronErrorAlert } from '@/lib/monitoring'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -30,6 +31,10 @@ function mergeDays(existing: Day[], incoming: Day[]): Day[] {
 // recent release and its day-wise collections; we upsert + merge. New films
 // alert the core team.
 export async function GET(request: Request) {
+  return withCronErrorAlert('industry-tracker', () => run(request))
+}
+
+async function run(request: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

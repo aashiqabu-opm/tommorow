@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Receipt, Landmark, Users, Download, CalendarClock, Scale, Plus, Trash2 } from 'lucide-react'
+import { Receipt, Landmark, Users, Download, CalendarClock, Scale, Plus, Trash2, Wand2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
@@ -78,6 +78,19 @@ export function ComplianceClient({ payments, crew, income, challans, userId }: P
   const [quarter, setQuarter] = useState('all')
   const [challanOpen, setChallanOpen] = useState(false)
   const [savingChallan, setSavingChallan] = useState(false)
+  const [drafting, setDrafting] = useState(false)
+
+  async function autoDraftChallans() {
+    setDrafting(true)
+    try {
+      const res = await fetch('/api/tax/draft-tds-challans', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) toast.error(data.error || 'Could not draft challans')
+      else if (data.drafted === 0) toast.success('No filed TDS sections to draft yet — add sections first.')
+      else { toast.success(`Drafted ${data.drafted} challan(s) · ₹${data.total.toLocaleString()} across ${data.sections.length} section(s)`); router.refresh() }
+    } catch { toast.error('Draft failed') }
+    setDrafting(false)
+  }
   const [challanForm, setChallanForm] = useState({ deposit_date: new Date().toISOString().split('T')[0], period_month: new Date().toISOString().slice(0, 7), section: '194C', amount: '', challan_no: '', bsr_code: '' })
 
   const { from, to } = rangeFor(Number(fy), quarter)
@@ -321,7 +334,10 @@ export function ComplianceClient({ payments, crew, income, challans, userId }: P
             <span className="text-[#8888aa]"> · Deposited </span><span className="text-emerald-400">{formatCurrency(totalDeposited)}</span>
             <span className="text-[#8888aa]"> · Pending </span><span className={tdsPending > 1 ? 'text-red-400' : 'text-emerald-400'}>{formatCurrency(tdsPending)}</span>
           </span>
-          <Button size="sm" icon={Plus} onClick={() => setChallanOpen(true)}>Add Challan</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" icon={Wand2} loading={drafting} onClick={autoDraftChallans}>Auto-draft from TDS</Button>
+            <Button size="sm" icon={Plus} onClick={() => setChallanOpen(true)}>Add Challan</Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

@@ -7,7 +7,7 @@ import type {
   PersonalTaxProfile, PersonalTaxItem, PersonalDeduction, PersonalCapitalGain,
   PersonalFilmStake, PersonalRoyalty, PersonalDocument,
   PersonalRecurring, PersonalVehicle, PersonalHealthPolicy, PersonalCard, PersonalTransaction,
-  LegalCase,
+  PersonalLoan, LegalCase,
 } from '@/lib/types'
 
 // Founder-only private workspace. RLS only ever returns the owner's own rows
@@ -17,7 +17,7 @@ export default async function PersonalPage() {
   if (profile.role !== 'founder') redirect('/dashboard')
 
   const supabase = await createClient()
-  const [ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions, cases] = await Promise.all([
+  const [ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, loans, recurring, vehicles, policies, cards, transactions, cases] = await Promise.all([
     supabase.from('personal_company_ledger').select('*').order('txn_date', { ascending: false }),
     supabase.from('personal_guarantees').select('*').order('status').order('expiry_date'),
     supabase.from('personal_accounts').select('*').order('created_at'),
@@ -28,6 +28,7 @@ export default async function PersonalPage() {
     supabase.from('personal_film_stakes').select('*').order('created_at'),
     supabase.from('personal_royalties').select('*').order('status').order('expected_date'),
     supabase.from('personal_documents').select('*').order('expiry_date', { nullsFirst: false }),
+    supabase.from('personal_loans').select('*').order('emi_amount', { ascending: false }),
     supabase.from('personal_recurring').select('*').order('created_at'),
     supabase.from('personal_vehicles').select('*').order('created_at'),
     supabase.from('personal_health_policies').select('*').order('renewal_date', { nullsFirst: false }),
@@ -49,6 +50,7 @@ export default async function PersonalPage() {
       stakes={(stakes.data ?? []) as PersonalFilmStake[]}
       royalties={(royalties.data ?? []) as PersonalRoyalty[]}
       documents={(documents.data ?? []) as PersonalDocument[]}
+      loans={(loans.data ?? []) as PersonalLoan[]}
       recurring={(recurring.data ?? []) as PersonalRecurring[]}
       vehicles={(vehicles.data ?? []) as PersonalVehicle[]}
       policies={(policies.data ?? []) as PersonalHealthPolicy[]}

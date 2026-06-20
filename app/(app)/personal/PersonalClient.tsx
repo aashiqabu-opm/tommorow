@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText, RefreshCw, Car, HeartPulse, CreditCard, ArrowLeft, Scale } from 'lucide-react'
+import { Lock, Plus, Pencil, Trash2, Building2, ShieldAlert, Wallet, ArrowLeftRight, Receipt, Clapperboard, FileText, RefreshCw, Car, HeartPulse, CreditCard, ArrowLeft, Scale, Landmark } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
@@ -24,9 +24,10 @@ import { RecurringTab } from './RecurringTab'
 import { VehicleTab } from './VehicleTab'
 import { HealthTab } from './HealthTab'
 import { CardsTab } from './CardsTab'
-import type { PersonalRecurring, PersonalVehicle, PersonalHealthPolicy, PersonalCard, PersonalTransaction } from '@/lib/types'
+import { LoansTab } from './LoansTab'
+import type { PersonalRecurring, PersonalVehicle, PersonalHealthPolicy, PersonalCard, PersonalTransaction, PersonalLoan } from '@/lib/types'
 
-type Tab = 'ledger' | 'guarantees' | 'accounts' | 'recurring' | 'vehicles' | 'health' | 'cards' | 'tax' | 'film' | 'legal' | 'cases'
+type Tab = 'ledger' | 'guarantees' | 'accounts' | 'loans' | 'recurring' | 'vehicles' | 'health' | 'cards' | 'tax' | 'film' | 'legal' | 'cases'
 
 interface Props {
   ownerId: string
@@ -40,6 +41,7 @@ interface Props {
   stakes: PersonalFilmStake[]
   royalties: PersonalRoyalty[]
   documents: PersonalDocument[]
+  loans: PersonalLoan[]
   recurring: PersonalRecurring[]
   vehicles: PersonalVehicle[]
   policies: PersonalHealthPolicy[]
@@ -48,7 +50,7 @@ interface Props {
   cases: LegalCase[]
 }
 
-export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, recurring, vehicles, policies, cards, transactions, cases }: Props) {
+export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfile, taxItems, deductions, gains, stakes, royalties, documents, loans, recurring, vehicles, policies, cards, transactions, cases }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [activeTab, setActiveTab] = useState<Tab | null>(null)
@@ -87,6 +89,17 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
       description: 'Private savings and current accounts details for personal transaction monitoring.',
       icon: Wallet,
       summary: `${accounts.length} linked account(s) · Bal: ${formatCurrency(cash)}`,
+    },
+    {
+      id: 'loans' as const,
+      title: 'Loans & EMIs',
+      description: 'Auto, home and personal loans — EMI, outstanding balance, interest rate, tenure and debit account.',
+      icon: Landmark,
+      summary: (() => {
+        const act = loans.filter(l => l.status === 'active')
+        const emi = act.reduce((s, l) => s + Number(l.emi_amount || 0), 0)
+        return act.length ? `${act.length} active · EMI ${formatCurrency(emi)}/mo` : 'No loans yet'
+      })(),
     },
     {
       id: 'recurring' as const,
@@ -211,6 +224,7 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
           {activeTab === 'ledger' && <LedgerTab ownerId={ownerId} rows={ledger} onChange={() => router.refresh()} toast={toast} />}
           {activeTab === 'guarantees' && <GuaranteesTab ownerId={ownerId} rows={guarantees} onChange={() => router.refresh()} toast={toast} />}
           {activeTab === 'accounts' && <AccountsTab ownerId={ownerId} rows={accounts} onChange={() => router.refresh()} toast={toast} />}
+          {activeTab === 'loans' && <LoansTab ownerId={ownerId} rows={loans} onChange={() => router.refresh()} />}
           {activeTab === 'recurring' && <RecurringTab ownerId={ownerId} rows={recurring} onChange={() => router.refresh()} />}
           {activeTab === 'vehicles' && <VehicleTab ownerId={ownerId} rows={vehicles} onChange={() => router.refresh()} />}
           {activeTab === 'health' && <HealthTab ownerId={ownerId} rows={policies} onChange={() => router.refresh()} />}

@@ -811,6 +811,10 @@ export interface PersonalTransaction { id: string; owner_id: string; source: 'ca
 
 export const RECURRING_CATEGORY_LABELS: Record<PersonalRecurring['category'], string> = { rent: 'Rent', utility: 'Utility', subscription: 'Subscription', emi: 'EMI', maintenance: 'Maintenance', insurance: 'Insurance', other: 'Other' }
 
+export interface PersonalLoan { id: string; owner_id: string; lender: string; loan_type: 'auto' | 'auto_topup' | 'home' | 'personal' | 'business' | 'gold' | 'education' | 'loan_against_property' | 'overdraft' | 'other'; account_no?: string | null; asset?: string | null; sanctioned_amount?: number | null; outstanding?: number | null; emi_amount?: number | null; interest_rate?: number | null; tenure_months?: number | null; emis_paid?: number | null; emi_day?: number | null; debit_account?: string | null; start_date?: string | null; end_date?: string | null; status: 'active' | 'closed' | 'foreclosed' | 'overdue'; notes?: string | null; created_at: string; updated_at?: string }
+export const LOAN_TYPE_LABELS: Record<PersonalLoan['loan_type'], string> = { auto: 'Auto Loan', auto_topup: 'Auto Loan Top-up', home: 'Home Loan', personal: 'Personal Loan', business: 'Business Loan', gold: 'Gold Loan', education: 'Education Loan', loan_against_property: 'Loan Against Property', overdraft: 'Overdraft', other: 'Other' }
+export const LOAN_STATUS_LABELS: Record<PersonalLoan['status'], string> = { active: 'Active', closed: 'Closed', foreclosed: 'Foreclosed', overdue: 'Overdue' }
+
 // ── Social module ──
 export interface SocialAccount {
   id: string

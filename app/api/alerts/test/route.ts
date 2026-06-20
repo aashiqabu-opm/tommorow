@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { emailTemplate, whatsappConfigured, normalizeWhatsApp } from '@/lib/alerts/channels'
+import { emailTemplate, whatsappConfigured, normalizeWhatsApp, sendEmail, emailConfigured, gmailConfigured } from '@/lib/alerts/channels'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +21,8 @@ export async function GET() {
 
   const report: Record<string, unknown> = {
     config: {
+      EMAIL: emailConfigured(),
+      GMAIL_SMTP: gmailConfigured(),
       RESEND_API_KEY: Boolean(process.env.RESEND_API_KEY),
       RESEND_FROM: process.env.RESEND_FROM ?? '(default: onboarding@resend.dev)',
       SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
@@ -38,28 +40,20 @@ export async function GET() {
     },
   }
 
-  // Email test — call Resend directly so we can surface its real response
-  if (process.env.RESEND_API_KEY) {
+  // Email test — uses the unified sender (Gmail SMTP primary, Resend fallback).
+  if (emailConfigured()) {
     try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM ?? 'OPM Office <onboarding@resend.dev>',
-          to: [profile.email],
-          subject: 'OPM Office — Test alert ✓',
-          html: emailTemplate('Test alert', `<p style="margin:0;">Hi ${profile.full_name}, if you can read this, email alerts are working.</p>`),
-        }),
-      })
-      report.email_test = { status: res.status, response: await res.json().catch(() => null) }
+      const ok = await sendEmail(
+        profile.email,
+        'OPM Office — Test alert ✓',
+        emailTemplate('Test alert', `<p style="margin:0;">Hi ${profile.full_name}, if you can read this, email alerts are working.</p>`),
+      )
+      report.email_test = { sent: ok, via: gmailConfigured() ? 'gmail-smtp' : 'resend' }
     } catch (e) {
       report.email_test = { error: String(e) }
     }
   } else {
-    report.email_test = 'skipped — RESEND_API_KEY not set'
+    report.email_test = 'skipped — no email provider configured (set GMAIL_APP_PASSWORD or RESEND_API_KEY)'
   }
 
   // WhatsApp test — only if configured and the caller has a number

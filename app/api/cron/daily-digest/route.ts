@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail, emailTemplate, emailConfigured, sleep, EMAIL_THROTTLE_MS } from '@/lib/alerts/channels'
 import { escapeHtml } from '@/lib/alerts/deliver'
+import { withCronErrorAlert } from '@/lib/monitoring'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +11,10 @@ const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 // Daily digest for founder + accountant: pending approvals, overdue and
 // upcoming liabilities, expiring agreements. Triggered by Vercel Cron.
 export async function GET(request: Request) {
+  return withCronErrorAlert('daily-digest', () => run(request))
+}
+
+async function run(request: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

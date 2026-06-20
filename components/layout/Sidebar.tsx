@@ -53,6 +53,7 @@ const NAV: NavSection[] = [
     // Founder-only private workspace, pinned above everything.
     { href: '/personal', label: 'Personal', icon: Lock, roles: ['founder'] },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
+    { href: '/office', label: 'OPM Office', icon: Building2, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
     { href: '/assistant', label: 'Ask OPM', icon: Sparkles, roles: ['founder'] },
   ] },
   { section: 'Production', items: [

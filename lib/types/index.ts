@@ -811,6 +811,35 @@ export interface PersonalTransaction { id: string; owner_id: string; source: 'ca
 
 export const RECURRING_CATEGORY_LABELS: Record<PersonalRecurring['category'], string> = { rent: 'Rent', utility: 'Utility', subscription: 'Subscription', emi: 'EMI', maintenance: 'Maintenance', insurance: 'Insurance', other: 'Other' }
 
+// ── OPM Office — Operations module (virtual office) ──
+export interface OfficeTask {
+  id: string
+  title: string
+  description?: string | null
+  category: 'general' | 'finance' | 'legal' | 'hr' | 'procurement' | 'it' | 'facilities' | 'compliance'
+  assignee_id?: string | null
+  status: 'todo' | 'in_progress' | 'blocked' | 'done'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  due_date?: string | null
+  created_by?: string | null
+  created_at: string
+  assignee?: { full_name?: string | null } | null
+}
+export interface OfficeNotice {
+  id: string
+  title: string
+  body?: string | null
+  pinned: boolean
+  created_by?: string | null
+  created_at: string
+}
+export const OFFICE_TASK_CATEGORY_LABELS: Record<OfficeTask['category'], string> = {
+  general: 'General', finance: 'Finance', legal: 'Legal', hr: 'HR', procurement: 'Procurement', it: 'IT', facilities: 'Facilities', compliance: 'Compliance',
+}
+export const OFFICE_TASK_STATUS_LABELS: Record<OfficeTask['status'], string> = {
+  todo: 'To do', in_progress: 'In progress', blocked: 'Blocked', done: 'Done',
+}
+
 // ── Personal Legal Cases tracker ──
 export interface LegalCase {
   id: string

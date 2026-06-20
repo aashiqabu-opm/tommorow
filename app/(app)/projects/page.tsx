@@ -6,9 +6,12 @@ export default async function ProjectsPage() {
   const supabase = await createClient()
   const profile = await requireProfile()
 
+  // Films & Projects excludes operations entities (e.g. OPM Office) — those
+  // live in the Office module, not the film slate.
   const { data: projects } = await supabase
     .from('projects')
     .select('*')
+    .eq('is_operations', false)
     .order('created_at', { ascending: false })
 
   // Fetch P&L summary per project

@@ -6,7 +6,9 @@ import { UsersClient } from './UsersClient'
 export default async function UsersPage() {
   const supabase = await createClient()
   const profile = await requireProfile()
-  if (profile.role !== 'founder') redirect('/dashboard')
+  // Founder + senior managers can manage users (invite/add). Role changes and
+  // activation stay founder-only, gated inside the client.
+  if (!['founder', 'general_manager', 'executive_producer', 'accountant'].includes(profile.role)) redirect('/dashboard')
 
   const { data: profiles } = await supabase
     .from('profiles')
@@ -32,5 +34,5 @@ export default async function UsersPage() {
     })
   }
 
-  return <UsersClient profiles={profiles ?? []} currentUserId={profile.id} crew={crew} />
+  return <UsersClient profiles={profiles ?? []} currentUserId={profile.id} crew={crew} viewerRole={profile.role} />
 }

@@ -20,6 +20,7 @@ interface Props {
   profiles: Profile[]
   currentUserId: string
   crew?: Record<string, { project: string; role: string }[]>
+  viewerRole?: string
 }
 
 const ROLE_OPTIONS = [
@@ -47,7 +48,9 @@ type PendingAction =
   | { type: 'role'; profile: Profile; newRole: Role }
   | { type: 'active'; profile: Profile }
 
-export function UsersClient({ profiles, currentUserId, crew }: Props) {
+export function UsersClient({ profiles, currentUserId, crew, viewerRole }: Props) {
+  // Only the founder can change roles or deactivate accounts; managers can invite.
+  const canManageRoles = viewerRole === 'founder'
   const router = useRouter()
   const toast = useToast()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -193,32 +196,38 @@ export function UsersClient({ profiles, currentUserId, crew }: Props) {
                 {profile.whatsapp_number ? (profile.whatsapp_alerts ? 'WhatsApp on' : 'WhatsApp off') : 'No number'}
               </button>
 
-              {/* Role selector */}
+              {/* Role selector — founder only */}
               <div className="w-48 shrink-0">
-                <select
-                  value={profile.role}
-                  onChange={e => setPending({ type: 'role', profile, newRole: e.target.value as Role })}
-                  disabled={updating === profile.id || profile.id === currentUserId}
-                  className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40 disabled:opacity-50"
-                >
-                  {ROLE_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value} className="bg-[#1a1a24]">{o.label}</option>
-                  ))}
-                </select>
+                {canManageRoles ? (
+                  <select
+                    value={profile.role}
+                    onChange={e => setPending({ type: 'role', profile, newRole: e.target.value as Role })}
+                    disabled={updating === profile.id || profile.id === currentUserId}
+                    className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40 disabled:opacity-50"
+                  >
+                    {ROLE_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value} className="bg-[#1a1a24]">{o.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="block text-xs text-[#8888aa] px-3 py-1.5">{ROLE_LABELS[profile.role as Role] ?? profile.role}</span>
+                )}
               </div>
 
-              {/* Active toggle */}
-              <button
-                onClick={() => setPending({ type: 'active', profile })}
-                disabled={profile.id === currentUserId || updating === profile.id}
-                className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 ${
-                  profile.is_active
-                    ? 'text-red-400 border-red-500/20 hover:bg-red-500/10'
-                    : 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10'
-                }`}
-              >
-                {profile.is_active ? 'Deactivate' : 'Activate'}
-              </button>
+              {/* Active toggle — founder only */}
+              {canManageRoles ? (
+                <button
+                  onClick={() => setPending({ type: 'active', profile })}
+                  disabled={profile.id === currentUserId || updating === profile.id}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 ${
+                    profile.is_active
+                      ? 'text-red-400 border-red-500/20 hover:bg-red-500/10'
+                      : 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10'
+                  }`}
+                >
+                  {profile.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+              ) : <span className="w-[84px] shrink-0" />}
             </div>
           ))}
           {companyUsers.length === 0 && (

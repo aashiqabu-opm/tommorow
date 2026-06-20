@@ -11,7 +11,8 @@ import { Input, Select, Textarea } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatCurrency } from '@/lib/utils'
+import Link from 'next/link'
 import { OFFICE_TASK_CATEGORY_LABELS, OFFICE_TASK_STATUS_LABELS, type OfficeTask, type OfficeNotice } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 
@@ -19,6 +20,7 @@ interface Props {
   tasks: OfficeTask[]
   notices: OfficeNotice[]
   team: { id: string; full_name: string }[]
+  finance: { budget: number; spent: number; liabilities: number } | null
   userId: string
   role: string
 }
@@ -32,7 +34,7 @@ const PRIORITY_CLS: Record<OfficeTask['priority'], string> = {
 const CAT_OPTS = Object.entries(OFFICE_TASK_CATEGORY_LABELS).map(([value, label]) => ({ value, label }))
 const EMPTY = { title: '', description: '', category: 'general', assignee_id: '', status: 'todo', priority: 'normal', due_date: '' }
 
-export function OfficeClient({ tasks, notices, team, userId, role }: Props) {
+export function OfficeClient({ tasks, notices, team, finance, userId, role }: Props) {
   const router = useRouter()
   const toast = useToast()
   const canManage = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(role)
@@ -130,6 +132,21 @@ export function OfficeClient({ tasks, notices, team, userId, role }: Props) {
         <StatCard title="Blocked" value={blocked.length} icon={AlertTriangle} status={blocked.length > 0 ? 'red' : 'green'} />
         <StatCard title="Notices" value={notices.length} icon={Megaphone} status="default" />
       </div>
+
+      {/* Office overhead finances (operations entity) */}
+      {finance && (
+        <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#2a2a3a] flex items-center justify-between">
+            <div className="flex items-center gap-2"><Building2 size={16} className="text-white/70" /><h3 className="text-sm font-semibold text-white">Office Finances</h3><span className="text-xs text-[#8888aa]">· overhead</span></div>
+            <Link href="/payments" className="text-xs text-[#8888aa] hover:text-white">Manage in Payments →</Link>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-[#2a2a3a]">
+            <div className="px-5 py-4"><div className="text-[11px] uppercase tracking-wide text-[#8888aa]">Overhead budget</div><div className="text-lg font-semibold text-white tabular-nums mt-1">{formatCurrency(finance.budget)}</div></div>
+            <div className="px-5 py-4"><div className="text-[11px] uppercase tracking-wide text-[#8888aa]">Spent</div><div className="text-lg font-semibold text-red-400 tabular-nums mt-1">{formatCurrency(finance.spent)}</div></div>
+            <div className="px-5 py-4"><div className="text-[11px] uppercase tracking-wide text-[#8888aa]">Open liabilities</div><div className="text-lg font-semibold text-amber-400 tabular-nums mt-1">{formatCurrency(finance.liabilities)}</div></div>
+          </div>
+        </div>
+      )}
 
       {/* Notices */}
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">

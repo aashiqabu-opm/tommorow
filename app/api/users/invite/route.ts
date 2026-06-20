@@ -1,20 +1,32 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendMail, mailerConfigured } from '@/lib/mailer'
+import { emailTemplate } from '@/lib/alerts/channels'
 
 const ALLOWED_ROLES = ['accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff']
+// Who can invite new users (never a second founder).
+const INVITER_ROLES = ['founder', 'general_manager', 'executive_producer', 'accountant']
 
-// Invite a new user by email. Founder-only. Uses the service-role admin client
-// to send a Supabase magic-link invite; the new user sets their own password.
-// We NEVER create accounts silently or set passwords on anyone's behalf.
+function tempPassword(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  let s = ''
+  for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)]
+  return `OPM-${s}-${Math.floor(1000 + Math.random() * 9000)}`
+}
+
+// Invite a new user by email. Founder / GM / EP / Accountant can invite. We
+// create the login with a temporary password and deliver the credentials over
+// Gmail SMTP (reliable), falling back to Supabase's invite email. We NEVER set
+// a password the inviter chooses — a generated temp one the user then changes.
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: caller } = await supabase.from('profiles').select('role, is_active').eq('id', user.id).single()
-  if (!caller?.is_active || caller.role !== 'founder') {
-    return NextResponse.json({ error: 'Only the founder can invite users' }, { status: 403 })
+  if (!caller?.is_active || !INVITER_ROLES.includes(caller.role)) {
+    return NextResponse.json({ error: 'You do not have permission to invite users' }, { status: 403 })
   }
 
   let payload: { email?: unknown; full_name?: unknown; role?: unknown }
@@ -36,17 +48,28 @@ export async function POST(request: Request) {
   }
 
   const origin = new URL(request.url).origin
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name, role },
-    redirectTo: `${origin}/login`,
-  })
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin
+  const pwd = tempPassword()
 
-  if (error) {
-    const msg = /already.*registered|already been registered/i.test(error.message)
-      ? 'That email already has an account.'
-      : error.message
-    return NextResponse.json({ error: msg }, { status: 400 })
+  const { data: created, error: cErr } = await admin.auth.admin.createUser({
+    email, password: pwd, email_confirm: true,
+    user_metadata: { full_name, role },
+  })
+  if (cErr) {
+    if (/already.*(registered|exist)/i.test(cErr.message)) return NextResponse.json({ error: 'That email already has an account.' }, { status: 400 })
+    return NextResponse.json({ error: cErr.message }, { status: 400 })
   }
 
-  return NextResponse.json({ ok: true, userId: data.user?.id, email })
+  // Deliver credentials over Gmail SMTP; fall back to Supabase invite email.
+  let emailed = false
+  const subject = 'Your OPM Office login'
+  const html = emailTemplate(subject, `<p>Hi ${full_name},</p>
+    <p>An OPM Office account has been created for you. Here's your login:</p>
+    <p style="background:#f4f4f5;border:1px solid #e4e4e7;border-radius:8px;padding:12px 16px;">
+      <b>Email:</b> ${email}<br/><b>Temporary password:</b> <code style="font-size:15px;">${pwd}</code>
+    </p>
+    <p>Sign in at <a href="${appUrl}/login">${appUrl}/login</a> and change your password from Settings.</p>`)
+  if (mailerConfigured()) emailed = await sendMail(email, subject, html)
+
+  return NextResponse.json({ ok: true, userId: created.user?.id, email, emailed, invitedBy: caller.role })
 }

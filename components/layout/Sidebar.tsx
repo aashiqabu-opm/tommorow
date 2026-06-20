@@ -30,8 +30,6 @@ import {
   Sparkles,
   Lock,
   Music,
-  Monitor,
-  Share2,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -55,8 +53,6 @@ const NAV: NavSection[] = [
     // Founder-only private workspace, pinned above everything.
     { href: '/personal', label: 'Personal', icon: Lock, roles: ['founder'] },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
-    { href: '/command-center', label: 'OPM Control Center', icon: Monitor, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
-    { href: '/office', label: 'OPM Office', icon: Building2, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
     { href: '/assistant', label: 'Ask OPM', icon: Sparkles, roles: ['founder'] },
   ] },
   { section: 'Production', items: [
@@ -89,11 +85,7 @@ const NAV: NavSection[] = [
     ...(WEB_SEARCH_ENABLED ? [{ href: '/market', label: 'Market', icon: Newspaper, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] }] : []),
     { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
   ] },
-  { section: 'Communications', items: [
-    { href: '/social', label: 'Social Media', icon: Share2, roles: ['founder', 'general_manager', 'staff'] },
-  ] },
   { section: 'Admin', items: [
-    { href: '/workspace', label: 'Workspace', icon: Building2, roles: ['founder'] },
     { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
     { href: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['founder'] },
     { href: '/settings', label: 'Settings', icon: Settings, roles: ['founder', 'accountant'] },

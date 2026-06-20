@@ -20,3 +20,19 @@
  ✓ Compiled in 52ms (211 modules)
    Reload env: .env.local
  ✓ Compiled in 45ms (211 modules)
+ ⨯ ./node_modules/@opentelemetry/api/build/esm/index.js
+Error: ENOENT: no such file or directory, open '/Users/aashiqabu/Desktop/opm-office/node_modules/@opentelemetry/api/build/esm/index.js'
+
+Import trace for requested module:
+./node_modules/@opentelemetry/api/build/esm/index.js
+./node_modules/next/dist/esm/server/lib/trace/tracer.js
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (102kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (244kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ⨯ ./node_modules/@opentelemetry/api/build/esm/index.js
+Error: ENOENT: no such file or directory, open '/Users/aashiqabu/Desktop/opm-office/node_modules/@opentelemetry/api/build/esm/index.js'
+
+Import trace for requested module:
+./node_modules/@opentelemetry/api/build/esm/index.js
+./node_modules/next/dist/esm/server/lib/trace/tracer.js
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (102kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (244kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Music, Plus, Pencil, Trash2, Youtube, Radio, Link2, TrendingUp, DollarSign, Disc, Users, Eye, Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Music, Plus, Pencil, Trash2, Youtube, Radio, Link2, TrendingUp, DollarSign, Disc, Users, Eye, Upload, FileText, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { Modal } from '@/components/ui/Modal'
@@ -45,6 +45,21 @@ export function RecordsClient({ titles, channels, royalties, userId, role }: Pro
   const [royaltyForm, setRoyaltyForm] = useState({ title_id: '', platform: 'youtube', period: '', amount: '', streams_count: '', payout_status: 'pending', notes: '' })
   const [file, setFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function refreshYouTube() {
+    setRefreshing(true)
+    try {
+      const res = await fetch('/api/records/refresh-youtube', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error === 'not_configured' ? 'Live stats need a YouTube API key on the server.' : (data.error || 'Refresh failed'))
+      } else {
+        toast.success(`Updated ${data.updated} YouTube channel(s)`); router.refresh()
+      }
+    } catch { toast.error('Refresh failed') }
+    setRefreshing(false)
+  }
 
   // Calculations
   const totalRoyalties = royalties.reduce((s, r) => s + Number(r.amount), 0)
@@ -339,7 +354,8 @@ export function RecordsClient({ titles, channels, royalties, userId, role }: Pro
       {/* 3. Channels Tab */}
       {tab === 'channels' && (
         <div className="space-y-3">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" icon={RefreshCw} loading={refreshing} onClick={refreshYouTube}>Refresh from YouTube</Button>
             <Button icon={Plus} size="sm" onClick={() => { setEditingChannel(null); setChannelForm({ name: '', platform: 'youtube', handle: '', url: '', subscriber_count: '', views_count: '', status: 'active', notes: '' }); setChannelModal(true) }}>
               Link Channel
             </Button>

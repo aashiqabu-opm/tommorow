@@ -1,0 +1,13 @@
+{
+  "hosting": [
+    {
+      "target": "office",
+      "source": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    }
+  ]
+}

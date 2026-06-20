@@ -1,3 +1,4 @@
+import { withLedgerSanitation } from '@/lib/middleware/validate-ledger';
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { expensePaymentLines, incomeReceiptLines, gstLedgerNames, type GstSplit, type TallyLine } from '@/lib/tally'
@@ -11,7 +12,7 @@ type Row = Record<string, any>
 // Auto-generate Tally-style vouchers from approved/paid payments and recorded
 // income. Idempotent (one voucher per source). Finance only. Runs through the
 // user's RLS-scoped client, so the period lock and permissions apply.
-export async function POST() {
+export const POST = withLedgerSanitation(async function POST() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -89,4 +90,4 @@ export async function POST() {
   }
 
   return NextResponse.json({ ok: true, created, skipped, errors: errors.slice(0, 5) })
-}
+});

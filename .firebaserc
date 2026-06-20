@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "opmcinemas-portal"
+  },
+  "targets": {
+    "opmcinemas-portal": {
+      "hosting": {
+        "office": [
+          "opmcinemas-office"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

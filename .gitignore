@@ -37,3 +37,8 @@ next-env.d.ts
 .env.db
 .env.twilio
 .env.*
+
+# Firebase build artifacts / hosting cache
+.firebase/
+.firebase
+firebase-debug.log

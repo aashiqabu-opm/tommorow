@@ -1,0 +1,22 @@
+
+> opm-office@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3005
+   - Network:      http://192.168.1.10:3005
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ✓ Compiled /middleware in 261ms (211 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (102kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (250kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ✓ Compiled in 87ms (211 modules)
+ ✓ Compiled in 47ms (211 modules)
+ ✓ Compiled in 54ms (211 modules)
+ ✓ Compiled in 41ms (211 modules)
+   Reload env: .env.local
+ ✓ Compiled in 52ms (211 modules)
+   Reload env: .env.local
+ ✓ Compiled in 45ms (211 modules)

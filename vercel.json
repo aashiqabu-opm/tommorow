@@ -27,6 +27,14 @@
     {
       "path": "/api/cron/office-recurring",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/daily-digest",
+      "schedule": "30 1 * * *"
+    },
+    {
+      "path": "/api/cron/industry-tracker",
+      "schedule": "30 15 * * *"
     }
   ]
 }

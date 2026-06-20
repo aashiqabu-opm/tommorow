@@ -46,6 +46,37 @@ Respond with ONLY a JSON object (no prose, no code fences) with exactly these ke
 
 export interface VehicleDocResult { data: ExtractedVehicleDoc | null; error?: string }
 
+// Rich extraction for the Document Vault — returns every field found on the doc.
+// Reuses the same Anthropic client/setup as extractVehicleDoc above.
+const RICH_FIELDS = ['vehicle_number', 'owner_name', 'chassis_number', 'engine_number', 'make', 'model', 'year', 'registration_date', 'expiry_date', 'issuing_authority', 'policy_number', 'insurer_name', 'premium_amount', 'coverage_type', 'doc_number', 'validity_from', 'validity_to'] as const
+const RICH_SYSTEM = `You read Indian motor-vehicle documents (RC, insurance, PUC, fitness, road tax, permit, driving licence). Extract all information present and return ONLY a JSON object. Include any of these keys that are ACTUALLY found in the document (omit the rest): ${RICH_FIELDS.join(', ')}. Rules: dates as YYYY-MM-DD (Indian docs are usually DD/MM/YYYY — interpret accordingly); numbers without symbols/commas; never guess. Respond with ONLY the JSON object, no prose, no code fences.`
+
+export async function extractVehicleDocRich(base64: string, mediaType: string, docType: string): Promise<{ data: Record<string, unknown> | null; error?: string }> {
+  if (!vehicleDocExtractionConfigured()) return { data: null, error: 'ANTHROPIC_API_KEY not set' }
+  const isPdf = mediaType === 'application/pdf'
+  const isImage = /^image\/(png|jpe?g|gif|webp)$/.test(mediaType)
+  if (!isPdf && !isImage) return { data: null, error: 'Only PDF or image documents can be read' }
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const docBlock = isPdf
+    ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: base64 } }
+    : { type: 'image' as const, source: { type: 'base64' as const, media_type: mediaType as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp', data: base64 } }
+  try {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      system: RICH_SYSTEM,
+      messages: [{ role: 'user', content: [docBlock, { type: 'text', text: `This is a ${DOC_HINT[docType] ?? DOC_HINT.other} Extract all fields found. Respond with only the JSON object.` }] }],
+    })
+    const text = response.content.find(b => b.type === 'text')
+    if (!text || text.type !== 'text') return { data: null, error: 'No text in model response' }
+    const m = text.text.match(/\{[\s\S]*\}/)
+    return { data: JSON.parse(m ? m[0] : text.text) as Record<string, unknown> }
+  } catch (e) {
+    const err = e as { status?: number; message?: string; error?: { error?: { message?: string } } }
+    return { data: null, error: `${err?.status ?? ''} ${err?.error?.error?.message || err?.message || 'Unknown error'}`.trim() }
+  }
+}
+
 export async function extractVehicleDoc(base64: string, mediaType: string, docType: string): Promise<VehicleDocResult> {
   if (!vehicleDocExtractionConfigured()) return { data: null, error: 'ANTHROPIC_API_KEY not set' }
   const isPdf = mediaType === 'application/pdf'

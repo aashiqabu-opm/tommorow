@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea, Select } from '@/components/ui/Input'
 import { MoneyInput } from '@/components/ui/MoneyInput'
 import { FilePicker } from '@/components/ui/FilePicker'
+import { VehicleDocumentVault } from '@/components/vehicles/VehicleDocumentVault'
 import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { compressImage } from '@/lib/compressImage'
@@ -76,6 +77,7 @@ export function VehiclesClient({ vehicles, projects, userId, canDelete }: Props)
   const [logForm, setLogForm] = useState(LOG_EMPTY)
   const [savingLog, setSavingLog] = useState(false)
   const [docVehicle, setDocVehicle] = useState<Vehicle | null>(null)
+  const [vaultVehicle, setVaultVehicle] = useState<Vehicle | null>(null)
   const [docForm, setDocForm] = useState(DOC_EMPTY)
   const [docFile, setDocFile] = useState<File | null>(null)
   const [savingDoc, setSavingDoc] = useState(false)
@@ -324,6 +326,7 @@ export function VehiclesClient({ vehicles, projects, userId, canDelete }: Props)
                     </button>
                     <button onClick={() => openLog(v)} className="text-xs text-white/80 hover:text-white inline-flex items-center gap-1"><Plus size={12} /> Add Log</button>
                     <button onClick={() => openDoc(v)} className="text-xs text-white/80 hover:text-white inline-flex items-center gap-1"><FileText size={12} /> Add Document</button>
+                    <button onClick={() => setVaultVehicle(v)} className="text-xs text-amber-400/90 hover:text-amber-300 inline-flex items-center gap-1"><ShieldCheck size={12} /> Document Vault</button>
                   </div>
                 </div>
 
@@ -508,6 +511,18 @@ export function VehiclesClient({ vehicles, projects, userId, canDelete }: Props)
             <Button type="submit" loading={savingDoc}>Save Document</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Document Vault — tabbed, AI-extracted, expiry-tracked */}
+      <Modal open={!!vaultVehicle} onClose={() => setVaultVehicle(null)} title={`Document Vault — ${vaultVehicle?.reg_number ?? ''}`} size="lg">
+        {vaultVehicle && (
+          <VehicleDocumentVault
+            vehicleId={vaultVehicle.id}
+            vehicleName={vaultVehicle.reg_number ?? vaultVehicle.name ?? ''}
+            canDelete={canDelete}
+            onChange={() => router.refresh()}
+          />
+        )}
       </Modal>
     </div>
   )

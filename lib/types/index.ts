@@ -687,7 +687,8 @@ export interface Vehicle {
   project?: { name?: string } | null
 }
 
-export type VehicleDocType = 'rc' | 'insurance' | 'puc' | 'permit' | 'fitness' | 'tax' | 'other'
+export type VehicleDocType = 'rc' | 'insurance' | 'puc' | 'permit' | 'permit_all_india' | 'fitness' | 'road_tax' | 'tax' | 'driver_licence' | 'other'
+export type VehicleDocStatus = 'active' | 'expiring_soon' | 'expired'
 
 export interface VehicleDocument {
   id: string
@@ -698,6 +699,9 @@ export interface VehicleDocument {
   expiry_date?: string | null
   file_url?: string | null
   file_name?: string | null
+  status?: VehicleDocStatus | null
+  extracted_data?: Record<string, unknown> | null
+  ai_extracted?: boolean | null
   notes?: string | null
   created_by?: string
   created_at: string
@@ -706,7 +710,8 @@ export interface VehicleDocument {
 
 export const VEHICLE_DOC_LABELS: Record<VehicleDocType, string> = {
   rc: 'Registration (RC)', insurance: 'Insurance', puc: 'Pollution (PUC)',
-  permit: 'Permit', fitness: 'Fitness Certificate', tax: 'Road Tax', other: 'Other',
+  permit: 'Permit', permit_all_india: 'All India Permit', fitness: 'Fitness Certificate',
+  road_tax: 'Road Tax', tax: 'Road Tax (legacy)', driver_licence: 'Driver Licence', other: 'Other',
 }
 
 export interface VehicleLog {

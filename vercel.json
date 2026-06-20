@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/industry-tracker",
       "schedule": "30 15 * * *"
+    },
+    {
+      "path": "/api/cron/vehicle-doc-expiry",
+      "schedule": "0 2 * * *"
     }
   ]
 }

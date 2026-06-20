@@ -48,3 +48,9 @@ Error: ENOENT: no such file or directory, open '/Users/aashiqabu/Desktop/opm-off
 Import trace for requested module:
 ./node_modules/@opentelemetry/api/build/esm/index.js
 ./node_modules/next/dist/esm/server/lib/trace/tracer.js
+ ⨯ ./node_modules/@opentelemetry/api/build/esm/index.js
+Error: ENOENT: no such file or directory, open '/Users/aashiqabu/Desktop/opm-office/node_modules/@opentelemetry/api/build/esm/index.js'
+
+Import trace for requested module:
+./node_modules/@opentelemetry/api/build/esm/index.js
+./node_modules/next/dist/esm/server/lib/trace/tracer.js

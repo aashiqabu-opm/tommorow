@@ -903,6 +903,32 @@ export interface OpmRecordTitle {
   created_at: string
 }
 
+export interface OpmRecordRelease {
+  id: string
+  title: string
+  release_type: 'single' | 'ep' | 'album' | 'compilation'
+  primary_artist?: string | null
+  label?: string | null
+  upc?: string | null
+  release_date?: string | null
+  distributor?: string | null
+  territory?: string | null
+  stage: 'draft' | 'metadata' | 'assets' | 'qc' | 'scheduled' | 'submitted' | 'live' | 'takedown'
+  art_ready: boolean
+  audio_ready: boolean
+  metadata_ready: boolean
+  lyrics_ready: boolean
+  rights_cleared: boolean
+  cover_art_path?: string | null
+  distributor_ref?: string | null
+  notes?: string | null
+  created_at: string
+  track_count?: number
+}
+export const RELEASE_STAGE_LABELS: Record<OpmRecordRelease['stage'], string> = {
+  draft: 'Draft', metadata: 'Metadata', assets: 'Assets', qc: 'QC', scheduled: 'Scheduled', submitted: 'Submitted', live: 'Live', takedown: 'Takedown',
+}
+
 export interface OpmRecordChannel {
   id: string
   name: string

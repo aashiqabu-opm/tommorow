@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Music, Plus, Pencil, Trash2, Youtube, Radio, Link2, TrendingUp, DollarSign, Disc, Users, Eye, Upload, FileText, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -13,22 +14,61 @@ import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
-import type { OpmRecordTitle, OpmRecordChannel, OpmRecordRoyalty } from '@/lib/types'
+import type { OpmRecordTitle, OpmRecordChannel, OpmRecordRoyalty, OpmRecordRelease } from '@/lib/types'
+import { RELEASE_STAGE_LABELS } from '@/lib/types'
 
 interface Props {
   titles: OpmRecordTitle[]
   channels: OpmRecordChannel[]
   royalties: OpmRecordRoyalty[]
+  releases: OpmRecordRelease[]
   userId: string
   role: string
 }
 
-type Tab = 'dashboard' | 'titles' | 'channels' | 'royalties'
+type Tab = 'dashboard' | 'releases' | 'titles' | 'channels' | 'royalties'
 
-export function RecordsClient({ titles, channels, royalties, userId, role }: Props) {
+const REL_EMPTY = { title: '', release_type: 'single', primary_artist: '', upc: '', release_date: '', distributor: 'Believe', territory: 'Worldwide', stage: 'draft', art_ready: false, audio_ready: false, metadata_ready: false, lyrics_ready: false, rights_cleared: false, distributor_ref: '', notes: '' }
+const REL_STAGES: OpmRecordRelease['stage'][] = ['draft', 'metadata', 'assets', 'qc', 'scheduled', 'submitted', 'live', 'takedown']
+const STAGE_VARIANT: Record<OpmRecordRelease['stage'], 'gray' | 'yellow' | 'blue' | 'green' | 'red' | 'purple'> = { draft: 'gray', metadata: 'gray', assets: 'yellow', qc: 'yellow', scheduled: 'blue', submitted: 'purple', live: 'green', takedown: 'red' }
+
+export function RecordsClient({ titles, channels, royalties, releases, userId, role }: Props) {
   const router = useRouter()
   const toast = useToast()
   const supabase = createClient()
+  const [relModal, setRelModal] = useState(false)
+  const [editingRel, setEditingRel] = useState<OpmRecordRelease | null>(null)
+  const [relForm, setRelForm] = useState(REL_EMPTY)
+  const relToForm = (r: OpmRecordRelease) => ({ title: r.title, release_type: r.release_type, primary_artist: r.primary_artist || '', upc: r.upc || '', release_date: r.release_date || '', distributor: r.distributor || 'Believe', territory: r.territory || 'Worldwide', stage: r.stage, art_ready: r.art_ready, audio_ready: r.audio_ready, metadata_ready: r.metadata_ready, lyrics_ready: r.lyrics_ready, rights_cleared: r.rights_cleared, distributor_ref: r.distributor_ref || '', notes: r.notes || '' })
+
+  async function saveRelease() {
+    if (!relForm.title.trim()) { toast.error('Title required'); return }
+    const sb = createClient()
+    const payload = { ...relForm, primary_artist: relForm.primary_artist || null, upc: relForm.upc || null, release_date: relForm.release_date || null, distributor_ref: relForm.distributor_ref || null, notes: relForm.notes || null }
+    if (editingRel) {
+      const { error } = await sb.from('opm_records_releases').update(payload).eq('id', editingRel.id)
+      if (error) { toast.error("Couldn't save release"); return }
+      await logAction('update', 'opm_records_releases', editingRel.id)
+    } else {
+      const { data, error } = await sb.from('opm_records_releases').insert({ ...payload, label: 'OPM Records', created_by: userId }).select().single()
+      if (error) { toast.error("Couldn't save — " + error.message.slice(0, 60)); return }
+      if (data) await logAction('create', 'opm_records_releases', data.id)
+    }
+    setRelModal(false); setEditingRel(null); toast.success('Release saved'); router.refresh()
+  }
+  async function advanceStage(r: OpmRecordRelease, stage: OpmRecordRelease['stage']) {
+    const sb = createClient()
+    await sb.from('opm_records_releases').update({ stage }).eq('id', r.id)
+    await logAction('update', 'opm_records_releases', r.id, undefined, { stage })
+    router.refresh()
+  }
+  async function deleteRelease(r: OpmRecordRelease) {
+    if (!window.confirm(`Delete release "${r.title}"? Its tracks stay in the catalogue.`)) return
+    const sb = createClient()
+    await sb.from('opm_records_releases').delete().eq('id', r.id)
+    await logAction('delete', 'opm_records_releases', r.id)
+    toast.success('Release deleted'); router.refresh()
+  }
   const [tab, setTab] = useState<Tab>('dashboard')
   
   // Modals state
@@ -230,6 +270,7 @@ export function RecordsClient({ titles, channels, royalties, userId, role }: Pro
       <div className="flex gap-1 border-b border-[#2a2a3a] overflow-x-auto pb-px">
         {([
           ['dashboard', 'Dashboard', Radio],
+          ['releases', 'Release Pipeline', Disc],
           ['titles', 'Music Titles', Disc],
           ['channels', 'YouTube & Channels', Link2],
           ['royalties', 'Royalties & Earnings', DollarSign]
@@ -300,6 +341,57 @@ export function RecordsClient({ titles, channels, royalties, userId, role }: Pro
               ))}
               {royalties.length === 0 && <p className="text-xs text-[#8888aa] text-center py-6">No earnings logged yet.</p>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Release Pipeline Tab */}
+      {tab === 'releases' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-[#8888aa]">End-to-end release workflow — draft → metadata → assets → QC → scheduled → submitted → live. Distribution is delivered via your distributor (Believe); track the hand-off here.</p>
+            <Button icon={Plus} size="sm" onClick={() => { setEditingRel(null); setRelForm(REL_EMPTY); setRelModal(true) }}>New Release</Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            {REL_STAGES.filter(s => s !== 'takedown' || releases.some(r => r.stage === 'takedown')).map(stage => {
+              const items = releases.filter(r => r.stage === stage)
+              return (
+                <div key={stage} className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden flex flex-col">
+                  <div className="px-4 py-3 border-b border-[#2a2a3a] flex items-center justify-between">
+                    <StatusBadge label={RELEASE_STAGE_LABELS[stage]} variant={STAGE_VARIANT[stage]} />
+                    <span className="text-xs text-[#8888aa]">{items.length}</span>
+                  </div>
+                  <div className="divide-y divide-[#2a2a3a] flex-1 min-h-[60px]">
+                    {items.length === 0 ? <div className="py-6 text-center text-[11px] text-[#5a5a7a]">—</div> : items.map(r => {
+                      const ready = [r.art_ready, r.audio_ready, r.metadata_ready, r.lyrics_ready, r.rights_cleared].filter(Boolean).length
+                      return (
+                        <div key={r.id} className="px-4 py-3 group">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-sm text-white font-medium leading-snug">{r.title}</div>
+                              <div className="text-[11px] text-[#8888aa] mt-0.5">{r.release_type.toUpperCase()} · {r.track_count ?? 0} track{(r.track_count ?? 0) === 1 ? '' : 's'}{r.primary_artist ? ` · ${r.primary_artist}` : ''}</div>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className={`text-[10px] ${ready === 5 ? 'text-emerald-400' : 'text-[#8888aa]'}`}>QC {ready}/5</span>
+                                {r.release_date && <span className="text-[10px] text-[#5a5a7a]">{formatDate(r.release_date)}</span>}
+                                {r.distributor && <span className="text-[10px] text-[#5a5a7a]">· {r.distributor}</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => { setEditingRel(r); setRelForm(relToForm(r)); setRelModal(true) }} className="text-[#8888aa] hover:text-white"><Pencil size={13} /></button>
+                              <button onClick={() => deleteRelease(r)} className="text-[#8888aa] hover:text-red-400"><Trash2 size={13} /></button>
+                            </div>
+                          </div>
+                          <select value={r.stage} onChange={e => advanceStage(r, e.target.value as OpmRecordRelease['stage'])}
+                            className="mt-2 w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-md px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-white/40">
+                            {REL_STAGES.map(s => <option key={s} value={s}>{RELEASE_STAGE_LABELS[s]}</option>)}
+                          </select>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -464,6 +556,39 @@ export function RecordsClient({ titles, channels, royalties, userId, role }: Pro
       )}
 
       {/* ── Modal Forms ── */}
+
+      {/* Release modal */}
+      <Modal open={relModal} onClose={() => setRelModal(false)} title={editingRel ? 'Edit Release' : 'New Release'} size="lg">
+        <div className="space-y-3">
+          <Input label="Release title *" value={relForm.title} onChange={e => setRelForm({ ...relForm, title: e.target.value })} placeholder="e.g. Neelavelicham (Original Soundtrack)" />
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Type" value={relForm.release_type} onChange={e => setRelForm({ ...relForm, release_type: e.target.value })} options={[{ value: 'single', label: 'Single' }, { value: 'ep', label: 'EP' }, { value: 'album', label: 'Album' }, { value: 'compilation', label: 'Compilation' }]} />
+            <Input label="Primary artist" value={relForm.primary_artist} onChange={e => setRelForm({ ...relForm, primary_artist: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="UPC" value={relForm.upc} onChange={e => setRelForm({ ...relForm, upc: e.target.value })} />
+            <Input label="Release date" type="date" value={relForm.release_date} onChange={e => setRelForm({ ...relForm, release_date: e.target.value })} />
+            <Select label="Stage" value={relForm.stage} onChange={e => setRelForm({ ...relForm, stage: e.target.value })} options={REL_STAGES.map(s => ({ value: s, label: RELEASE_STAGE_LABELS[s] }))} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="Distributor" value={relForm.distributor} onChange={e => setRelForm({ ...relForm, distributor: e.target.value })} />
+            <Input label="Territory" value={relForm.territory} onChange={e => setRelForm({ ...relForm, territory: e.target.value })} />
+            <Input label="Distributor ref" value={relForm.distributor_ref} onChange={e => setRelForm({ ...relForm, distributor_ref: e.target.value })} placeholder="external release id" />
+          </div>
+          <div className="rounded-lg border border-[#2a2a3a] bg-[#13131a] p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#f5b301] mb-2">Delivery QC checklist</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([['art_ready', 'Cover art'], ['audio_ready', 'Masters / audio'], ['metadata_ready', 'Metadata + ISRC'], ['lyrics_ready', 'Lyrics'], ['rights_cleared', 'Rights cleared']] as const).map(([k, lbl]) => (
+                <label key={k} className="flex items-center gap-2 text-sm text-white cursor-pointer">
+                  <input type="checkbox" checked={relForm[k] as boolean} onChange={e => setRelForm({ ...relForm, [k]: e.target.checked })} className="h-4 w-4 accent-amber-400" /> {lbl}
+                </label>
+              ))}
+            </div>
+          </div>
+          <Textarea label="Notes" value={relForm.notes} onChange={e => setRelForm({ ...relForm, notes: e.target.value })} />
+          <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setRelModal(false)}>Cancel</Button><Button onClick={saveRelease}>{editingRel ? 'Save' : 'Create Release'}</Button></div>
+        </div>
+      </Modal>
 
       {/* 1. Add/Edit Title Modal */}
       <Modal open={titleModal} onClose={() => setTitleModal(false)} title={editingTitle ? 'Edit Music Title' : 'Add Music Title'}>

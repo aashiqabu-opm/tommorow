@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Building2, Plus, Pencil, Trash2, Pin, Megaphone, CheckCircle2, Clock, AlertTriangle, ListTodo } from 'lucide-react'
+import { Building2, Plus, Pencil, Trash2, Pin, Megaphone, CheckCircle2, Clock, AlertTriangle, ListTodo, UserCircle, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -13,8 +13,12 @@ import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import Link from 'next/link'
-import { OFFICE_TASK_CATEGORY_LABELS, OFFICE_TASK_STATUS_LABELS, type OfficeTask, type OfficeNotice } from '@/lib/types'
+import { OFFICE_TASK_STATUS_LABELS, OFFICE_DEPT_LABELS, type OfficeTask, type OfficeNotice, type OfficeDepartment } from '@/lib/types'
 import { useRouter } from 'next/navigation'
+
+const ROLE_LABELS: Record<string, string> = { founder: 'Founder', accountant: 'Accountant', general_manager: 'General Manager', executive_producer: 'Executive Producer', legal_viewer: 'Legal', staff: 'Staff' }
+const DEPT_OPTS = (Object.entries(OFFICE_DEPT_LABELS) as [OfficeDepartment, string][]).map(([value, label]) => ({ value, label }))
+const ROLE_OPTS = [{ value: '', label: 'Anyone' }, ...Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))]
 
 interface Props {
   tasks: OfficeTask[]
@@ -31,8 +35,7 @@ const PRIORITY_CLS: Record<OfficeTask['priority'], string> = {
   urgent: 'text-red-400 border-red-500/25 bg-red-500/10', high: 'text-amber-400 border-amber-500/25 bg-amber-500/10',
   normal: 'text-[#8888aa] border-[#2a2a3a] bg-[#1a1a24]', low: 'text-[#5a5a7a] border-[#2a2a3a] bg-[#1a1a24]',
 }
-const CAT_OPTS = Object.entries(OFFICE_TASK_CATEGORY_LABELS).map(([value, label]) => ({ value, label }))
-const EMPTY = { title: '', description: '', category: 'general', assignee_id: '', status: 'todo', priority: 'normal', due_date: '' }
+const EMPTY = { title: '', description: '', department: 'administration', assigned_role: '', assignee_id: '', status: 'todo', priority: 'normal', recurrence: 'none', due_date: '' }
 
 export function OfficeClient({ tasks, notices, team, finance, userId, role }: Props) {
   const router = useRouter()
@@ -48,17 +51,23 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
   const [editingNotice, setEditingNotice] = useState<OfficeNotice | null>(null)
   const [nform, setNform] = useState({ title: '', body: '', pinned: true })
 
+  const [deptFilter, setDeptFilter] = useState<OfficeDepartment | 'all'>('all')
+  const [mineOnly, setMineOnly] = useState(false)
+
   const today = new Date().toISOString().split('T')[0]
   const in7 = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+  const isMine = (t: OfficeTask) => t.assignee_id === userId || (t.assigned_role && t.assigned_role === role)
   const openTasks = tasks.filter(t => t.status !== 'done')
   const dueWeek = openTasks.filter(t => t.due_date && t.due_date <= in7)
   const blocked = tasks.filter(t => t.status === 'blocked')
-  const grouped = useMemo(() => STATUS_ORDER.map(s => ({ s, items: tasks.filter(t => t.status === s) })), [tasks])
+  const myOpen = openTasks.filter(isMine)
+  const visible = useMemo(() => tasks.filter(t => (deptFilter === 'all' || t.department === deptFilter) && (!mineOnly || isMine(t))), [tasks, deptFilter, mineOnly]) // eslint-disable-line react-hooks/exhaustive-deps
+  const grouped = useMemo(() => STATUS_ORDER.map(s => ({ s, items: visible.filter(t => t.status === s) })), [visible])
 
-  function openNew() { setEditing(null); setForm(EMPTY); setOpen(true) }
+  function openNew() { setEditing(null); setForm({ ...EMPTY, department: deptFilter === 'all' ? 'administration' : deptFilter }); setOpen(true) }
   function openEdit(t: OfficeTask) {
     setEditing(t)
-    setForm({ title: t.title, description: t.description ?? '', category: t.category, assignee_id: t.assignee_id ?? '', status: t.status, priority: t.priority, due_date: t.due_date ?? '' })
+    setForm({ title: t.title, description: t.description ?? '', department: t.department, assigned_role: t.assigned_role ?? '', assignee_id: t.assignee_id ?? '', status: t.status, priority: t.priority, recurrence: t.recurrence, due_date: t.due_date ?? '' })
     setOpen(true)
   }
 
@@ -66,7 +75,7 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
     if (!form.title.trim()) return toast.error('Title required')
     setSaving(true)
     const supabase = createClient()
-    const payload = { title: form.title.trim(), description: form.description || null, category: form.category, assignee_id: form.assignee_id || null, status: form.status, priority: form.priority, due_date: form.due_date || null }
+    const payload = { title: form.title.trim(), description: form.description || null, department: form.department, assigned_role: form.assigned_role || null, assignee_id: form.assignee_id || null, status: form.status, priority: form.priority, recurrence: form.recurrence, due_date: form.due_date || null }
     if (editing) {
       const { error } = await supabase.from('office_tasks').update(payload).eq('id', editing.id)
       if (error) { toast.error("Couldn't save"); setSaving(false); return }
@@ -177,6 +186,19 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
         )}
       </div>
 
+      {/* Filters: department + My Tasks */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={() => setMineOnly(m => !m)}
+          className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${mineOnly ? 'bg-[#f5b301]/15 border-[#f5b301]/40 text-[#f5b301]' : 'bg-[#13131a] border-[#2a2a3a] text-[#8888aa] hover:text-white'}`}>
+          <UserCircle size={13} className="inline mr-1 -mt-0.5" /> My Tasks{myOpen.length ? ` (${myOpen.length})` : ''}
+        </button>
+        <span className="w-px h-5 bg-[#2a2a3a] mx-1" />
+        <button onClick={() => setDeptFilter('all')} className={`text-xs px-2.5 py-1.5 rounded-lg border ${deptFilter === 'all' ? 'border-white/40 text-white' : 'border-[#2a2a3a] text-[#8888aa] hover:text-white'}`}>All</button>
+        {DEPT_OPTS.filter(d => tasks.some(t => t.department === d.value)).map(d => (
+          <button key={d.value} onClick={() => setDeptFilter(d.value)} className={`text-xs px-2.5 py-1.5 rounded-lg border ${deptFilter === d.value ? 'border-white/40 text-white' : 'border-[#2a2a3a] text-[#8888aa] hover:text-white'}`}>{d.label}</button>
+        ))}
+      </div>
+
       {/* Tasks by status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
         {grouped.map(({ s, items }) => (
@@ -193,8 +215,10 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
                       <div className="text-sm text-white leading-snug">{t.title}</div>
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${PRIORITY_CLS[t.priority]}`}>{t.priority}</span>
-                        <span className="text-[10px] text-[#8888aa]">{OFFICE_TASK_CATEGORY_LABELS[t.category]}</span>
+                        <span className="text-[10px] text-[#8888aa]">{OFFICE_DEPT_LABELS[t.department]}</span>
+                        {t.assigned_role && <span className="text-[10px] text-[#f5b301] inline-flex items-center gap-0.5"><UserCircle size={10} /> {ROLE_LABELS[t.assigned_role]}</span>}
                         {t.assignee?.full_name && <span className="text-[10px] text-[#aaaacc]">· {t.assignee.full_name}</span>}
+                        {t.recurrence !== 'none' && <span className="text-[10px] text-[#8888aa] inline-flex items-center gap-0.5"><RefreshCw size={9} /> {t.recurrence}</span>}
                       </div>
                       {t.due_date && <div className={`text-[11px] mt-1 ${t.due_date <= today && t.status !== 'done' ? 'text-amber-400' : 'text-[#5a5a7a]'}`}>due {formatDate(t.due_date)}</div>}
                     </div>
@@ -224,9 +248,14 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
           <Input label="Title *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. File GST return for May" />
           <Textarea label="Details" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
-            <Select label="Category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} options={CAT_OPTS} />
-            <Select label="Assignee" value={form.assignee_id} onChange={e => setForm({ ...form, assignee_id: e.target.value })}
-              options={[{ value: '', label: 'Unassigned' }, ...team.map(m => ({ value: m.id, label: m.full_name }))]} />
+            <Select label="Department" value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} options={DEPT_OPTS} />
+            <Select label="Assign to role" value={form.assigned_role} onChange={e => setForm({ ...form, assigned_role: e.target.value })} options={ROLE_OPTS} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Specific person (optional)" value={form.assignee_id} onChange={e => setForm({ ...form, assignee_id: e.target.value })}
+              options={[{ value: '', label: 'Anyone in the role' }, ...team.map(m => ({ value: m.id, label: m.full_name }))]} />
+            <Select label="Recurs" value={form.recurrence} onChange={e => setForm({ ...form, recurrence: e.target.value })}
+              options={[{ value: 'none', label: 'One-off' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'annual', label: 'Annual' }]} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} options={STATUS_ORDER.map(s => ({ value: s, label: OFFICE_TASK_STATUS_LABELS[s] }))} />

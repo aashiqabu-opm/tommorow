@@ -851,18 +851,26 @@ export const SOCIAL_POST_STATUS_LABELS: Record<SocialPost['status'], string> = {
 }
 
 // ── OPM Office — Operations module (virtual office) ──
+export type OfficeDepartment = 'administration' | 'accounts' | 'production' | 'legal' | 'hr' | 'procurement' | 'it' | 'facilities' | 'marketing' | 'general'
 export interface OfficeTask {
   id: string
   title: string
   description?: string | null
   category: 'general' | 'finance' | 'legal' | 'hr' | 'procurement' | 'it' | 'facilities' | 'compliance'
+  department: OfficeDepartment
   assignee_id?: string | null
+  assigned_role?: Role | null
+  recurrence: 'none' | 'weekly' | 'monthly' | 'quarterly' | 'annual'
   status: 'todo' | 'in_progress' | 'blocked' | 'done'
   priority: 'low' | 'normal' | 'high' | 'urgent'
   due_date?: string | null
   created_by?: string | null
   created_at: string
   assignee?: { full_name?: string | null } | null
+}
+export const OFFICE_DEPT_LABELS: Record<OfficeDepartment, string> = {
+  administration: 'Administration', accounts: 'Accounts & Finance', production: 'Production', legal: 'Legal & Compliance',
+  hr: 'HR & Payroll', procurement: 'Procurement', it: 'IT', facilities: 'Facilities', marketing: 'Marketing', general: 'General',
 }
 export interface OfficeNotice {
   id: string

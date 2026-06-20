@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer'
+
 // Outbound alert channels. Each channel is a no-op until its env vars are set,
 // so the app works without any provider configured.
 
@@ -10,8 +12,17 @@ export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 // get throttled (HTTP 429).
 export const EMAIL_THROTTLE_MS = 600
 
-export function emailConfigured() {
+export function gmailConfigured() {
+  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)
+}
+
+export function resendConfigured() {
   return Boolean(process.env.RESEND_API_KEY)
+}
+
+// Email is configured if EITHER provider is available.
+export function emailConfigured() {
+  return gmailConfigured() || resendConfigured()
 }
 
 export function whatsappConfigured() {
@@ -22,8 +33,23 @@ export function whatsappConfigured() {
   )
 }
 
-export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-  if (!emailConfigured()) return false
+let gmailTransport: nodemailer.Transporter | null = null
+function gmailTransporter() {
+  if (gmailTransport) return gmailTransport
+  gmailTransport = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: (process.env.GMAIL_APP_PASSWORD ?? '').replace(/\s+/g, ''), // app passwords are shown with spaces
+    },
+  })
+  return gmailTransport
+}
+
+async function sendViaResend(to: string, subject: string, html: string): Promise<boolean> {
+  if (!resendConfigured()) return false
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -42,6 +68,20 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   } catch {
     return false
   }
+}
+
+// Send an HTML email. Gmail SMTP is the primary path (delivers to ANY recipient,
+// no domain verification needed); Resend is the fallback. Returns true on success.
+export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  if (gmailConfigured()) {
+    try {
+      await gmailTransporter().sendMail({ from: `OPM Office <${process.env.GMAIL_USER}>`, to, subject, html })
+      return true
+    } catch {
+      // fall through to Resend
+    }
+  }
+  return sendViaResend(to, subject, html)
 }
 
 // Strip spaces, dashes, parens etc. → E.164 (leading + then digits only),

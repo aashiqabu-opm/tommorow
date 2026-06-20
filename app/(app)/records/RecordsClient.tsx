@@ -101,6 +101,31 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
     setRefreshing(false)
   }
 
+  // Believe statement import
+  const [importOpen, setImportOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importRate, setImportRate] = useState('92')
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ period: string; lines: number; inrTotal: number; eurTotal: number; platforms: number; titlesAdded: number } | null>(null)
+
+  async function runImport() {
+    if (!importFile) { toast.error('Choose a Believe CSV'); return }
+    setImporting(true); setImportResult(null)
+    try {
+      const csv = await importFile.text()
+      const res = await fetch('/api/records/import-statement', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv, rate: parseFloat(importRate) || 92, filename: importFile.name }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || 'Import failed'); setImporting(false); return }
+      setImportResult(data)
+      toast.success(`Imported ${data.period}: ${data.lines} lines, ₹${data.inrTotal.toLocaleString()}`)
+      router.refresh()
+    } catch { toast.error('Import failed') }
+    setImporting(false)
+  }
+
   // Calculations
   const totalRoyalties = royalties.reduce((s, r) => s + Number(r.amount), 0)
   const receivedRoyalties = royalties.filter(r => r.payout_status === 'received').reduce((s, r) => s + Number(r.amount), 0)
@@ -500,10 +525,14 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
       {/* 4. Royalties Tab */}
       {tab === 'royalties' && (
         <div className="space-y-3">
-          <div className="flex justify-end">
-            <Button icon={Plus} size="sm" onClick={() => { setEditingRoyalty(null); setRoyaltyForm({ title_id: '', platform: 'youtube', period: '', amount: '', streams_count: '', payout_status: 'pending', notes: '' }); setRoyaltyModal(true) }}>
-              Log Royalty Earnings
-            </Button>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-[#8888aa]">Import Believe quarterly statements to auto-file royalties + catalogue. Each upload is stored and re-importable.</p>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" icon={Upload} onClick={() => setImportOpen(true)}>Import Believe statement</Button>
+              <Button icon={Plus} size="sm" onClick={() => { setEditingRoyalty(null); setRoyaltyForm({ title_id: '', platform: 'youtube', period: '', amount: '', streams_count: '', payout_status: 'pending', notes: '' }); setRoyaltyModal(true) }}>
+                Log Manually
+              </Button>
+            </div>
           </div>
           <div className="bg-[#1a1a24] border border-[#2a2a3a] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
@@ -556,6 +585,28 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
       )}
 
       {/* ── Modal Forms ── */}
+
+      {/* Believe statement import */}
+      <Modal open={importOpen} onClose={() => { setImportOpen(false); setImportResult(null) }} title="Import Believe statement">
+        <div className="space-y-3">
+          <p className="text-xs text-[#8888aa]">Upload a Believe quarterly royalty statement (CSV). It&apos;s filed for audit, the catalogue is updated (new ISRCs added), and the period&apos;s royalties are written — re-uploading the same quarter replaces it, no duplicates.</p>
+          <label className="flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30">
+            <Upload size={15} /> {importFile ? importFile.name : 'Choose Believe CSV'}
+            <input type="file" accept=".csv,text/csv" className="hidden" onChange={e => { setImportFile(e.target.files?.[0] ?? null); setImportResult(null) }} />
+          </label>
+          <div className="grid grid-cols-2 gap-3 items-end">
+            <Input label="EUR → INR rate" type="number" value={importRate} onChange={e => setImportRate(e.target.value)} />
+            <Button onClick={runImport} loading={importing} icon={FileText} className="h-9">Import & file</Button>
+          </div>
+          {importResult && (
+            <div className="text-xs bg-[#13131a] border border-emerald-500/25 rounded-lg p-3 space-y-1">
+              <div className="text-emerald-400 font-semibold flex items-center gap-1"><CheckCircle2 size={13} /> {importResult.period} imported</div>
+              <div className="text-[#c8c8da]">{importResult.lines.toLocaleString()} lines · {importResult.platforms} platforms · €{importResult.eurTotal.toLocaleString()} → ₹{importResult.inrTotal.toLocaleString()}</div>
+              <div className="text-[#8888aa]">{importResult.titlesAdded} new track(s) added to the catalogue.</div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Release modal */}
       <Modal open={relModal} onClose={() => setRelModal(false)} title={editingRel ? 'Edit Release' : 'New Release'} size="lg">

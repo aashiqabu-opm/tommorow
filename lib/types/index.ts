@@ -811,6 +811,41 @@ export interface PersonalTransaction { id: string; owner_id: string; source: 'ca
 
 export const RECURRING_CATEGORY_LABELS: Record<PersonalRecurring['category'], string> = { rent: 'Rent', utility: 'Utility', subscription: 'Subscription', emi: 'EMI', maintenance: 'Maintenance', insurance: 'Insurance', other: 'Other' }
 
+// ── Social module ──
+export interface SocialAccount {
+  id: string
+  platform: 'instagram' | 'facebook' | 'youtube' | 'x' | 'threads' | 'linkedin' | 'other'
+  name: string
+  handle?: string | null
+  url?: string | null
+  entity?: string | null
+  followers: number
+  status: 'active' | 'inactive'
+  notes?: string | null
+  created_at: string
+}
+export interface SocialPost {
+  id: string
+  title: string
+  caption?: string | null
+  account_id?: string | null
+  platform?: string | null
+  post_type: 'post' | 'reel' | 'story' | 'short' | 'video' | 'carousel' | 'tweet'
+  status: 'idea' | 'draft' | 'scheduled' | 'published' | 'archived'
+  scheduled_at?: string | null
+  published_at?: string | null
+  link?: string | null
+  project_id?: string | null
+  asset_path?: string | null
+  external_ref?: string | null
+  notes?: string | null
+  created_at: string
+  account?: { name?: string | null; platform?: string | null } | null
+}
+export const SOCIAL_POST_STATUS_LABELS: Record<SocialPost['status'], string> = {
+  idea: 'Idea', draft: 'Draft', scheduled: 'Scheduled', published: 'Published', archived: 'Archived',
+}
+
 // ── OPM Office — Operations module (virtual office) ──
 export interface OfficeTask {
   id: string

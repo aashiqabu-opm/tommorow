@@ -30,6 +30,7 @@ import {
   Sparkles,
   Lock,
   Music,
+  Share2,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -85,6 +86,9 @@ const NAV: NavSection[] = [
     // Market (other-films tracker) is web-search powered — hidden while that's off
     ...(WEB_SEARCH_ENABLED ? [{ href: '/market', label: 'Market', icon: Newspaper, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] }] : []),
     { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
+  ] },
+  { section: 'Communications', items: [
+    { href: '/social', label: 'Social Media', icon: Share2, roles: ['founder', 'general_manager', 'executive_producer', 'staff'] },
   ] },
   { section: 'Admin', items: [
     { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },

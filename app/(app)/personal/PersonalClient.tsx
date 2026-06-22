@@ -24,10 +24,11 @@ import { RecurringTab } from './RecurringTab'
 import { VehicleTab } from './VehicleTab'
 import { HealthTab } from './HealthTab'
 import { CardsTab } from './CardsTab'
+import { ExpensesTab } from './ExpensesTab'
 import { LoansTab } from './LoansTab'
 import type { PersonalRecurring, PersonalVehicle, PersonalHealthPolicy, PersonalCard, PersonalTransaction, PersonalLoan } from '@/lib/types'
 
-type Tab = 'ledger' | 'guarantees' | 'accounts' | 'loans' | 'recurring' | 'vehicles' | 'health' | 'cards' | 'tax' | 'film' | 'legal' | 'cases'
+type Tab = 'ledger' | 'guarantees' | 'accounts' | 'loans' | 'recurring' | 'vehicles' | 'health' | 'cards' | 'expenses' | 'tax' | 'film' | 'legal' | 'cases'
 
 interface Props {
   ownerId: string
@@ -130,6 +131,13 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
       summary: `${cards.length} card(s) · ${transactions.length} recent transactions`,
     },
     {
+      id: 'expenses' as const,
+      title: 'Expenses & Receipts',
+      description: 'AI-suggested categories on card spend, snap-a-receipt capture, and a Business/Personal review queue for Shimon.',
+      icon: Receipt,
+      summary: `${transactions.filter(t => t.needs_review).length} awaiting review`,
+    },
+    {
       id: 'tax' as const,
       title: 'Tax & Compliance',
       description: 'Manage personal tax profile, advance tax installments, capital gains, and ITR documents.',
@@ -229,6 +237,7 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
           {activeTab === 'vehicles' && <VehicleTab ownerId={ownerId} rows={vehicles} onChange={() => router.refresh()} />}
           {activeTab === 'health' && <HealthTab ownerId={ownerId} rows={policies} onChange={() => router.refresh()} />}
           {activeTab === 'cards' && <CardsTab ownerId={ownerId} cards={cards} txns={transactions} onChange={() => router.refresh()} />}
+          {activeTab === 'expenses' && <ExpensesTab ownerId={ownerId} rows={transactions} onChange={() => router.refresh()} />}
           {activeTab === 'tax' && <TaxTab ownerId={ownerId} profile={taxProfile} items={taxItems} deductions={deductions} gains={gains} onChange={() => router.refresh()} />}
           {activeTab === 'film' && <FilmTab ownerId={ownerId} stakes={stakes} royalties={royalties} onChange={() => router.refresh()} />}
           {activeTab === 'legal' && <LegalTab ownerId={ownerId} rows={documents} onChange={() => router.refresh()} />}

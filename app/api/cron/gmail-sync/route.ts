@@ -7,6 +7,7 @@ import { extractTransaction } from '@/lib/ai/extract-transaction'
 import { extractStatement } from '@/lib/ai/extract-statement'
 import { readPdf, renderFirstPagePng, pdfPasswordCandidates } from '@/lib/pdf'
 import { withCronErrorAlert } from '@/lib/monitoring'
+import { autoCategorizeExpense } from '@/lib/finance/categorizer'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -156,6 +157,7 @@ async function performSync(debug: boolean, daysOverride = 0) {
               direction: x.direction ?? 'debit', category: x.category ?? null, email_ref: messageId, notes: 'Imported from Gmail receipt',
               gstin: x.gstin ?? null, gst_amount: x.gst_amount ?? null, taxable_value: x.taxable_value ?? null,
               invoice_no: x.invoice_no ?? null, gst_eligible: gstEligible, snapshot_url: snapshotUrl,
+              ...autoCategorizeExpense(x.merchant ?? merchantName(from)),
             })
             receipts++
           }
@@ -172,6 +174,7 @@ async function performSync(debug: boolean, daysOverride = 0) {
               owner_id: ownerId, source: x.source ?? 'card', origin: 'alert', account_label: x.account_hint ?? null,
               txn_date: x.date ?? dateOf(env.envelope.date), merchant: x.merchant ?? null, amount: x.amount,
               direction: x.direction ?? 'debit', category: x.category ?? null, email_ref: messageId, notes: 'Imported from Gmail alert',
+              ...autoCategorizeExpense(x.merchant ?? ''),
             })
             alerts++
           }
@@ -202,7 +205,7 @@ async function insertStatementLines(admin: SupabaseClient, ownerId: string, line
   const seen = new Set((existing ?? []).map(e => fp(e.txn_date as string, Number(e.amount), e.merchant as string)))
   const rows = valid
     .filter(l => !seen.has(fp(l.date as string, l.amount as number, l.merchant)))
-    .map(l => ({ owner_id: ownerId, source, origin: 'statement', txn_date: l.date, amount: l.amount, direction: l.direction ?? 'debit', merchant: l.merchant, category: l.category, notes: 'Imported from statement' }))
+    .map(l => ({ owner_id: ownerId, source, origin: 'statement', txn_date: l.date, amount: l.amount, direction: l.direction ?? 'debit', merchant: l.merchant, category: l.category, notes: 'Imported from statement', ...autoCategorizeExpense(l.merchant ?? '') }))
   if (!rows.length) return 0
   let inserted = 0
   for (const r of rows) {

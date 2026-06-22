@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid, Shirt, Stamp, Hammer, UserPlus, Package, Users } from 'lucide-react'
+import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid, Shirt, Stamp, Hammer, UserPlus, Package, Users, Fuel } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -57,6 +57,7 @@ export function ScheduleModule({ projectId, canEdit }: { projectId: string; canE
         <Link href={`/projects/${projectId}/crew-onboarding`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><UserPlus size={13} /> Crew Onboarding</Link>
         <Link href={`/projects/${projectId}/store`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Package size={13} /> Store</Link>
         <Link href={`/projects/${projectId}/extras`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Users size={13} /> Extras</Link>
+        <Link href={`/projects/${projectId}/fuel`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Fuel size={13} /> Fuel</Link>
       </div>
       {view === 'breakdown' && <Breakdown {...{ projectId, canEdit, scenes, elems, locs, locName, onChange: load, supabase, toast }} />}
       {view === 'days' && <Days {...{ projectId, canEdit, days, scenes, locs, locName, onChange: load, supabase, toast }} />}

@@ -129,6 +129,9 @@ App reads (`process.env.*`): `ANTHROPIC_API_KEY`, `CRON_SECRET`, `GMAIL_USER`, `
 - **Chat (planning agent)** plans and directs; holds product context; decides priorities. **One active task at a time.**
 - **Claude Code (executor)** works on **`claude/<topic>` branches**, runs `tsc --noEmit` + `npm run build` clean, pushes the branch, **opens a PR**. **No direct-to-main commits. No CLI/browser deploys.**
 - **Aashiq merges** PRs → Vercel auto-deploys.
+- **Every PR must end its report with the direct merge URL in this exact format** (every PR in this repo, no exceptions):
+
+  🔀 Merge here: https://github.com/aashiqabu-opm/tommorow/pull/[NUMBER]
 - **Claude in Chrome** handles browser-only tasks (Meta/WhatsApp Business verification, Supabase dashboard UI, provider dashboards) — last resort, never for anything scriptable.
 - Keep financial values (amounts, account numbers) out of commit/PR text. Audit-log every change to payments/cash/documents/settings.
 - DB changes: write `supabase/migration-*.sql`, apply via `pg`/SQL editor, verify by querying — never assume.

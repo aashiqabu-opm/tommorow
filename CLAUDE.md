@@ -19,6 +19,9 @@ Internal operating platform for OPM Cinemas. Maintained with **Claude Code** (te
 - Repo: `github.com/aashiqabu-opm/tommorow` (gh authed as `aashiqabu-opm`; commit email `aashiqabu-opm@users.noreply.github.com`).
 - **Push to `main` → Vercel auto-deploys** (project "tommorow", team `opm-cinemas-projects`, Pro plan). Deploys are automatic — never use a browser to deploy.
 - **Workflow:** work on a `claude/<topic>` branch → `tsc --noEmit` + `npm run build` clean → push the branch explicitly (`git push origin HEAD:<branch>`) → open a PR → **the user merges** (Claude never merges to `main`). Keep financial values (amounts, account numbers) out of commit/PR text.
+- **Every PR must end its report with the direct merge URL in this exact format** (applies to every PR opened in this repo, no exceptions):
+
+  🔀 Merge here: https://github.com/aashiqabu-opm/tommorow/pull/[NUMBER]
 - ⚠️ The **same repo also serves the `tommorow.in` landing page** via GitHub Pages from `index.html` + `CNAME` at the repo root.
 
 ## Protected — never delete, commit, or casually edit

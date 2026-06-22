@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, FileCode, Table, BookOpen } from 'lucide-react'
+import { Download, FileCode, Table, BookOpen, Coins, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
@@ -137,6 +137,46 @@ export function TallyClient() {
     setBusy(false)
   }
 
+  // Supplementary REVIEW reports — NOT Tally vouchers. Advances and POs are
+  // money-in-the-field / commitments; the actual disbursement is a payment_request
+  // already exported above, so these never post to Tally (no double-counting).
+  function toCsv(headers: string[], rows: (string | number)[][]): string {
+    const esc = (v: string | number) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+    return [headers.join(','), ...rows.map(r => r.map(esc).join(','))].join('\n')
+  }
+
+  async function exportAdvancesCsv() {
+    setBusy(true)
+    try {
+      const supabase = createClient()
+      const { data } = await supabase.from('vendor_advances')
+        .select('amount, paid_date, expected_delivery_date, status, payment_request_id, notes, vendor:vendors(name)')
+        .order('paid_date', { ascending: true })
+      const rows = ((data ?? []) as Row[])
+        .filter(a => !a.paid_date || (a.paid_date >= from && a.paid_date <= to))
+        .map(a => [a.vendor?.name ?? '', Number(a.amount || 0), a.paid_date ?? '', a.expected_delivery_date ?? '', a.status ?? '', a.payment_request_id ? 'yes' : 'no', a.notes ?? ''])
+      if (!rows.length) { toast.error('No vendor advances in that range'); setBusy(false); return }
+      download(`vendor-advances-${from}_to_${to}.csv`, toCsv(['Vendor', 'Advance Amount', 'Paid Date', 'Expected Delivery', 'Status', 'Settled in books', 'Notes'], rows), 'text/csv')
+      toast.success(`Exported ${rows.length} advances (review report)`)
+    } catch { toast.error('Export failed') }
+    setBusy(false)
+  }
+
+  async function exportPurchaseOrdersCsv() {
+    setBusy(true)
+    try {
+      const supabase = createClient()
+      const { data } = await supabase.from('purchase_orders')
+        .select('po_number, department, description, order_amount, status, expected_delivery_date, vendor:vendors(name)')
+        .order('created_at', { ascending: true })
+      const rows = ((data ?? []) as Row[]).map(p => [p.po_number ?? '', p.vendor?.name ?? '', p.department ?? '', p.description ?? '', Number(p.order_amount || 0), p.status ?? '', p.expected_delivery_date ?? ''])
+      if (!rows.length) { toast.error('No purchase orders yet'); setBusy(false); return }
+      download(`purchase-orders.csv`, toCsv(['PO Number', 'Vendor', 'Department', 'Description', 'Order Amount', 'Status', 'Expected Delivery'], rows), 'text/csv')
+      toast.success(`Exported ${rows.length} purchase orders (review report)`)
+    } catch { toast.error('Export failed') }
+    setBusy(false)
+  }
+
   return (
     <div className="space-y-5">
       {/* STEP 1 — Chart of Accounts (one-time setup) */}
@@ -169,6 +209,16 @@ export function TallyClient() {
         </div>
         {counts && <div className="text-xs text-emerald-400 mt-2">Last export: {counts.payments} payments + {counts.income} receipts.</div>}
         <p className="text-[11px] text-[#5a5a7a] mt-2">In Tally: <span className="text-[#8888aa]">Gateway of Tally → Import → Vouchers</span>, pick this file. (Import the Chart of Accounts first.)</p>
+      </Step>
+
+      {/* STEP 4 — supplementary review reports (not vouchers) */}
+      <Step n={4} title="Supplementary reports for the CA (not vouchers)"
+        desc="Money-in-the-field and commitments the CA likes to see. These are review CSVs only — they do NOT import into Tally and never double-count the payments above (the actual disbursement is already a payment voucher).">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" icon={Coins} loading={busy} onClick={exportAdvancesCsv}>Outstanding Advances (CSV)</Button>
+          <Button variant="secondary" icon={ClipboardList} loading={busy} onClick={exportPurchaseOrdersCsv}>Purchase Orders (CSV)</Button>
+        </div>
+        <p className="text-[11px] text-[#5a5a7a] mt-2">Advances show a “Settled in books” flag — “yes” means it’s already linked to a payment and thus already in your Tally vouchers.</p>
       </Step>
 
       {/* Plain-language explainer */}

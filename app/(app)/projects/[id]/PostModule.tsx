@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Scissors, PackageCheck, FileSignature, Plus, Trash2, Pencil, Copy } from 'lucide-react'
+import Link from 'next/link'
+import { Scissors, PackageCheck, FileSignature, Plus, Trash2, Pencil, Copy, HardDrive } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -45,6 +46,7 @@ export function PostModule({ projectId, canEditPost, canEditDeliv }: { projectId
         {([['pipeline', 'Post Pipeline', Scissors], ['deliverables', 'Deliverables', PackageCheck], ['memos', 'Deal Memos', FileSignature]] as const).map(([id, label, Icon]) => (
           <button key={id} onClick={() => setView(id)} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg ${view === id ? 'bg-white/10 text-white' : 'text-[#8888aa] hover:text-white'}`}><Icon size={13} /> {label}</button>
         ))}
+        <Link href={`/projects/${projectId}/media`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><HardDrive size={13} /> Media Assets</Link>
       </div>
       {view === 'pipeline' && <Pipeline {...{ projectId, canEdit: canEditPost, rows: tasks, onChange: load, supabase, toast }} />}
       {view === 'deliverables' && <Deliverables {...{ projectId, canEdit: canEditDeliv, rows: delivs, onChange: load, supabase, toast }} />}

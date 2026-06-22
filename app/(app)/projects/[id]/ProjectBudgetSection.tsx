@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Trash2, Wand2, ListTree, Download } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Pencil, Trash2, Wand2, ListTree, Download, TrendingUp } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Modal } from '@/components/ui/Modal'
@@ -178,6 +179,9 @@ export function ProjectBudgetSection({ projectId, projectName, budgetLines, paym
           <p className="text-xs text-[#8888aa] mt-0.5">Head-wise budget vs actual — actuals roll up from coded payments</p>
         </div>
         <div className="flex gap-2">
+          <Link href={`/projects/${projectId}/pnl`}>
+            <Button variant="secondary" size="sm" icon={TrendingUp}>Full P&amp;L</Button>
+          </Link>
           {budgetLines.length > 0 && (
             <Button variant="secondary" size="sm" icon={Download} onClick={exportCSV}>Export CSV</Button>
           )}

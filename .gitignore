@@ -42,3 +42,9 @@ next-env.d.ts
 .firebase/
 .firebase
 firebase-debug.log
+
+# Internal shared-context doc (not for the repo)
+APP_CONTEXT.md
+
+# Secrets inventory (names only, but internal)
+SECRETS.md

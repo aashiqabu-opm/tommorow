@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Handshake, TrendingUp, Plus, Pencil, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { Handshake, TrendingUp, Plus, Pencil, Trash2, KeyRound } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -42,6 +43,7 @@ export function ReleaseModule({ projectId, canEdit }: { projectId: string; canEd
         {([['deals', 'Rights & Deals', Handshake], ['recovery', 'Recovery', TrendingUp]] as const).map(([id, label, Icon]) => (
           <button key={id} onClick={() => setView(id)} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg ${view === id ? 'bg-white/10 text-white' : 'text-[#8888aa] hover:text-white'}`}><Icon size={13} /> {label}</button>
         ))}
+        <Link href={`/projects/${projectId}/kdm`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><KeyRound size={13} /> KDM &amp; DCP</Link>
       </div>
       {view === 'deals' && <Deals {...{ projectId, canEdit, rows: deals, onChange: load, supabase, toast }} />}
       {view === 'recovery' && <Recovery deals={deals} funding={funding} />}

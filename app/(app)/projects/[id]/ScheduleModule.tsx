@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid, Shirt, Stamp, Hammer, UserPlus, Package, Users, Fuel, ClipboardCheck, Swords } from 'lucide-react'
+import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid, Shirt, Stamp, Hammer, UserPlus, Package, Users, Fuel, ClipboardCheck, Swords, Sparkles } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -60,6 +60,7 @@ export function ScheduleModule({ projectId, canEdit }: { projectId: string; canE
         <Link href={`/projects/${projectId}/fuel`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Fuel size={13} /> Fuel</Link>
         <Link href={`/projects/${projectId}/attendance`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><ClipboardCheck size={13} /> Attendance</Link>
         <Link href={`/projects/${projectId}/sequences`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Swords size={13} /> Special Sequences</Link>
+        <Link href={`/projects/${projectId}/vfx`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Sparkles size={13} /> VFX Shots</Link>
       </div>
       {view === 'breakdown' && <Breakdown {...{ projectId, canEdit, scenes, elems, locs, locName, onChange: load, supabase, toast }} />}
       {view === 'days' && <Days {...{ projectId, canEdit, days, scenes, locs, locName, onChange: load, supabase, toast }} />}

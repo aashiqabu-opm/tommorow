@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid, Shirt, Stamp } from 'lucide-react'
+import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid, Shirt, Stamp, Hammer } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -53,6 +53,7 @@ export function ScheduleModule({ projectId, canEdit }: { projectId: string; canE
         ))}
         <Link href={`/projects/${projectId}/costume`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Shirt size={13} /> Costume Readiness</Link>
         <Link href={`/projects/${projectId}/permits`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Stamp size={13} /> Permits</Link>
+        <Link href={`/projects/${projectId}/art-sets`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Hammer size={13} /> Art Sets</Link>
       </div>
       {view === 'breakdown' && <Breakdown {...{ projectId, canEdit, scenes, elems, locs, locName, onChange: load, supabase, toast }} />}
       {view === 'days' && <Days {...{ projectId, canEdit, days, scenes, locs, locName, onChange: load, supabase, toast }} />}

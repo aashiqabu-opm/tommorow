@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid } from 'lucide-react'
+import Link from 'next/link'
+import { Clapperboard, MapPin, CalendarDays, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, LayoutGrid, Shirt } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -50,6 +51,7 @@ export function ScheduleModule({ projectId, canEdit }: { projectId: string; canE
         {([['breakdown', 'Breakdown', Clapperboard], ['days', 'Shoot Days', CalendarDays], ['dood', 'Day-Out-of-Days', LayoutGrid], ['locations', 'Locations', MapPin]] as const).map(([id, label, Icon]) => (
           <button key={id} onClick={() => setView(id)} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg ${view === id ? 'bg-white/10 text-white' : 'text-[#8888aa] hover:text-white'}`}><Icon size={13} /> {label}</button>
         ))}
+        <Link href={`/projects/${projectId}/costume`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><Shirt size={13} /> Costume Readiness</Link>
       </div>
       {view === 'breakdown' && <Breakdown {...{ projectId, canEdit, scenes, elems, locs, locName, onChange: load, supabase, toast }} />}
       {view === 'days' && <Days {...{ projectId, canEdit, days, scenes, locs, locName, onChange: load, supabase, toast }} />}

@@ -1,8 +1,8 @@
-# OPM Office — Full Technical & Business Audit
+# OPM Flash — Full Technical & Business Audit
 *As of 2026-06-22 · for CTO / architect / DevOps / AI / security / PM / investor review*
 *Grounded in the live system: 122 tables, 331 RLS policies (100% table coverage), 266 indexes, 46 app pages, 36 API routes, 11 crons.*
 
-> **Frame-setting caveat.** OPM Office is an **internal, effectively single-tenant operations platform for one production house (OPM Cinemas)** — not a consumer/multi-tenant SaaS. Real concurrent users ≈ 10–30 staff. Questions about 100k–1M users are answered honestly but **that is not the design point**; treating it as a SaaS would be the biggest misframing.
+> **Frame-setting caveat.** OPM Flash is an **internal, effectively single-tenant operations platform for one production house (OPM Cinemas)** — not a consumer/multi-tenant SaaS. Real concurrent users ≈ 10–30 staff. Questions about 100k–1M users are answered honestly but **that is not the design point**; treating it as a SaaS would be the biggest misframing.
 
 ## 1. Executive Summary
 - **What it is:** A Next.js + Supabase web app running the back office of a film production house — finance (payments, cash, liabilities, budgets, vouchers, Tally export, GST/TDS), per-film production management (development → pre-prod → shoot → post → release → revenue), a music label module (OPM Records), a founder-only personal-finance vault, vehicles, social, HR, and a full production cost engine (Phases 1–5).

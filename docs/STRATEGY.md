@@ -1,7 +1,7 @@
-# OPM Office — Strategic CTO Review & 3-Year Architecture Roadmap
+# OPM Flash — Strategic CTO Review & 3-Year Architecture Roadmap
 *Six entities on one operating system · 2026-06-22 · grounded in the live system (122 tables, RLS-everywhere, role-scoped single-org today; pgvector 0.8 available but not enabled)*
 
-> **The decision everything hinges on:** OPM Office is today a **single-organization, role-scoped** app. Running six entities (Cinemas, Records, Tomorrow Film School, Kochi Music Foundation, future productions, investor relations) requires moving to **Organization → Company → Project before anything else is worth building.** Skipping it means bolting six businesses onto a structure that can't cleanly separate or share their data.
+> **The decision everything hinges on:** OPM Flash is today a **single-organization, role-scoped** app. Running six entities (Cinemas, Records, Tomorrow Film School, Kochi Music Foundation, future productions, investor relations) requires moving to **Organization → Company → Project before anything else is worth building.** Skipping it means bolting six businesses onto a structure that can't cleanly separate or share their data.
 
 ## A. Multi-Company Architecture (do first)
 **Verdict: do NOT stay single-tenant. Move to `Organization → Company → Project`** — multi-company within one trusted org (not hostile-tenant SaaS isolation).

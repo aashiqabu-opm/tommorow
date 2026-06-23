@@ -1,4 +1,4 @@
-# Architecture Decision Record — OPM Office
+# Architecture Decision Record — OPM Flash
 *Status date: 2026-06-22 · Horizon: 24 months · Grounded in the live system (Next 15.3 / React 19 / TS 5.8 / Tailwind 4; Supabase Postgres, 122 tables, RLS on every table, 331 policies; Vercel; Anthropic; pgvector 0.8 available-but-not-enabled)*
 
 Each ADR: Decision · Reasoning · Alternatives · Risks · Migration path if reversed.
@@ -75,7 +75,7 @@ Each ADR: Decision · Reasoning · Alternatives · Risks · Migration path if re
 
 ## ADR-011 — ERP expansion: extend the modular monolith; integrate Tally, don't replace it
 **Decision:** Grow ERP-like modules in-app (payroll, vendor ledgers, GST/TDS, vouchers, cost engine); keep **Tally as statutory system of record** via CSV/XML export.
-**Reasoning:** Indian statutory accounting + CA workflows live in Tally; OPM Office's edge is *operational* finance Tally can't do; replacing Tally = compliance risk for no gain.
+**Reasoning:** Indian statutory accounting + CA workflows live in Tally; OPM Flash's edge is *operational* finance Tally can't do; replacing Tally = compliance risk for no gain.
 **Alternatives:** full in-app statutory accounting (huge scope, liability); third-party ERP (wrong fit).
 **Risks:** export-format drift; app↔Tally reconciliation gaps.
 **Reverse:** accounting tables exist; deepening is incremental but not lightly undertaken.

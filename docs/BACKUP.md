@@ -1,4 +1,4 @@
-# OPM Office — Backup & Disaster Recovery Runbook
+# OPM Flash — Backup & Disaster Recovery Runbook
 
 **Scope:** the Supabase Postgres project that holds the entire company's financial,
 production, and legal records (project ref `skarxqynijdnnwowsopg`), plus the three

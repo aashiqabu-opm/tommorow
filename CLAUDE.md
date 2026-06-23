@@ -6,8 +6,9 @@ Internal operating platform for OPM Cinemas. Maintained with **Claude Code** (te
 - **Framework:** Next.js 15 (App Router, TypeScript)
 - **Styling:** Tailwind CSS v4 (dark-mode-first)
 - **Backend:** Supabase (Auth, PostgreSQL, Storage)
-- **Dev:** `npm run dev` · **Lint:** `npm run lint` · **Build:** `npm run build`
+- **Dev:** `npm run dev` · **Lint:** `npm run lint` · **Build:** `npm run build` · **Test:** `npm test` (vitest)
 - Build gotcha: if `next build` fails with `Cannot find module for page: /<x>`, it's a stale cache — `rm -rf .next` and rebuild.
+- **Tests:** `npm test` runs the vitest suite under `test/` — pure/security-critical logic only (EP/GM brief redaction, What Matters builders). Keep the redaction tests green when touching `lib/ai/brief.ts` or `lib/ai/oversight.ts`.
 
 ## Project Structure
 - `app/` — routes; protected app under `app/(app)/` (dashboard, payments, cash, liabilities, documents, projects, personal, reports, users, settings, …); APIs under `app/api/` (incl. `cron/`, `alerts/`, `notify/`, `monitoring/`, `whatsapp/`).

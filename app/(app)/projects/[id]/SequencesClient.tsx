@@ -1,7 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Swords, PawPrint, Plus, Pencil, Trash2, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react'
+import { Swords, PawPrint, Music, Wrench, Plus, Pencil, Trash2, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react'
+import { MoneyInput } from '@/components/ui/MoneyInput'
+import { formatCurrency } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
@@ -21,6 +23,16 @@ export interface Animal {
   id: string; name: string; scenes: string | null; shoot_date: string | null; animals: string | null; handler: string | null; description: string | null
   awbi_permission: boolean; vet_standby: boolean; welfare_officer_required: boolean; welfare_officer_present: boolean
   status: string; notes: string | null
+}
+
+export interface Song {
+  id: string; name: string; choreographer: string | null; dancers_count: number | null
+  rehearsal_days: number | null; shoot_days: number | null; location: string | null
+  shoot_date: string | null; status: string; notes: string | null
+}
+export interface Equipment {
+  id: string; name: string; vendor: string | null; days_required: number; daily_rate: number
+  permit_required: string | null; operator_included: boolean; shoot_dates: string | null; status: string; notes: string | null
 }
 
 // Gate evaluators — derived, never stored
@@ -60,10 +72,10 @@ function GateBanner({ cleared, checks }: { cleared: boolean; checks: { label: st
   )
 }
 
-interface Props { projectId: string; stunts: Stunt[]; animals: Animal[]; userId: string; canManage: boolean; canDelete: boolean }
+interface Props { projectId: string; stunts: Stunt[]; animals: Animal[]; songs: Song[]; equipment: Equipment[]; userId: string; canManage: boolean; canDelete: boolean }
 
-export function SequencesClient({ projectId, stunts, animals, userId, canManage, canDelete }: Props) {
-  const [tab, setTab] = useState<'stunts' | 'animals'>('stunts')
+export function SequencesClient({ projectId, stunts, animals, songs, equipment, userId, canManage, canDelete }: Props) {
+  const [tab, setTab] = useState<'stunts' | 'animals' | 'songs' | 'equipment'>('stunts')
   const blocked = useMemo(() =>
     stunts.filter(s => s.status !== 'cancelled' && !stuntGate(s).cleared).length +
     animals.filter(a => a.status !== 'cancelled' && !animalGate(a).cleared).length, [stunts, animals])
@@ -76,13 +88,14 @@ export function SequencesClient({ projectId, stunts, animals, userId, canManage,
         </div>
       )}
       <div className="flex gap-1 mb-4">
-        {([['stunts', 'Action / Stunts', Swords], ['animals', 'Animals', PawPrint]] as const).map(([id, label, Icon]) => (
+        {([['stunts', 'Action / Stunts', Swords], ['animals', 'Animals', PawPrint], ['songs', 'Songs / Dance', Music], ['equipment', 'Special Equipment', Wrench]] as const).map(([id, label, Icon]) => (
           <button key={id} onClick={() => setTab(id)} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg ${tab === id ? 'bg-white/10 text-white' : 'text-[#8888aa] hover:text-white'}`}><Icon size={13} /> {label}</button>
         ))}
       </div>
-      {tab === 'stunts'
-        ? <Stunts {...{ projectId, rows: stunts, userId, canManage, canDelete }} />
-        : <Animals {...{ projectId, rows: animals, userId, canManage, canDelete }} />}
+      {tab === 'stunts' && <Stunts {...{ projectId, rows: stunts, userId, canManage, canDelete }} />}
+      {tab === 'animals' && <Animals {...{ projectId, rows: animals, userId, canManage, canDelete }} />}
+      {tab === 'songs' && <Songs {...{ projectId, rows: songs, userId, canManage, canDelete }} />}
+      {tab === 'equipment' && <Equipments {...{ projectId, rows: equipment, userId, canManage, canDelete }} />}
     </div>
   )
 }
@@ -288,6 +301,188 @@ function Animals({ projectId, rows, userId, canManage, canDelete }: { projectId:
             {form.welfare_officer_required && <label className="flex items-center gap-2 text-sm text-[#c8c8da] pl-5"><input type="checkbox" checked={form.welfare_officer_present} onChange={e => setForm({ ...form, welfare_officer_present: e.target.checked })} /> Welfare officer present</label>}
           </div>
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} options={['planned', 'completed', 'cancelled'].map(v => ({ value: v, label: v }))} />
+          <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" loading={saving}>{editing ? 'Update' : 'Add'}</Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  )
+}
+
+const SONG_EMPTY = { name: '', choreographer: '', dancers_count: '', rehearsal_days: '', shoot_days: '', location: '', shoot_date: '', status: 'planned', notes: '' }
+
+function Songs({ projectId, rows, userId, canManage, canDelete }: { projectId: string; rows: Song[]; userId: string; canManage: boolean; canDelete: boolean }) {
+  const router = useRouter(); const toast = useToast()
+  const [open, setOpen] = useState(false); const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState<Song | null>(null); const [form, setForm] = useState(SONG_EMPTY)
+
+  function openNew() { setEditing(null); setForm(SONG_EMPTY); setOpen(true) }
+  function openEdit(r: Song) { setEditing(r); setForm({ name: r.name, choreographer: r.choreographer ?? '', dancers_count: r.dancers_count?.toString() ?? '', rehearsal_days: r.rehearsal_days?.toString() ?? '', shoot_days: r.shoot_days?.toString() ?? '', location: r.location ?? '', shoot_date: r.shoot_date ?? '', status: r.status, notes: r.notes ?? '' }); setOpen(true) }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.name.trim()) return toast.error('Name is required')
+    setSaving(true)
+    const supabase = createClient()
+    const payload = { project_id: projectId, name: form.name.trim(), choreographer: form.choreographer || null, dancers_count: form.dancers_count ? parseInt(form.dancers_count) : null, rehearsal_days: form.rehearsal_days ? parseInt(form.rehearsal_days) : null, shoot_days: form.shoot_days ? parseInt(form.shoot_days) : null, location: form.location || null, shoot_date: form.shoot_date || null, status: form.status, notes: form.notes || null }
+    if (editing) {
+      const { error } = await supabase.from('song_sequences').update(payload).eq('id', editing.id)
+      if (error) { toast.error("Couldn't update"); setSaving(false); return }
+      await logAction('update', 'song_sequences', editing.id, undefined, payload)
+    } else {
+      const { data, error } = await supabase.from('song_sequences').insert({ ...payload, created_by: userId }).select().single()
+      if (error) { toast.error("Couldn't save"); setSaving(false); return }
+      await logAction('create', 'song_sequences', data.id, undefined, payload)
+    }
+    toast.success(editing ? 'Updated' : 'Song added'); setSaving(false); setOpen(false); router.refresh()
+  }
+  async function remove(r: Song) {
+    if (!window.confirm(`Delete "${r.name}"?`)) return
+    const supabase = createClient()
+    const { error } = await supabase.from('song_sequences').delete().eq('id', r.id)
+    if (error) { toast.error("Couldn't delete"); return }
+    await logAction('delete', 'song_sequences', r.id); toast.success('Deleted'); router.refresh()
+  }
+
+  return (
+    <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
+      <div className="px-5 py-3 border-b border-[#2a2a3a] flex items-center justify-end">{canManage && <Button size="sm" icon={Plus} onClick={openNew}>Add song</Button>}</div>
+      {rows.length === 0 ? (
+        <div className="py-10 text-center text-sm text-[#8888aa]">No song/dance sequences yet.</div>
+      ) : (
+        <div className="divide-y divide-[#2a2a3a]">
+          {rows.map(r => (
+            <div key={r.id} className="px-5 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-white truncate">{r.name}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-[#8888aa]">{r.status}</span>
+                </div>
+                <div className="text-[11px] text-[#8888aa] mt-0.5">{[r.choreographer, r.dancers_count ? `${r.dancers_count} dancers` : null, r.rehearsal_days ? `${r.rehearsal_days}d rehearsal` : null, r.location, r.shoot_date ? formatDate(r.shoot_date) : null].filter(Boolean).join(' · ') || '—'}</div>
+              </div>
+              {canManage && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => openEdit(r)} className="p-1.5 text-[#8888aa] hover:text-white"><Pencil size={14} /></button>
+                  {canDelete && <button onClick={() => remove(r)} className="p-1.5 text-red-400/70 hover:text-red-400"><Trash2 size={14} /></button>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Song' : 'Add Song / Dance'} size="sm">
+        <form onSubmit={save} className="space-y-4">
+          <Input label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Folk dance number" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Choreographer" value={form.choreographer} onChange={e => setForm({ ...form, choreographer: e.target.value })} />
+            <Input label="Dancers" type="number" value={form.dancers_count} onChange={e => setForm({ ...form, dancers_count: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Rehearsal days" type="number" value={form.rehearsal_days} onChange={e => setForm({ ...form, rehearsal_days: e.target.value })} />
+            <Input label="Shoot days" type="number" value={form.shoot_days} onChange={e => setForm({ ...form, shoot_days: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Location" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
+            <Input label="Shoot date" type="date" value={form.shoot_date} onChange={e => setForm({ ...form, shoot_date: e.target.value })} />
+          </div>
+          <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} options={['planned', 'rehearsing', 'shot', 'completed', 'cancelled'].map(v => ({ value: v, label: v }))} />
+          <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" loading={saving}>{editing ? 'Update' : 'Add'}</Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  )
+}
+
+const EQUIP_EMPTY = { name: '', vendor: '', days_required: '', daily_rate: '', permit_required: '', operator_included: false, shoot_dates: '', status: 'planned', notes: '' }
+
+function Equipments({ projectId, rows, userId, canManage, canDelete }: { projectId: string; rows: Equipment[]; userId: string; canManage: boolean; canDelete: boolean }) {
+  const router = useRouter(); const toast = useToast()
+  const [open, setOpen] = useState(false); const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState<Equipment | null>(null); const [form, setForm] = useState(EQUIP_EMPTY)
+  const est = (d: string | number, r: string | number) => (Number(d) || 0) * (Number(r) || 0)
+  const total = rows.reduce((s, r) => s + est(r.days_required, r.daily_rate), 0)
+
+  function openNew() { setEditing(null); setForm(EQUIP_EMPTY); setOpen(true) }
+  function openEdit(r: Equipment) { setEditing(r); setForm({ name: r.name, vendor: r.vendor ?? '', days_required: r.days_required?.toString() ?? '', daily_rate: r.daily_rate?.toString() ?? '', permit_required: r.permit_required ?? '', operator_included: r.operator_included, shoot_dates: r.shoot_dates ?? '', status: r.status, notes: r.notes ?? '' }); setOpen(true) }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.name.trim()) return toast.error('Name is required')
+    setSaving(true)
+    const supabase = createClient()
+    const payload = { project_id: projectId, name: form.name.trim(), vendor: form.vendor || null, days_required: form.days_required ? parseInt(form.days_required) : 0, daily_rate: form.daily_rate ? Number(form.daily_rate) : 0, permit_required: form.permit_required || null, operator_included: form.operator_included, shoot_dates: form.shoot_dates || null, status: form.status, notes: form.notes || null }
+    if (editing) {
+      const { error } = await supabase.from('special_equipment').update(payload).eq('id', editing.id)
+      if (error) { toast.error("Couldn't update"); setSaving(false); return }
+      await logAction('update', 'special_equipment', editing.id, undefined, payload)
+    } else {
+      const { data, error } = await supabase.from('special_equipment').insert({ ...payload, created_by: userId }).select().single()
+      if (error) { toast.error("Couldn't save"); setSaving(false); return }
+      await logAction('create', 'special_equipment', data.id, undefined, payload)
+    }
+    toast.success(editing ? 'Updated' : 'Equipment added'); setSaving(false); setOpen(false); router.refresh()
+  }
+  async function remove(r: Equipment) {
+    if (!window.confirm(`Delete "${r.name}"?`)) return
+    const supabase = createClient()
+    const { error } = await supabase.from('special_equipment').delete().eq('id', r.id)
+    if (error) { toast.error("Couldn't delete"); return }
+    await logAction('delete', 'special_equipment', r.id); toast.success('Deleted'); router.refresh()
+  }
+
+  return (
+    <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl overflow-hidden">
+      <div className="px-5 py-3 border-b border-[#2a2a3a] flex items-center justify-between">
+        <span className="text-[11px] text-[#8888aa]">Est. total (planning): <span className="text-white">{formatCurrency(total)}</span></span>
+        {canManage && <Button size="sm" icon={Plus} onClick={openNew}>Add equipment</Button>}
+      </div>
+      {rows.length === 0 ? (
+        <div className="py-10 text-center text-sm text-[#8888aa]">No special equipment yet.</div>
+      ) : (
+        <div className="divide-y divide-[#2a2a3a]">
+          {rows.map(r => (
+            <div key={r.id} className="px-5 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-white truncate">{r.name}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-[#8888aa]">{r.status}</span>
+                  {r.permit_required && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">{r.permit_required}</span>}
+                </div>
+                <div className="text-[11px] text-[#8888aa] mt-0.5">{[r.vendor, `${Number(r.days_required)}d × ₹${Number(r.daily_rate)}`, r.operator_included ? 'operator incl.' : null].filter(Boolean).join(' · ')}</div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-sm font-semibold text-white tabular-nums">{formatCurrency(est(r.days_required, r.daily_rate))}</span>
+                {canManage && <button onClick={() => openEdit(r)} className="p-1.5 text-[#8888aa] hover:text-white"><Pencil size={14} /></button>}
+                {canDelete && <button onClick={() => remove(r)} className="p-1.5 text-red-400/70 hover:text-red-400"><Trash2 size={14} /></button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Equipment' : 'Add Special Equipment'} size="sm">
+        <form onSubmit={save} className="space-y-4">
+          <Input label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Technocrane / Drone" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Vendor" value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })} />
+            <Input label="Permit required" value={form.permit_required} onChange={e => setForm({ ...form, permit_required: e.target.value })} placeholder="DGCA drone" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Days required" type="number" value={form.days_required} onChange={e => setForm({ ...form, days_required: e.target.value })} />
+            <MoneyInput label="Daily rate (₹)" value={form.daily_rate} onChange={v => setForm({ ...form, daily_rate: v })} />
+          </div>
+          <div className="text-[11px] text-[#8888aa]">Estimated: <span className="text-white">{formatCurrency(est(form.days_required, form.daily_rate))}</span></div>
+          <Input label="Shoot dates" value={form.shoot_dates} onChange={e => setForm({ ...form, shoot_dates: e.target.value })} placeholder="Days 34–37" />
+          <div className="grid grid-cols-2 gap-3 items-center">
+            <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} options={['planned', 'booked', 'on_set', 'returned', 'cancelled'].map(v => ({ value: v, label: v.replace('_', ' ') }))} />
+            <label className="flex items-center gap-2 text-sm text-[#c8c8da] pt-5"><input type="checkbox" checked={form.operator_included} onChange={e => setForm({ ...form, operator_included: e.target.checked })} /> Operator included</label>
+          </div>
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>

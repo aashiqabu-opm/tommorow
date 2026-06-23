@@ -33,6 +33,7 @@ import {
   Share2,
   Briefcase,
   Inbox,
+  Brain,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -53,7 +54,8 @@ type NavSection = { section: string | null; items: NavItem[] }
 const NAV: NavSection[] = [
   // Production-house order: films + the AI assistant first, finance below.
   { section: null, items: [
-    // Founder-only private workspace, pinned above everything.
+    // Founder-only executive intelligence + private workspace, pinned above everything.
+    { href: '/brief', label: 'Brief', icon: Brain, roles: ['founder'] },
     { href: '/personal', label: 'Personal', icon: Lock, roles: ['founder'] },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
     { href: '/office', label: 'OPM Office', icon: Building2, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },

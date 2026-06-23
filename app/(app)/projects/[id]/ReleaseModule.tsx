@@ -44,6 +44,7 @@ export function ReleaseModule({ projectId, canEdit }: { projectId: string; canEd
           <button key={id} onClick={() => setView(id)} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg ${view === id ? 'bg-white/10 text-white' : 'text-[#8888aa] hover:text-white'}`}><Icon size={13} /> {label}</button>
         ))}
         <Link href={`/projects/${projectId}/kdm`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><KeyRound size={13} /> KDM &amp; DCP</Link>
+        <Link href={`/projects/${projectId}/receivables`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-[#8888aa] hover:text-white"><TrendingUp size={13} /> Receivables</Link>
       </div>
       {view === 'deals' && <Deals {...{ projectId, canEdit, rows: deals, onChange: load, supabase, toast }} />}
       {view === 'recovery' && <Recovery deals={deals} funding={funding} />}

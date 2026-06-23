@@ -54,8 +54,8 @@ type NavSection = { section: string | null; items: NavItem[] }
 const NAV: NavSection[] = [
   // Production-house order: films + the AI assistant first, finance below.
   { section: null, items: [
-    // Founder-only executive intelligence + private workspace, pinned above everything.
-    { href: '/brief', label: 'Brief', icon: Brain, roles: ['founder'] },
+    // Executive intelligence (role-scoped) + founder-private workspace, pinned above everything.
+    { href: '/brief', label: 'Brief', icon: Brain, roles: ['founder', 'accountant', 'executive_producer', 'general_manager'] },
     { href: '/personal', label: 'Personal', icon: Lock, roles: ['founder'] },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
     { href: '/office', label: 'OPM Office', icon: Building2, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },

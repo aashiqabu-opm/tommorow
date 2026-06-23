@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
+import { withCors, preflight } from '@/lib/cors'
 
 export const dynamic = 'force-dynamic'
+const METHODS = 'POST, OPTIONS'
+export function OPTIONS(req: Request) { return preflight(req, METHODS) }
 
 // Public, unauthenticated inquiry intake (line-production / contact / casting / general).
 // Inserts via the service-role client — the public never writes to the DB directly.
@@ -10,7 +13,9 @@ export const dynamic = 'force-dynamic'
 const KINDS = ['line_production', 'contact', 'casting', 'general']
 const s = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max)
 
-export async function POST(req: Request) {
+export async function POST(req: Request) { return withCors(req, await handle(req), METHODS) }
+
+async function handle(req: Request) {
   let body: Record<string, unknown>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Bad request' }, { status: 400 }) }
 

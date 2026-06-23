@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
+import { withCors, preflight } from '@/lib/cors'
 
 export const dynamic = 'force-dynamic'
+const METHODS = 'POST, OPTIONS'
+export function OPTIONS(req: Request) { return preflight(req, METHODS) }
 
 // Public job application → inserts into job_applications (status 'new').
 // Service-role only; honeypot + validation; the position must exist and be OPEN.
 const s = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max)
 
-export async function POST(req: Request) {
+export async function POST(req: Request) { return withCors(req, await handle(req), METHODS) }
+
+async function handle(req: Request) {
   let body: Record<string, unknown>
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Bad request' }, { status: 400 }) }
   if (s(body.website, 1)) return NextResponse.json({ ok: true }) // honeypot

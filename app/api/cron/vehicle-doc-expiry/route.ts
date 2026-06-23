@@ -78,7 +78,7 @@ async function run(request: Request) {
       `<p style="margin:0 0 12px;">${expiredNow} expired and ${soonNow} expiring within 30 days. Renew and re-upload in the Vehicles → Document Vault.</p>` +
       `<ul style="margin:0;padding-left:18px;line-height:1.6;">${items}</ul>`)
     for (const t of team ?? []) {
-      if (t.email_alerts && t.email) { await sendEmail(t.email, `OPM Office — Vehicle documents need attention (${dateStr})`, html); emailed++ }
+      if (t.email_alerts && t.email) { await sendEmail(t.email, `OPM Flash — Vehicle documents need attention (${dateStr})`, html); emailed++ }
     }
   }
 

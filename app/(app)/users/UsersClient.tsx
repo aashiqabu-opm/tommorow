@@ -343,7 +343,7 @@ export function UsersClient({ profiles, currentUserId, crew, viewerRole }: Props
                 <span className="font-semibold text-white">{SANDBOX_NUMBER}</span> from this WhatsApp number before alerts can reach them.
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard?.writeText(`To get OPM Office alerts on WhatsApp, send this message to ${SANDBOX_NUMBER}:\n\n${SANDBOX_JOIN_CODE}`)}
+                  onClick={() => navigator.clipboard?.writeText(`To get OPM Flash alerts on WhatsApp, send this message to ${SANDBOX_NUMBER}:\n\n${SANDBOX_JOIN_CODE}`)}
                   className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 hover:text-emerald-300"
                 >
                   <Copy size={11} /> Copy instructions to send them

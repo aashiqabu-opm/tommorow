@@ -62,9 +62,9 @@ export async function POST(request: Request) {
 
   // Deliver credentials over Gmail SMTP; fall back to Supabase invite email.
   let emailed = false
-  const subject = 'Your OPM Office login'
+  const subject = 'Your OPM Flash login'
   const html = emailTemplate(subject, `<p>Hi ${full_name},</p>
-    <p>An OPM Office account has been created for you. Here's your login:</p>
+    <p>An OPM Flash account has been created for you. Here's your login:</p>
     <p style="background:#f4f4f5;border:1px solid #e4e4e7;border-radius:8px;padding:12px 16px;">
       <b>Email:</b> ${email}<br/><b>Temporary password:</b> <code style="font-size:15px;">${pwd}</code>
     </p>

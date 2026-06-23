@@ -1,6 +1,6 @@
 {
-  "name": "OPM Office",
-  "short_name": "OPM Office",
+  "name": "OPM Flash",
+  "short_name": "OPM Flash",
   "description": "OPM Control Center",
   "start_url": "/dashboard",
   "display": "standalone",

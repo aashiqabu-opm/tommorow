@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'OPM Office',
+  title: 'OPM Flash',
   description: 'Internal office operating system for OPM Cinemas',
   manifest: '/manifest.json',
   icons: {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'OPM Office',
+    title: 'OPM Flash',
   },
 }
 

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 const MGMT = ['founder', 'accountant', 'general_manager', 'executive_producer']
 
-// HR — OPM Office internal hiring. Core team (management roles) only.
+// HR — OPM Flash internal hiring. Core team (management roles) only.
 export default async function HrPage() {
   const profile = await requireProfile()
   if (!MGMT.includes(profile.role)) redirect('/dashboard')

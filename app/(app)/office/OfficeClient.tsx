@@ -130,7 +130,7 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
   return (
     <div className="space-y-6">
       <PageHeader
-        title="OPM Office"
+        title="Office"
         subtitle="Internal operations — the company's virtual office for the core team"
         action={canManage ? <Button icon={Plus} onClick={openNew}>New Task</Button> : undefined}
       />

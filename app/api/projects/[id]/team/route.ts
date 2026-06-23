@@ -85,11 +85,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const projName = (await supabase.from('projects').select('name').eq('id', id).single()).data?.name ?? 'the project'
 
       // Compose the message. New users get credentials; existing users get a heads-up.
-      const subject = alreadyExists ? `You've been added to ${projName} — OPM Office`
-        : `Your OPM Office login for ${projName}`
+      const subject = alreadyExists ? `You've been added to ${projName} — OPM Flash`
+        : `Your OPM Flash login for ${projName}`
       const lines = alreadyExists
-        ? `<p>Hi ${name},</p><p>You've been added to <b>${projName}</b> on OPM Office. Sign in with your existing OPM Office password.</p>`
-        : `<p>Hi ${name},</p><p>You've been added to <b>${projName}</b> on OPM Office. Here's your login:</p>
+        ? `<p>Hi ${name},</p><p>You've been added to <b>${projName}</b> on OPM Flash. Sign in with your existing OPM Flash password.</p>`
+        : `<p>Hi ${name},</p><p>You've been added to <b>${projName}</b> on OPM Flash. Here's your login:</p>
            <p style="background:#f4f4f5;border:1px solid #e4e4e7;border-radius:8px;padding:12px 16px;">
              <b>Email:</b> ${email}<br/><b>Temporary password:</b> <code style="font-size:15px;">${pwd}</code>
            </p>
@@ -100,8 +100,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       if (phone && whatsappConfigured()) {
         const waText = alreadyExists
-          ? `OPM Office: You've been added to ${projName}. Sign in at ${appUrl}/login with your existing password.`
-          : `OPM Office: You're on the ${projName} team.\nLogin: ${appUrl}/login\nEmail: ${email}\nTemp password: ${pwd}\n(Please change it after first sign-in.)`
+          ? `OPM Flash: You've been added to ${projName}. Sign in at ${appUrl}/login with your existing password.`
+          : `OPM Flash: You're on the ${projName} team.\nLogin: ${appUrl}/login\nEmail: ${email}\nTemp password: ${pwd}\n(Please change it after first sign-in.)`
         channels.whatsapp = await sendWhatsApp(phone, waText)
       }
 

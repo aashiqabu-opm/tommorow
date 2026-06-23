@@ -1,4 +1,4 @@
-# APP_CONTEXT.md — OPM Office (single source of truth)
+# APP_CONTEXT.md — OPM Flash (single source of truth)
 
 > Shared context for the planning (chat) agent and the executing (Claude Code) agent.
 > Last refreshed: 2026-06-20. Keep this current after structural changes.
@@ -7,7 +7,7 @@
 
 ## 1. App identity
 
-- **Name:** OPM Office ("OPM Control Center" in the UI).
+- **Name:** OPM Flash ("OPM Control Center" in the UI).
 - **Purpose:** Internal operating platform for **OPM Cinemas** (Malayalam film production house, founder **Aashiq Abu**). Runs the company's finances, film projects (pre-production → release), the founder's private financial/legal workspace, the OPM Records music label, an internal operations office, and social/comms.
 - **Users / roles:** `founder` (Aashiq — full access incl. Personal & Ask OPM), `accountant` (Shiny), `general_manager` (Madan AVK), `executive_producer` (Abid Abu), `legal_viewer`, `staff` (project crew, project-scoped logins). Founder + Accountant are the finance roles.
 - **Stage:** Live, in active daily build-out. v3.x era (login screen shows a version string).
@@ -59,7 +59,7 @@
 |---|---|---|---|
 | **Dashboard** | `app/(app)/dashboard` | aggregates many | — |
 | **Ask OPM (AI)** | `assistant/`, `FloatingAssistant.tsx` | reads via RLS | `/api/assistant` (founder-only) |
-| **OPM Office (ops)** | `office/OfficeClient.tsx` | `office_tasks`, `office_notices`, reads ops project finances | `/api/cron/office-recurring` (recurrence engine) |
+| **OPM Flash (ops)** | `office/OfficeClient.tsx` | `office_tasks`, `office_notices`, reads ops project finances | `/api/cron/office-recurring` (recurrence engine) |
 | **Projects (films)** | `projects/`, `projects/[id]/*Section.tsx` | `projects`(excl. `is_operations`), members, crew, funding, income, budget_lines, payments, schedule, archival, deals, deliverables, characters, auditions, press_kit, checkins, channels, box_office, campaign | `/api/projects/[id]/team`, `/intel`, `/callsheet`, `/analyze-doc` |
 | **Payments** | `payments/PaymentsClient.tsx` | `payment_requests`, `vendors`, `budget_lines`, `vouchers` | confirm-paid flow; `/api/vouchers/sync` |
 | **Cash / Accounts / Reconcile** | `cash`, `accounts`, `reconcile` | `cash_entries`, `bank_accounts`, `bank_transactions`, `account_transactions` | — |
@@ -94,7 +94,7 @@
 - **Claude Code (terminal)** — primary executor (this agent). Now on `claude/<topic>` branches → PRs.
 - **Background/cloud Claude agents** — create `claude/<topic>` branches **in this same local clone**, which moves local HEAD between turns (root cause of earlier "branch hijack"). **Fix: run them in isolated git worktrees.**
 - **Google Antigravity** — previously edited this repo; introduced a parallel Prisma data layer + Social/Office/Workspace pages (since removed) and several PascalCase + orphan tables (still in DB). No longer the workflow.
-- **Direct-to-main commits (history, pre-workflow):** earlier this session several feature commits + a Vercel-side cleanup landed straight on `main` (OPM Office ops, Records pipeline, Social, office task system, recurrence cron, Believe import, financial cleanup). All by Claude Code. **Going forward: none — PRs only.**
+- **Direct-to-main commits (history, pre-workflow):** earlier this session several feature commits + a Vercel-side cleanup landed straight on `main` (OPM Flash ops, Records pipeline, Social, office task system, recurrence cron, Believe import, financial cleanup). All by Claude Code. **Going forward: none — PRs only.**
 - Remote branches live now: `main`, `claude/tds-challan-autodraft` (PR #4), `claude/claude-md-rewrite` (PR #3), plus stale `claude/fix-alert-email-unify`, `claude/personal-loans-section`, `claude/monitoring-selftest-2026-06-14`, `claude/opm-office-dashboard-It5Q9`.
 
 ---

@@ -1,6 +1,6 @@
 # Personal / Founder Module — Build Plan (finalised)
 
-Status: **finalised, awaiting go for Phase 1.** Founder-only; build inside OPM Office.
+Status: **finalised, awaiting go for Phase 1.** Founder-only; build inside OPM Flash.
 
 ## Locked decisions
 - **Placement:** distinct "Personal" module pinned at the **top of the sidebar**, above Dashboard; visible only to the owner.

@@ -58,7 +58,7 @@ async function run(request: Request) {
       `<p style="margin:0 0 12px;">KDMs expired or expiring within 7 days. Re-issue before the next show or the theatre goes dark.</p>` +
       `<ul style="margin:0;padding-left:18px;line-height:1.6;">${items}</ul>`)
     for (const t of team ?? []) {
-      if (t.email_alerts && t.email) { await sendEmail(t.email, `OPM Office — KDM attention (${dateStr})`, html); emailed++ }
+      if (t.email_alerts && t.email) { await sendEmail(t.email, `OPM Flash — KDM attention (${dateStr})`, html); emailed++ }
     }
   }
 

@@ -1,4 +1,4 @@
-# OPM Office — Claude Code Workspace
+# OPM Flash — Claude Code Workspace
 
 Internal operating platform for OPM Cinemas. Maintained with **Claude Code** (terminal agent). Live at **opmoffice.vercel.app**.
 

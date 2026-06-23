@@ -34,14 +34,14 @@ export async function deliverAlert(
 
   const tag = CATEGORY_LABELS[category]
   const html = emailTemplate(title, body ? `<p style="margin:0;">${escapeHtml(body)}</p>` : '')
-  const text = body ? `*OPM Office · ${tag}*\n${title}\n${body}` : `*OPM Office · ${tag}*\n${title}`
+  const text = body ? `*OPM Flash · ${tag}*\n${title}\n${body}` : `*OPM Flash · ${tag}*\n${title}`
 
   // Sequential with a throttle so larger recipient lists stay under
   // Resend's ~2/sec rate limit (otherwise some sends get a 429).
   for (let i = 0; i < recipients.length; i++) {
     const p = recipients[i]
     if (p.email_alerts && p.email) {
-      await sendEmail(p.email, `OPM Office [${tag}] — ${title}`, html)
+      await sendEmail(p.email, `OPM Flash [${tag}] — ${title}`, html)
     }
     if (important && p.whatsapp_alerts && p.whatsapp_number) {
       await sendWhatsApp(p.whatsapp_number, text)

@@ -50,16 +50,16 @@ export async function reportError(
       .eq('is_active', true)
     if (!founders?.length) return
 
-    const waText = `⚠️ OPM Office error\n${context}\n${message}`.slice(0, 1000)
+    const waText = `⚠️ OPM Flash error\n${context}\n${message}`.slice(0, 1000)
     const html = emailTemplate(
-      'OPM Office — system error',
+      'OPM Flash — system error',
       `<p style="margin:0 0 8px;"><strong>${escapeHtml(context)}</strong></p>` +
         `<pre style="margin:0;white-space:pre-wrap;font-size:13px;color:#b91c1c;">${escapeHtml(message)}</pre>` +
         (meta ? `<p style="margin:12px 0 0;color:#666;font-size:12px;">${escapeHtml(JSON.stringify(meta))}</p>` : ''),
     )
     for (const f of founders) {
       if (f.whatsapp_alerts && f.whatsapp_number) await sendWhatsApp(f.whatsapp_number, waText)
-      if (f.email_alerts && f.email) await sendEmail(f.email, 'OPM Office — system error', html)
+      if (f.email_alerts && f.email) await sendEmail(f.email, 'OPM Flash — system error', html)
     }
   } catch { /* alerting must never throw */ }
 }

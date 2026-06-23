@@ -60,7 +60,7 @@ export async function GET() {
       email_configured: emailConfigured(),
     },
     note:
-      'A founder with active alerts should receive a WhatsApp + email titled "OPM Office — system error". ' +
+      'A founder with active alerts should receive a WhatsApp + email titled "OPM Flash — system error". ' +
       'If you ran this twice within 10 minutes, the alert is throttled but the log row above still proves persistence.',
   })
 }

@@ -81,7 +81,7 @@ async function run(request: Request) {
       `<p style="margin:16px 0 0;font-size:11px;color:#a1a1aa;">Follow their first-week run in Market in the app.</p>`)
     // Email-only: industry-news content isn't an approvable WhatsApp utility template.
     for (const t of team ?? []) {
-      if (emailConfigured() && t.email_alerts && t.email) await sendEmail(t.email, `OPM Office — New Malayalam releases (${dateStr})`, html)
+      if (emailConfigured() && t.email_alerts && t.email) await sendEmail(t.email, `OPM Flash — New Malayalam releases (${dateStr})`, html)
     }
   }
 

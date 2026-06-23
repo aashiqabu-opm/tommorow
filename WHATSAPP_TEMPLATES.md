@@ -1,4 +1,4 @@
-# OPM Office — WhatsApp Production Setup
+# OPM Flash — WhatsApp Production Setup
 
 Notes for moving off the Twilio **sandbox** onto the company's verified WhatsApp
 Business number **+91 77364 52777** (E.164: `+917736452777`).
@@ -40,7 +40,7 @@ After each is approved, copy its **Content SID** (`HX…`) into the env vars bel
 ### 1. `new_bill_review`  — category: Utility
 **Body:**
 ```
-🧾 New bill via WhatsApp from {{1}}: {{2}} ({{3}}) under "{{4}}". Review & approve in OPM Office.
+🧾 New bill via WhatsApp from {{1}}: {{2}} ({{3}}) under "{{4}}". Review & approve in OPM Flash.
 To decline, reply: REJECT {{5}}
 ```
 **Variables / sample:**
@@ -65,13 +65,13 @@ To decline, reply: REJECT {{5}}
 
 #### 3. `team_added` — Utility
 ```
-OPM Office: You've been added to the {{1}} team. Sign in at {{2}}/login.
+OPM Flash: You've been added to the {{1}} team. Sign in at {{2}}/login.
 ```
 (Keep sending the temp password by **email** — Meta is strict about credentials in templates.)
 
 #### 4. `project_stage_update` — Utility
 ```
-*OPM Office* — {{1}} moved from {{2}} to {{3}} ({{4}}).
+*OPM Flash* — {{1}} moved from {{2}} to {{3}} ({{4}}).
 ```
 
 > Call sheets and the daily/briefing digests are intentionally **not**

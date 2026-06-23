@@ -65,7 +65,8 @@ const CONTRACT = `Respond with ONLY a JSON object (no prose, no code fences) wit
 // input is already redacted, but the model must never invent a balance).
 const NO_FINANCE = 'You are NOT given bank balances, cash position, or individual transaction entries — never state, estimate, or infer them. Set cash_runway_weeks to 0.'
 
-const PROFILES: Record<Audience, BriefProfile> = {
+// Exported for the unit tests that lock the EP/GM finance boundary.
+export const PROFILES: Record<Audience, BriefProfile> = {
   founder: {
     table: 'founder_briefs', finance: 'full', includeProduction: true, includeReceivables: true,
     system: `You are the executive intelligence layer for OPM Cinemas, a film-production company in India (amounts in ₹). Analyze the provided data and produce a founder brief: only what genuinely needs attention, ordered by urgency and money at risk — decisions to make, risks, and opportunities — across cash, projects and contracts. Be specific with names and ₹ amounts. ${CONTRACT}`,

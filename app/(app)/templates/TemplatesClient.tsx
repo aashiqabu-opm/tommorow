@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/Toast'
 import { formatDate } from '@/lib/utils'
 import { BUILTIN_TEMPLATES } from '@/lib/templates'
 import { createClient } from '@/lib/supabase/client'
+import { openDoc } from '@/lib/storage'
 import { logAction } from '@/lib/audit'
 import { useRouter } from 'next/navigation'
 
@@ -147,7 +148,7 @@ export function TemplatesClient({ templates, userId, canManage, role }: Props) {
                   <div className="text-xs text-[#8888aa] truncate">{t.description ? `${t.description} · ` : ''}{(t.uploader as { full_name?: string } | null)?.full_name ?? ''} · {formatDate(t.created_at)}</div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <a href={t.file_url} target="_blank" rel="noreferrer" download className="text-xs text-white/80 hover:text-white inline-flex items-center gap-1"><Download size={14} /> Download</a>
+                  <button type="button" onClick={() => openDoc(t.file_url)} className="text-xs text-white/80 hover:text-white inline-flex items-center gap-1"><Download size={14} /> Download</button>
                   {(role === 'founder' || t.created_by === userId) && (
                     <>
                       <button onClick={() => openEdit(t)} className="text-[#5a5a7a] hover:text-white"><Pencil size={14} /></button>

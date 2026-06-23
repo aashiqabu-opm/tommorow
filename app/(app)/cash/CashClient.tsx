@@ -13,6 +13,7 @@ import { FilePicker } from '@/components/ui/FilePicker'
 import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { openDoc } from '@/lib/storage'
 import { logAction } from '@/lib/audit'
 import { compressImage } from '@/lib/compressImage'
 import type { CashEntry } from '@/lib/types'
@@ -234,9 +235,9 @@ export function CashClientPage({ entries, userId, role }: Props) {
                     {(entry.profile as { full_name?: string } | null)?.full_name ?? ''}
                   </span>
                   {entry.proof_file_url && (
-                    <a href={entry.proof_file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-white/70">
+                    <button type="button" onClick={e => { e.stopPropagation(); openDoc(entry.proof_file_url) }} className="text-white/70">
                       <Paperclip size={12} />
-                    </a>
+                    </button>
                   )}
                   <Pencil size={12} className="text-[#5a5a7a]" />
                 </div>
@@ -264,9 +265,9 @@ export function CashClientPage({ entries, userId, role }: Props) {
                     <td className="px-5 py-3 text-[#8888aa]">{(entry.profile as { full_name?: string } | null)?.full_name ?? '—'}</td>
                     <td className="px-5 py-3">
                       {entry.proof_file_url ? (
-                        <a href={entry.proof_file_url} target="_blank" rel="noreferrer" className="text-white/70 hover:text-white">
+                        <button type="button" onClick={() => openDoc(entry.proof_file_url)} className="text-white/70 hover:text-white">
                           <Paperclip size={14} />
-                        </a>
+                        </button>
                       ) : <span className="text-[#5a5a7a]">—</span>}
                     </td>
                     <td className="px-5 py-3 text-right">

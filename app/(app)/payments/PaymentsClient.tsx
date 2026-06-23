@@ -14,6 +14,7 @@ import { FilePicker } from '@/components/ui/FilePicker'
 import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate, PAYMENT_CATEGORY_OPTIONS, numberToWordsIndian } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { openDoc } from '@/lib/storage'
 import { logAction } from '@/lib/audit'
 import { notifyUsers, notifyFinance } from '@/lib/notifications'
 import { compressImage } from '@/lib/compressImage'
@@ -617,7 +618,7 @@ export function PaymentsClient({ requests, projects, comments, vendors, budgetLi
                   {/* Action buttons */}
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     {req.bill_url && (
-                      <a href={req.bill_url} target="_blank" rel="noreferrer" className="text-xs text-white/70 hover:text-white">View Bill</a>
+                      <button type="button" onClick={() => openDoc(req.bill_url)} className="text-xs text-white/70 hover:text-white">View Bill</button>
                     )}
                     {canVerify && req.verification_status === 'pending' && (
                       <>

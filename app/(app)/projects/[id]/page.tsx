@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { requireProfile } from '@/lib/auth'
+import { WhatMatters } from '@/components/ui/WhatMatters'
+import { projectWhatMatters } from '@/lib/what-matters'
 import { ProjectDetailClient } from './ProjectDetailClient'
 import { ProductionSuite } from './ProductionSuite'
 
@@ -108,8 +110,18 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const canEditDeliv = mgmt || ['director', 'production_controller'].includes(myRole ?? '')
   const canEditDeals = mgmt || profile.role === 'accountant' || myRole === 'production_controller'
 
+  const whatMatters = projectWhatMatters(
+    (checkins ?? []) as { blockers?: string | null; checkin_date?: string }[],
+    (budgetLines ?? []) as { id: string; estimated?: number }[],
+    (payments ?? []) as { budget_line_id?: string | null; amount?: number; net_payable?: number | null; payment_status?: string; approval_status?: string }[],
+    extraSpentByLine,
+  )
+
   return (
     <>
+    {whatMatters.length > 0 && (
+      <div className="mb-4"><WhatMatters items={whatMatters} title="What matters on this film" /></div>
+    )}
     <ProjectDetailClient
       project={project}
       documents={documents ?? []}

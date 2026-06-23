@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { requireProfile } from '@/lib/auth'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { WhatMatters } from '@/components/ui/WhatMatters'
+import { forecastWhatMatters } from '@/lib/what-matters'
 import { fundingMetrics } from '@/lib/funding'
 import type { ProjectFunding } from '@/lib/types'
 import { ForecastClient, type ForecastEvent } from './ForecastClient'
@@ -71,6 +73,7 @@ export default async function ForecastPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Cash-flow Forecast" subtitle={`Projected ${WEEKS}-week runway — defer a payment to see the effect`} />
+      <WhatMatters items={forecastWhatMatters(events, startBalance)} />
       <ForecastClient events={events} startBalance={startBalance} todayStr={todayStr} weeks={WEEKS} />
     </div>
   )

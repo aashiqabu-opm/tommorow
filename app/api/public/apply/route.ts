@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { rateLimit, clientIp } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,11 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient()
   if (!admin) return NextResponse.json({ error: 'Unavailable' }, { status: 500 })
+
+  // IP rate limit: 5 applications per 10 minutes.
+  if (await rateLimit(admin, `pub:apply:${clientIp(req)}`, 5, 10 * 60_000)) {
+    return NextResponse.json({ error: 'Too many requests — please try again later' }, { status: 429 })
+  }
 
   const { data: pos } = await admin.from('job_positions').select('id, status').eq('id', position_id).maybeSingle()
   if (!pos || pos.status !== 'open') return NextResponse.json({ error: 'This position is no longer open' }, { status: 400 })

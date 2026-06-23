@@ -12,7 +12,10 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-IN', { day: 'n
 type PayRow = { amount?: number; net_payable?: number | null; approval_status?: string; payment_status?: string; verification_status?: string }
 export function paymentsWhatMatters(requests: PayRow[]): WhatMattersItem[] {
   const items: WhatMattersItem[] = []
-  const pending = requests.filter(r => r.approval_status === 'pending')
+  // Ready for approval = verified but not yet approved. Unverified bills are
+  // counted under "awaiting verification" below, not here — so the two lines
+  // never double-count the same request.
+  const pending = requests.filter(r => r.approval_status === 'pending' && r.verification_status === 'verified')
   if (pending.length) items.push({ text: `${pending.length} payment ${pending.length === 1 ? 'request' : 'requests'} pending approval (${inr(pending.reduce((s, r) => s + Number(r.amount || 0), 0))})`, tone: pending.length > 5 ? 'red' : 'amber' })
   const unpaid = requests.filter(r => r.approval_status === 'approved' && r.payment_status === 'unpaid')
   if (unpaid.length) items.push({ text: `${unpaid.length} approved ${unpaid.length === 1 ? 'payment' : 'payments'} awaiting payout (${inr(unpaid.reduce((s, r) => s + Number(r.net_payable ?? r.amount ?? 0), 0))})`, tone: 'amber' })

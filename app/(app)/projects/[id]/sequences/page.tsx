@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { requireProfile } from '@/lib/auth'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { SequencesClient, type Stunt, type Animal } from '../SequencesClient'
+import { SequencesClient, type Stunt, type Animal, type Song, type Equipment } from '../SequencesClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,10 +15,12 @@ export default async function SequencesPage({ params }: { params: Promise<{ id: 
   if (!['founder', 'accountant', 'general_manager', 'executive_producer'].includes(profile.role)) redirect(`/projects/${id}`)
 
   const supabase = await createClient()
-  const [{ data: project }, { data: stunts }, { data: animals }] = await Promise.all([
+  const [{ data: project }, { data: stunts }, { data: animals }, { data: songs }, { data: equipment }] = await Promise.all([
     supabase.from('projects').select('id, name').eq('id', id).single(),
     supabase.from('stunt_sequences').select('*').eq('project_id', id).order('shoot_date', { ascending: true, nullsFirst: false }),
     supabase.from('animal_usage').select('*').eq('project_id', id).order('shoot_date', { ascending: true, nullsFirst: false }),
+    supabase.from('song_sequences').select('*').eq('project_id', id).order('shoot_date', { ascending: true, nullsFirst: false }),
+    supabase.from('special_equipment').select('*').eq('project_id', id).order('created_at', { ascending: false }),
   ])
   if (!project) notFound()
 
@@ -32,6 +34,8 @@ export default async function SequencesPage({ params }: { params: Promise<{ id: 
         projectId={id}
         stunts={(stunts ?? []) as Stunt[]}
         animals={(animals ?? []) as Animal[]}
+        songs={(songs ?? []) as Song[]}
+        equipment={(equipment ?? []) as Equipment[]}
         userId={profile.id}
         canManage={true}
         canDelete={profile.role === 'founder'}

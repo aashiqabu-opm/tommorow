@@ -45,7 +45,7 @@ export async function GET() {
     try {
       const ok = await sendEmail(
         profile.email,
-        'OPM Office — Test alert ✓',
+        'OPM Flash — Test alert ✓',
         emailTemplate('Test alert', `<p style="margin:0;">Hi ${profile.full_name}, if you can read this, email alerts are working.</p>`),
       )
       report.email_test = { sent: ok, via: gmailConfigured() ? 'gmail-smtp' : 'resend' }
@@ -67,7 +67,7 @@ export async function GET() {
         body: new URLSearchParams({
           From: process.env.TWILIO_WHATSAPP_FROM!,
           To: `whatsapp:${normalizeWhatsApp(profile.whatsapp_number)}`,
-          Body: '*OPM Office* — Test alert ✓ WhatsApp alerts are working.',
+          Body: '*OPM Flash* — Test alert ✓ WhatsApp alerts are working.',
         }),
       })
       const twilioBody = (await res.json().catch(() => null)) as { message?: string; status?: string } | null

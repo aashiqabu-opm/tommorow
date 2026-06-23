@@ -58,7 +58,7 @@ const NAV: NavSection[] = [
     { href: '/brief', label: 'Brief', icon: Brain, roles: ['founder', 'accountant', 'executive_producer', 'general_manager'] },
     { href: '/personal', label: 'Personal', icon: Lock, roles: ['founder'] },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
-    { href: '/office', label: 'OPM Office', icon: Building2, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
+    { href: '/office', label: 'Office', icon: Building2, roles: ['founder', 'accountant', 'general_manager', 'executive_producer', 'legal_viewer', 'staff'] },
     { href: '/assistant', label: 'Ask OPM', icon: Sparkles, roles: ['founder'] },
   ] },
   { section: 'Production', items: [
@@ -150,7 +150,7 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
           <div className="flex items-center gap-3">
             <OPMLogo width={86} caption={false} className="text-white" />
             <div className="text-[9px] font-medium text-[#8888aa] uppercase tracking-[0.18em] leading-tight">
-              Internal<br />Office
+              Internal<br />Platform
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden text-[#8888aa] hover:text-white">

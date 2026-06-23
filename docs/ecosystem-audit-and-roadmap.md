@@ -1,4 +1,4 @@
-# OPM Office — Ecosystem Audit & Roadmap (pre-production → release)
+# OPM Flash — Ecosystem Audit & Roadmap (pre-production → release)
 
 Status: **analysis + plan for later.** Benchmarks our app against Malayalam-cinema
 production practice and global tools (Movie Magic, StudioBinder, Yamdu, Scenechronize),

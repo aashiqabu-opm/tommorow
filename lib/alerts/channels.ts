@@ -58,7 +58,7 @@ async function sendViaResend(to: string, subject: string, html: string): Promise
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM ?? 'OPM Office <onboarding@resend.dev>',
+        from: process.env.RESEND_FROM ?? 'OPM Flash <onboarding@resend.dev>',
         to: [to],
         subject,
         html,
@@ -75,7 +75,7 @@ async function sendViaResend(to: string, subject: string, html: string): Promise
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   if (gmailConfigured()) {
     try {
-      await gmailTransporter().sendMail({ from: `OPM Office <${process.env.GMAIL_USER}>`, to, subject, html })
+      await gmailTransporter().sendMail({ from: `OPM Flash <${process.env.GMAIL_USER}>`, to, subject, html })
       return true
     } catch {
       // fall through to Resend
@@ -165,7 +165,7 @@ export function emailTemplate(title: string, bodyHtml: string): string {
           <h2 style="margin:0 0 12px;font-size:18px;color:#18181b;">${title}</h2>
           <div style="font-size:14px;line-height:1.6;color:#3f3f46;">${bodyHtml}</div>
           <div style="margin-top:24px;">
-            <a href="${APP_URL}" style="display:inline-block;background:#0a0a0f;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;">Open OPM Office</a>
+            <a href="${APP_URL}" style="display:inline-block;background:#0a0a0f;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;">Open OPM Flash</a>
           </div>
         </td></tr>
         <tr><td style="padding:16px 28px;border-top:1px solid #e4e4e7;">

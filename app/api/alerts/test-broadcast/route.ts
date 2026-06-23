@@ -29,9 +29,9 @@ export async function GET() {
 
   const html = emailTemplate(
     'Test alert ✓',
-    '<p style="margin:0;">This is a test of OPM Office alerts. If you can read this, your <strong>email alerts</strong> are working. No action needed.</p>'
+    '<p style="margin:0;">This is a test of OPM Flash alerts. If you can read this, your <strong>email alerts</strong> are working. No action needed.</p>'
   )
-  const waText = '*OPM Office — Test* ✓\nThis is a test of OPM Office WhatsApp alerts. If you got this, you are all set. No action needed.'
+  const waText = '*OPM Flash — Test* ✓\nThis is a test of OPM Flash WhatsApp alerts. If you got this, you are all set. No action needed.'
 
   // Sequential with a throttle so we stay under Resend's ~2/sec rate limit.
   const list = profiles ?? []
@@ -40,7 +40,7 @@ export async function GET() {
     const p = list[i]
     const r: Record<string, unknown> = { name: p.full_name, email: p.email }
     if (emailConfigured() && p.email) {
-      r.email_sent = await sendEmail(p.email, 'OPM Office — Test alert ✓', html)
+      r.email_sent = await sendEmail(p.email, 'OPM Flash — Test alert ✓', html)
     } else {
       r.email_sent = 'skipped'
     }

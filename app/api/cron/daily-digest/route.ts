@@ -124,7 +124,7 @@ async function run(request: Request) {
   for (let i = 0; i < recipients.length; i++) {
     const r = recipients[i]
     if (r.email_alerts && r.email) {
-      if (await sendEmail(r.email, `OPM Office — Daily Digest (${dateStr})`, html)) sent++
+      if (await sendEmail(r.email, `OPM Flash — Daily Digest (${dateStr})`, html)) sent++
     }
     if (i < recipients.length - 1) await sleep(EMAIL_THROTTLE_MS)
   }

@@ -111,9 +111,9 @@ async function run(request: Request) {
       `<p style="margin:0 0 12px;">Your AI monitor advanced ${changes.length} project stage${changes.length > 1 ? 's' : ''} today:</p>` +
       `<ul style="margin:0;padding-left:18px;line-height:1.7;">${rows}</ul>` +
       `<p style="margin:16px 0 0;font-size:11px;color:#a1a1aa;">Stage only — no money or records were changed. Open the project to revert if needed.</p>`)
-    const waText = `*OPM Office — Stages updated (${dateStr})*\n` + changes.map(c => `• ${c.name}: ${c.from} → ${c.to}`).join('\n')
+    const waText = `*OPM Flash — Stages updated (${dateStr})*\n` + changes.map(c => `• ${c.name}: ${c.from} → ${c.to}`).join('\n')
     for (const f of founders) {
-      if (emailConfigured() && f.email_alerts && f.email) await sendEmail(f.email, `OPM Office — Project stages updated (${dateStr})`, html)
+      if (emailConfigured() && f.email_alerts && f.email) await sendEmail(f.email, `OPM Flash — Project stages updated (${dateStr})`, html)
       if (whatsappConfigured() && f.whatsapp_alerts && f.whatsapp_number) await sendWhatsApp(f.whatsapp_number, waText)
     }
   }

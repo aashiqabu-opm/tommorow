@@ -1,4 +1,4 @@
-# OPM Office
+# OPM Flash
 
 Internal office operating system for OPM Cinemas. A founder-first visual dashboard for company status at a glance.
 
@@ -163,7 +163,7 @@ supabase/
 ## Default Projects
 
 These are seeded automatically:
-- OPM Office
+- OPM Flash
 - Aja Sundari
 - Downtrodden
 - Mayavi

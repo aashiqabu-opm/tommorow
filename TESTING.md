@@ -1,4 +1,4 @@
-# OPM Office — End-to-End Test Checklist
+# OPM Flash — End-to-End Test Checklist
 
 Run this once with **live data** before relying on the app. Tick each box. Anything
 that fails, note the screen + the error text.

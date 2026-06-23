@@ -47,7 +47,7 @@ export function FinanceControlsClient({ lockedThrough, aiCap, aiUsed, bankLedger
     }
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }))
-    a.download = `opm-office-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(a.href)
+    a.download = `opm-flash-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(a.href)
     toast.success('Backup downloaded'); setBusy('')
   }
 

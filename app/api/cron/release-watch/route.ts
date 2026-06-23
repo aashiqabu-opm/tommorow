@@ -98,7 +98,7 @@ async function run(request: Request) {
       `<p style="margin:16px 0 0;font-size:11px;color:#a1a1aa;">Open the project's Release Watch to see links and full detail. The app never acts on these automatically.</p>`)
     // Email-only: release-watch digest is non-utility content for WhatsApp's platform.
     for (const f of founders) {
-      if (emailConfigured() && f.email_alerts && f.email) await sendEmail(f.email, `OPM Office — Release Watch: ${alerts.length} urgent`, html)
+      if (emailConfigured() && f.email_alerts && f.email) await sendEmail(f.email, `OPM Flash — Release Watch: ${alerts.length} urgent`, html)
     }
   }
 

@@ -85,7 +85,7 @@ async function run(request: Request) {
   const list = (recipients.data ?? []).filter(r => r.email_alerts && r.email)
   let sent = 0
   for (const r of list) {
-    if (await sendEmail(r.email as string, `OPM Office — Weekly Report (${weekLabel})`, html)) sent++
+    if (await sendEmail(r.email as string, `OPM Flash — Weekly Report (${weekLabel})`, html)) sent++
     await sleep(600)
   }
 

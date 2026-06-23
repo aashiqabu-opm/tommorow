@@ -49,7 +49,7 @@ async function handleInbound(req: Request) {
   const body = (params.Body ?? '').trim()
   const numMedia = parseInt(params.NumMedia ?? '0') || 0
   const admin = createAdminClient()
-  if (!admin) return xml(twimlMessage('OPM Office is not fully configured yet (service key missing).'))
+  if (!admin) return xml(twimlMessage('OPM Flash is not fully configured yet (service key missing).'))
 
   // Throttle abusive senders before any AI call or draft creation (caps cost
   // and spam). 10 messages/minute per number is generous for real use.
@@ -62,7 +62,7 @@ async function handleInbound(req: Request) {
   const { data: profiles } = await admin.from('profiles').select('id, full_name, role, whatsapp_number, is_active, email, email_alerts, whatsapp_alerts')
   const profile = (profiles ?? []).find(p => p.is_active && p.whatsapp_number && normalizeWhatsApp(p.whatsapp_number) === fromNorm)
   if (!profile) {
-    return xml(twimlMessage("This number isn't registered with OPM Office. Ask an admin to add your WhatsApp number to your profile."))
+    return xml(twimlMessage("This number isn't registered with OPM Flash. Ask an admin to add your WhatsApp number to your profile."))
   }
 
   const canCreate = ['founder', 'accountant', 'general_manager', 'executive_producer'].includes(profile.role)
@@ -82,7 +82,7 @@ async function handleInbound(req: Request) {
 
     const { data: projects } = await admin.from('projects').select('id, name').neq('status', 'cancelled').order('created_at', { ascending: false })
     const proj = pickProject(projects ?? [], body)
-    if (!proj) return xml(twimlMessage('No project found to file this under. Create a project in OPM Office first.'))
+    if (!proj) return xml(twimlMessage('No project found to file this under. Create a project in OPM Flash first.'))
 
     const { data: bill } = await extractBill(b64, contentType)
 
@@ -121,7 +121,7 @@ async function handleInbound(req: Request) {
     const payeeLabel = bill?.vendor_name ?? (body || 'a vendor')
     const approvers = (profiles ?? []).filter(p =>
       p.is_active && p.id !== profile.id && ['founder', 'accountant'].includes(p.role))
-    const waText = `🧾 New bill via WhatsApp from ${profile.full_name}: ${payeeLabel} (${amt}) under "${proj.name}". Review & approve in OPM Office.` +
+    const waText = `🧾 New bill via WhatsApp from ${profile.full_name}: ${payeeLabel} (${amt}) under "${proj.name}". Review & approve in OPM Flash.` +
       (code ? `\nTo decline, reply: REJECT ${code}` : '')
     const html = emailTemplate('New WhatsApp bill to review',
       `<p style="margin:0 0 8px;"><strong>${profile.full_name}</strong> submitted a bill via WhatsApp.</p>` +
@@ -141,11 +141,11 @@ async function handleInbound(req: Request) {
           : false
         if (!sent) await sendWhatsApp(a.whatsapp_number, waText)
       }
-      if (a.email_alerts && a.email) { await sendEmail(a.email, 'New WhatsApp bill to review — OPM Office', html); await sleep(600) }
+      if (a.email_alerts && a.email) { await sendEmail(a.email, 'New WhatsApp bill to review — OPM Flash', html); await sleep(600) }
     }
 
     return xml(twimlMessage(
-      `✅ Draft payment created${who} (${amt}) under "${proj.name}". It's pending approval in OPM Office.` +
+      `✅ Draft payment created${who} (${amt}) under "${proj.name}". It's pending approval in OPM Flash.` +
       (amount ? '' : '\nThe amount couldn’t be read — set it in the app.')
     ))
   }
@@ -155,7 +155,7 @@ async function handleInbound(req: Request) {
 
   if (!body || cmd === 'help' || cmd === 'hi' || cmd === 'hello') {
     return xml(twimlMessage(
-      'OPM Office on WhatsApp:\n• Send a bill photo or PDF → I draft a payment for approval.' +
+      'OPM Flash on WhatsApp:\n• Send a bill photo or PDF → I draft a payment for approval.' +
       (isFinance ? "\n• Ask me anything — e.g. \"cost report for Aja Sundari\", \"which contracts renew soon\", \"what's our cash position\"\n• Reply 'REJECT <code>' to decline a draft" : '')
     ))
   }
@@ -198,7 +198,7 @@ async function handleInbound(req: Request) {
           : false
         if (!sent) await sendWhatsApp(submitter.whatsapp_number, msg)
       }
-      if (submitter.email_alerts && submitter.email) await sendEmail(submitter.email, 'Payment request rejected — OPM Office', emailTemplate('Payment request rejected', `<p style="margin:0;">${msg}</p>`))
+      if (submitter.email_alerts && submitter.email) await sendEmail(submitter.email, 'Payment request rejected — OPM Flash', emailTemplate('Payment request rejected', `<p style="margin:0;">${msg}</p>`))
     }
     return xml(twimlMessage(`Rejected: ${target.payee} (${inr(Number(target.amount))}).${submitter && submitter.id !== profile.id ? ' The submitter has been notified.' : ''}`))
   }

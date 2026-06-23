@@ -13,6 +13,7 @@ import { MoneyInput } from '@/components/ui/MoneyInput'
 import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { openDoc } from '@/lib/storage'
 import { logAction } from '@/lib/audit'
 import type { OpmRecordTitle, OpmRecordChannel, OpmRecordRoyalty, OpmRecordRelease } from '@/lib/types'
 import { RELEASE_STAGE_LABELS } from '@/lib/types'
@@ -268,8 +269,7 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
   }
 
   async function handleViewStatement(path: string) {
-    const { data } = await supabase.storage.from('documents').getPublicUrl(path)
-    if (data?.publicUrl) window.open(data.publicUrl, '_blank')
+    await openDoc(path)
   }
 
   return (

@@ -17,6 +17,7 @@ import { compressImage } from '@/lib/compressImage'
 import { VEHICLE_TYPE_LABELS, VEHICLE_DOC_LABELS } from '@/lib/types'
 import type { Vehicle, VehicleLog, VehicleType, VehicleLogType, VehicleDocType } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { openDoc as openSignedDoc } from '@/lib/storage'
 import { logAction } from '@/lib/audit'
 import { useRouter } from 'next/navigation'
 
@@ -347,7 +348,7 @@ export function VehiclesClient({ vehicles, projects, userId, canDelete }: Props)
                                 <div className="min-w-0 flex items-center gap-2">
                                   <span className="text-white">{VEHICLE_DOC_LABELS[d.doc_type]}</span>
                                   {d.doc_number && <span className="text-[#8888aa] font-mono">{d.doc_number}</span>}
-                                  {d.file_url && <a href={d.file_url} target="_blank" rel="noreferrer" className="text-white/60 hover:text-white"><Paperclip size={11} /></a>}
+                                  {d.file_url && <button type="button" onClick={() => openSignedDoc(d.file_url)} className="text-white/60 hover:text-white"><Paperclip size={11} /></button>}
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   {d.expiry_date && <span className={`tabular-nums ${cls}`}>exp {formatDate(d.expiry_date)}{st === 'expired' ? ' · expired' : st === 'soon' ? ' · soon' : ''}</span>}

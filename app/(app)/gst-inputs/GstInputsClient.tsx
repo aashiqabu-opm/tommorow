@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { openDoc } from '@/lib/storage'
 
 export interface GstInput {
   id: string
@@ -95,7 +96,7 @@ export function GstInputsClient({ rows }: { rows: GstInput[] }) {
                 <div className="text-xs text-[#8888aa] mt-0.5">{r.invoice_date ? formatDate(r.invoice_date) : ''}{r.invoice_no ? ` · inv ${r.invoice_no}` : ''} · taxable {formatCurrency(Number(r.taxable_value ?? 0))} · GST {formatCurrency(Number(r.gst_amount ?? 0))}</div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                {r.snapshot_url && <a href={r.snapshot_url} target="_blank" rel="noreferrer" className="text-[#8888aa] hover:text-white" title="Snapshot"><ExternalLink size={15} /></a>}
+                {r.snapshot_url && <button type="button" onClick={() => openDoc(r.snapshot_url)} className="text-[#8888aa] hover:text-white" title="Snapshot"><ExternalLink size={15} /></button>}
                 <button onClick={() => toggleFiled(r)} title={r.filed ? 'Filed' : 'Mark filed'}
                   className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${r.filed ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'border-[#3a3a4a] text-[#8888aa] hover:text-white'}`}>
                   <Check size={12} /> {r.filed ? 'Filed' : 'File'}

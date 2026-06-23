@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
+import { openDoc } from '@/lib/storage'
 import type { ProjectArchival } from '@/lib/types'
 
 const CATEGORIES = [
@@ -94,11 +95,7 @@ export function ArchivalModule({ projectId, canEdit, userId }: { projectId: stri
   }
 
   async function handleView(item: ProjectArchival) {
-    if (!item.file_path) return
-    const { data } = await supabase.storage.from('documents').getPublicUrl(item.file_path)
-    if (data?.publicUrl) {
-      window.open(data.publicUrl, '_blank')
-    }
+    if (item.file_path) await openDoc(item.file_path)
   }
 
   async function handleDelete(item: ProjectArchival) {

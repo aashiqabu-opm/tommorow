@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Select, Textarea } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
+import { openDoc } from '@/lib/storage'
 import { ScheduleModule } from './ScheduleModule'
 import { PostModule } from './PostModule'
 import { ReleaseModule } from './ReleaseModule'
@@ -221,7 +222,7 @@ function Documents({ projectId, rows, canEdit, userId, onChange, supabase, toast
     if (error) { toast.error("Couldn't save"); return }
     setOpen(false); reset(); toast.success('Document saved'); onChange()
   }
-  async function view(r: Doc) { if (!r.file_path) return; const { data } = await supabase.storage.from('documents').getPublicUrl(r.file_path); if (data?.publicUrl) window.open(data.publicUrl, '_blank') }
+  async function view(r: Doc) { if (r.file_path) await openDoc(r.file_path) }
   async function del(r: Doc) { if (!confirm('Delete?')) return; if (r.file_path) await supabase.storage.from('documents').remove([r.file_path]); await supabase.from('project_documents').delete().eq('id', r.id); onChange() }
 
   return (
@@ -284,7 +285,7 @@ function PressKit({ projectId, rows, canEdit, userId, projectStatus, onChange, s
     setSaving(false); if (error) { toast.error("Couldn't save"); return }
     setOpen(false); setF({ kind: 'poster', title: '', link: '', notes: '' }); setFile(null); toast.success('Added to press kit'); onChange()
   }
-  async function view(r: PressItem) { if (r.file_path) { const { data } = await supabase.storage.from('documents').getPublicUrl(r.file_path); if (data?.publicUrl) window.open(data.publicUrl, '_blank') } else if (r.link) window.open(r.link, '_blank') }
+  async function view(r: PressItem) { if (r.file_path) await openDoc(r.file_path); else if (r.link) window.open(r.link, '_blank') }
   async function del(r: PressItem) { if (!confirm('Delete?')) return; if (r.file_path) await supabase.storage.from('documents').remove([r.file_path]); await supabase.from('project_press_kit').delete().eq('id', r.id); onChange() }
   return (
     <div>

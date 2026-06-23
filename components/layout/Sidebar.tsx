@@ -32,6 +32,7 @@ import {
   Music,
   Share2,
   Briefcase,
+  Inbox,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -89,6 +90,7 @@ const NAV: NavSection[] = [
     { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['founder', 'accountant', 'general_manager', 'legal_viewer'] },
   ] },
   { section: 'Communications', items: [
+    { href: '/inbox', label: 'Inbox', icon: Inbox, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
     { href: '/social', label: 'Social Media', icon: Share2, roles: ['founder', 'general_manager', 'executive_producer', 'staff'] },
   ] },
   { section: 'Admin', items: [

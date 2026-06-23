@@ -31,6 +31,7 @@ import {
   Lock,
   Music,
   Share2,
+  Briefcase,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -91,6 +92,7 @@ const NAV: NavSection[] = [
     { href: '/social', label: 'Social Media', icon: Share2, roles: ['founder', 'general_manager', 'executive_producer', 'staff'] },
   ] },
   { section: 'Admin', items: [
+    { href: '/hr', label: 'HR', icon: Briefcase, roles: ['founder', 'accountant', 'general_manager', 'executive_producer'] },
     { href: '/users', label: 'Users', icon: Users, roles: ['founder'] },
     { href: '/audit', label: 'Audit Log', icon: ScrollText, roles: ['founder'] },
     { href: '/settings', label: 'Settings', icon: Settings, roles: ['founder', 'accountant'] },

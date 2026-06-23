@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation'
 import { RefreshCw, Brain, AlertTriangle, Lightbulb, Gauge, Clock, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
-import type { FounderBrief } from '@/lib/ai/brief'
+import type { StoredBrief } from '@/lib/ai/brief'
 
 interface Props {
-  brief: FounderBrief | null
+  brief: StoredBrief | null
   error: string | null
+  label: string
+  healthLabel: string
+  showRunway: boolean
 }
 
 const DECISION_TONE: Record<string, { ring: string; chip: string; label: string }> = {
@@ -35,7 +38,7 @@ function healthStroke(n: number): string {
   return '#fca5a5'
 }
 
-export function BriefView({ brief, error }: Props) {
+export function BriefView({ brief, error, label, healthLabel, showRunway }: Props) {
   const router = useRouter()
   const toast = useToast()
   const [loading, setLoading] = useState(false)
@@ -73,7 +76,7 @@ export function BriefView({ brief, error }: Props) {
             <Brain size={20} className="text-[#f5b301]" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Founder Brief</h1>
+            <h1 className="text-xl font-bold text-white">{label}</h1>
             <p className="text-sm text-[#8888aa] mt-0.5">
               {generatedAt ? `Generated ${generatedAt}` : 'Executive intelligence'}
               <span className="text-[#5a5a7a]"> · AI analysis, read-only</span>
@@ -111,24 +114,26 @@ export function BriefView({ brief, error }: Props) {
             <p className="text-lg lg:text-2xl font-bold text-white leading-snug">{c.headline}</p>
           </div>
 
-          {/* Health + Runway */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Health + Runway (runway only for finance-cleared audiences) */}
+          <div className={`grid grid-cols-1 gap-4 ${showRunway ? 'sm:grid-cols-2' : ''}`}>
             <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 flex items-center gap-5">
               <Gauge_ value={c.company_health} />
               <div>
-                <div className="text-[10px] uppercase tracking-[0.14em] text-[#8888aa] flex items-center gap-1.5"><Gauge size={12} /> Company Health</div>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[#8888aa] flex items-center gap-1.5"><Gauge size={12} /> {healthLabel}</div>
                 <div className={`text-3xl font-bold mt-1 ${healthColor(c.company_health)}`}>{Math.round(c.company_health)}<span className="text-base text-[#8888aa]">/100</span></div>
               </div>
             </div>
-            <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-[#1a1a24] border border-[#2a2a3a] flex items-center justify-center">
-                <Clock size={22} className="text-[#8888aa]" />
+            {showRunway && (
+              <div className="bg-[#13131a] border border-[#2a2a3a] rounded-2xl p-5 flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-[#1a1a24] border border-[#2a2a3a] flex items-center justify-center">
+                  <Clock size={22} className="text-[#8888aa]" />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-[#8888aa]">Cash Runway</div>
+                  <div className="text-3xl font-bold mt-1 text-white">{Math.round(c.cash_runway_weeks)}<span className="text-base text-[#8888aa]"> wk</span></div>
+                </div>
               </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.14em] text-[#8888aa]">Cash Runway</div>
-                <div className="text-3xl font-bold mt-1 text-white">{Math.round(c.cash_runway_weeks)}<span className="text-base text-[#8888aa]"> wk</span></div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Decisions */}

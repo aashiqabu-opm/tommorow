@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
+import { withCors, preflight } from '@/lib/cors'
 
 export const dynamic = 'force-dynamic'
+const METHODS = 'GET, OPTIONS'
+export function OPTIONS(req: Request) { return preflight(req, METHODS) }
 
 // Public list of OPEN job positions for the careers page. Service-role read,
 // returns only open positions and only public-safe fields (no created_by etc.).
-export async function GET(req: Request) {
+export async function GET(req: Request) { return withCors(req, await handle(req), METHODS) }
+
+async function handle(req: Request) {
   const admin = createAdminClient()
   if (!admin) return NextResponse.json({ positions: [] })
   // IP rate limit: 60 reads per minute (generous — read-only listing).

@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast'
 import { createClient } from '@/lib/supabase/client'
 import { logAction } from '@/lib/audit'
 import { formatDate } from '@/lib/utils'
+import { withinGeofence } from '@/lib/geo'
 import { useRouter } from 'next/navigation'
 
 export interface Geofence { id: string; name: string; latitude: number | null; longitude: number | null; radius_m: number; active: boolean; notes: string | null }
@@ -56,9 +57,43 @@ const LOG_EMPTY = { onboarding_id: '', crew_name: '', geofence_id: '', log_date:
 function Logs({ projectId, geofences, crew, rows, crewName, zoneName, userId, canManage, canDelete }: { projectId: string; geofences: Geofence[]; crew: CrewOpt[]; rows: AttLog[]; crewName: (id: string | null) => string | undefined; zoneName: (id: string | null) => string; userId: string; canManage: boolean; canDelete: boolean }) {
   const router = useRouter(); const toast = useToast()
   const [open, setOpen] = useState(false); const [saving, setSaving] = useState(false)
+  const [gpsLoading, setGpsLoading] = useState(false)
   const [form, setForm] = useState(LOG_EMPTY)
 
   function openNew() { setForm(LOG_EMPTY); setOpen(true) }
+
+  // GPS check-in: capture one location fix and require it to be within the
+  // selected work zone's radius. Capture-on-action only — no tracking.
+  function gpsCheckIn() {
+    if (!form.onboarding_id && !form.crew_name.trim()) return toast.error('Pick a crew member or enter a name')
+    const zone = geofences.find(g => g.id === form.geofence_id)
+    if (!zone) return toast.error('Pick a work zone to check in against')
+    if (zone.latitude == null || zone.longitude == null) return toast.error('That zone has no coordinates set')
+    if (!navigator.geolocation) return toast.error('Geolocation not available on this device')
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const check = withinGeofence(pos.coords.latitude, pos.coords.longitude, zone)
+        if (!check) { setGpsLoading(false); return toast.error('That zone has no coordinates set') }
+        if (!check.ok) { setGpsLoading(false); return toast.error(`You're ${check.distance}m from ${zone.name} — must be within ${zone.radius_m}m to check in`) }
+        const person = crew.find(c => c.id === form.onboarding_id)
+        const supabase = createClient()
+        const { data, error } = await supabase.from('attendance_logs').insert({
+          project_id: projectId, onboarding_id: form.onboarding_id || null,
+          crew_name: person?.full_name ?? (form.crew_name || null), geofence_id: zone.id,
+          log_date: new Date().toISOString().slice(0, 10), check_in_at: new Date().toISOString(),
+          method: 'gps', consent_ok: true, latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+          notes: form.notes || null, created_by: userId,
+        }).select().single()
+        setGpsLoading(false)
+        if (error || !data) { toast.error("Couldn't save"); return }
+        await logAction('create', 'attendance_logs', data.id, undefined, { method: 'gps', zone: zone.name, distance_m: check.distance })
+        toast.success(`Checked in — ${check.distance}m from ${zone.name}`); setOpen(false); router.refresh()
+      },
+      () => { setGpsLoading(false); toast.error('Could not get your location') },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault()
     if (!form.onboarding_id && !form.crew_name.trim()) return toast.error('Pick a crew member or enter a name')
@@ -126,9 +161,11 @@ function Logs({ projectId, geofences, crew, rows, crewName, zoneName, userId, ca
             <Input label="Check-out" type="datetime-local" value={form.check_out_at} onChange={e => setForm({ ...form, check_out_at: e.target.value })} />
           </div>
           <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+          <p className="text-[11px] text-[#8888aa] flex items-center gap-1.5"><Crosshair size={12} /> GPS check-in requires a work zone and only succeeds inside its radius. Manual logging needs no location.</p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving}>Log</Button>
+            <Button type="button" variant="secondary" icon={Crosshair} loading={gpsLoading} onClick={gpsCheckIn}>Check in with GPS</Button>
+            <Button type="submit" loading={saving}>Log manually</Button>
           </div>
         </form>
       </Modal>

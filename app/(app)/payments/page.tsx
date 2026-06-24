@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { requireProfile } from '@/lib/auth'
+import { WhatMatters } from '@/components/ui/WhatMatters'
+import { paymentsWhatMatters } from '@/lib/what-matters'
 import { PaymentsClient } from './PaymentsClient'
 
 export default async function PaymentsPage() {
@@ -28,5 +30,10 @@ export default async function PaymentsPage() {
 
   const approvalLimit = parseFloat(settings?.value ?? '') || 0
 
-  return <PaymentsClient requests={requests ?? []} projects={projects ?? []} comments={comments ?? []} vendors={vendors ?? []} budgetLines={budgetLines ?? []} userId={profile.id} role={role} approvalLimit={approvalLimit} />
+  return (
+    <div className="space-y-4">
+      <WhatMatters items={paymentsWhatMatters(requests ?? [])} />
+      <PaymentsClient requests={requests ?? []} projects={projects ?? []} comments={comments ?? []} vendors={vendors ?? []} budgetLines={budgetLines ?? []} userId={profile.id} role={role} approvalLimit={approvalLimit} />
+    </div>
+  )
 }

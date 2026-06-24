@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { requireProfile } from '@/lib/auth'
+import { WhatMatters } from '@/components/ui/WhatMatters'
+import { liabilitiesWhatMatters } from '@/lib/what-matters'
 import { LiabilitiesClient } from './LiabilitiesClient'
 
 export default async function LiabilitiesPage() {
@@ -13,5 +15,10 @@ export default async function LiabilitiesPage() {
     supabase.from('projects').select('id, name'),
   ])
 
-  return <LiabilitiesClient liabilities={liabilities ?? []} projects={projects ?? []} userId={profile.id} role={profile.role} />
+  return (
+    <div className="space-y-4">
+      <WhatMatters items={liabilitiesWhatMatters(liabilities ?? [])} />
+      <LiabilitiesClient liabilities={liabilities ?? []} projects={projects ?? []} userId={profile.id} role={profile.role} />
+    </div>
+  )
 }

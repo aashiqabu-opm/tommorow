@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth'
+import { WhatMatters } from '@/components/ui/WhatMatters'
+import { documentsWhatMatters } from '@/lib/what-matters'
 import { DocumentsClient } from './DocumentsClient'
 
 export default async function DocumentsPage() {
@@ -14,5 +16,10 @@ export default async function DocumentsPage() {
     supabase.from('projects').select('id, name'),
   ])
 
-  return <DocumentsClient documents={documents ?? []} projects={projects ?? []} userId={profile.id} role={role} />
+  return (
+    <div className="space-y-4">
+      <WhatMatters items={documentsWhatMatters(documents ?? [])} />
+      <DocumentsClient documents={documents ?? []} projects={projects ?? []} userId={profile.id} role={role} />
+    </div>
+  )
 }

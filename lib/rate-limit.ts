@@ -35,3 +35,37 @@ export async function isRateLimited(
     return false
   }
 }
+
+// Generic fixed-window limiter backed by the `rate_limits` table. Key is any
+// string (e.g. "pub:inquiry:<ip>"). Returns true if OVER the limit. Same
+// fail-open behaviour as above. Used by the public /api/public/* endpoints.
+export async function rateLimit(
+  admin: SupabaseClient,
+  key: string,
+  max = 10,
+  windowMs = 60_000,
+): Promise<boolean> {
+  const now = Date.now()
+  try {
+    const { data } = await admin
+      .from('rate_limits')
+      .select('count, window_start')
+      .eq('key', key)
+      .maybeSingle()
+
+    if (!data || now - new Date(data.window_start).getTime() > windowMs) {
+      await admin.from('rate_limits').upsert({ key, count: 1, window_start: new Date(now).toISOString() })
+      return false
+    }
+    if (data.count >= max) return true
+    await admin.from('rate_limits').update({ count: data.count + 1 }).eq('key', key)
+    return false
+  } catch {
+    return false
+  }
+}
+
+// Best-effort client IP from the standard proxy header (Vercel sets it).
+export function clientIp(req: Request): string {
+  return (req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()) || 'unknown'
+}

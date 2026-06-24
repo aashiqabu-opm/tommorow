@@ -33,9 +33,11 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthPage = request.nextUrl.pathname.startsWith('/login')
-  // Public website-ecosystem routes: intake pages (/public/*) + their endpoints (/api/public/*)
-  const isPublicRoute = request.nextUrl.pathname.startsWith('/public') || request.nextUrl.pathname.startsWith('/api/public')
-  const isPublic = isAuthPage || request.nextUrl.pathname === '/' || isPublicRoute
+  // Public website-ecosystem routes: intake pages (/public/*) + their endpoints (/api/public/*).
+  // Exact-or-slash match so a future route like /publications is NOT accidentally public.
+  const p = request.nextUrl.pathname
+  const isPublicRoute = p === '/public' || p.startsWith('/public/') || p === '/api/public' || p.startsWith('/api/public/')
+  const isPublic = isAuthPage || p === '/' || isPublicRoute
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()

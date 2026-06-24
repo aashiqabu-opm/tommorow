@@ -1,7 +1,7 @@
 {
   "name": "OPM Flash",
   "short_name": "OPM Flash",
-  "description": "OPM Control Center",
+  "description": "OPM Flash",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0a0f",

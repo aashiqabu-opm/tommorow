@@ -148,10 +148,7 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-5 border-b border-[#2a2a3a]">
           <div className="flex items-center gap-3">
-            <OPMLogo width={86} caption={false} className="text-white" />
-            <div className="text-[9px] font-medium text-[#8888aa] uppercase tracking-[0.18em] leading-tight">
-              Internal<br />Platform
-            </div>
+            <OPMLogo width={40} caption={false} className="rounded-lg" />
           </div>
           <button onClick={onClose} className="lg:hidden text-[#8888aa] hover:text-white">
             <X size={18} />

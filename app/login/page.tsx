@@ -43,9 +43,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
-          <OPMLogo width={171} className="text-white mb-7" />
-          <h1 className="text-xl font-semibold text-white tracking-tight">OFFICE</h1>
-          <p className="text-sm text-[#8888aa] mt-1">OPM Control Center</p>
+          <OPMLogo width={132} className="rounded-2xl" />
         </div>
 
         {/* Form */}

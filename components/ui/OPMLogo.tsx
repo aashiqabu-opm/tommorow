@@ -1,19 +1,19 @@
 import Image from 'next/image'
 
-// Official OPM Cinemas logo (white version, includes CINEMAS lettering)
+// OPM Flash app logo — square gold mark with the "OPM FLASH" wordmark baked in.
 interface OPMLogoProps {
   className?: string
   width?: number
-  caption?: boolean // kept for call-site compatibility; the PNG already includes the CINEMAS text
+  caption?: boolean // kept for call-site compatibility (no-op; the PNG includes the wordmark)
 }
 
 export function OPMLogo({ className = '', width = 200 }: OPMLogoProps) {
   return (
     <Image
-      src="/opm-logo-white.png"
-      alt="OPM Cinemas"
-      width={900}
-      height={326}
+      src="/opm-flash-logo.png"
+      alt="OPM Flash"
+      width={1254}
+      height={1254}
       priority
       className={className}
       style={{ width, height: 'auto' }}

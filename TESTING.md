@@ -3,6 +3,14 @@
 Run this once with **live data** before relying on the app. Tick each box. Anything
 that fails, note the screen + the error text.
 
+## Automated unit tests — `npm test`
+A fast **vitest** suite covers the pure / security-critical logic — no DB, no network, no AI:
+- **EP/GM finance redaction** (`test/oversight.test.ts`) — asserts an Operations/Production brief can never carry bank balances, cash position, or row-level transaction entries.
+- **Brief profile boundary** (`test/brief-profiles.test.ts`) — EP/GM use the redacted "oversight" finance, never the full snapshot; only the founder writes to `founder_briefs`.
+- **What Matters builders** (`test/what-matters.test.ts`, ships with that feature) — the page-scoped focus logic.
+
+Run `npm test` (or `npx vitest`) before pushing changes to those modules; keep the redaction tests green.
+
 ## 0. Database setup (do first)
 - [ ] Run the **consolidated migration** in Supabase (all tables/policies). Expect "Success. No rows returned."
 - [ ] Run **`migration-hardening.sql`** last (period lock + AI usage).

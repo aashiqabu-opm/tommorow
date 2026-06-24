@@ -153,6 +153,41 @@ async function handleInbound(req: Request) {
   // ── Text commands ──
   const cmd = body.toLowerCase()
 
+  // ── Incident reply (1/2/3) to a 🔴 OPM CRITICAL ALERT — founder only ──
+  // 1 = "I'll handle it" (stop paging), 2 = "Try again" (re-check next tick),
+  // 3 = "Take offline" (recorded; the watchdog never touches infra itself).
+  const incidentReply = body.match(/^([123])\b([\s\S]*)$/)
+  if (incidentReply && profile.role === 'founder') {
+    const choice = incidentReply[1]
+    const note = (incidentReply[2] ?? '').trim()
+    const { data: incident } = await admin
+      .from('agent_incidents')
+      .select('id, service')
+      .eq('aashiq_notified', true)
+      .in('status', ['escalated', 'open', 'acknowledged'])
+      .order('last_notified_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+    if (!incident) {
+      return xml(twimlMessage('No open incident is awaiting your instruction right now.'))
+    }
+    const response = `${choice}${note ? ` — ${note}` : ''}`
+    const stamp = new Date().toISOString()
+    if (choice === '1') {
+      await admin.from('agent_incidents').update({ status: 'acknowledged', aashiq_response: response, updated_at: stamp }).eq('id', incident.id)
+      return xml(twimlMessage(`Got it — you're handling "${incident.service}". I'll stop paging and let you know if it recovers.`))
+    }
+    if (choice === '2') {
+      // Re-arm: clear the notify timestamp so the next monitor tick re-checks
+      // and re-pages if it's still failing.
+      await admin.from('agent_incidents').update({ status: 'open', aashiq_response: response, last_notified_at: null, updated_at: stamp }).eq('id', incident.id)
+      return xml(twimlMessage(`Will re-check "${incident.service}" on the next monitor cycle and alert you again if it's still down.`))
+    }
+    // choice === '3'
+    await admin.from('agent_incidents').update({ status: 'acknowledged', aashiq_response: response, updated_at: stamp }).eq('id', incident.id)
+    return xml(twimlMessage(`Noted for "${incident.service}". The watchdog won't take services offline itself — do that from Vercel/Supabase. I've paused paging on this incident.`))
+  }
+
   if (!body || cmd === 'help' || cmd === 'hi' || cmd === 'hello') {
     return xml(twimlMessage(
       'OPM Flash on WhatsApp:\n• Send a bill photo or PDF → I draft a payment for approval.' +

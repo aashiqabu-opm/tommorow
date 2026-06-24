@@ -126,7 +126,7 @@ function Breakdown({ projectId, canEdit, scenes, elems, locs, locName, onChange,
                       <Input label="Qty" type="number" value={elF.qty} onChange={(e: any) => setElF({ ...elF, qty: e.target.value })} className="w-16" />
                       <Button onClick={() => addEl(s.id)}>Add</Button><Button variant="ghost" onClick={() => setElOpen(null)}>×</Button>
                     </div>
-                  ) : <button onClick={() => setElOpen(s.id)} className="text-xs text-[#f5b301] hover:underline flex items-center gap-1"><Plus size={12} /> Add element</button>)}
+                  ) : <button onClick={() => setElOpen(s.id)} className="text-xs text-[#D6B16F] hover:underline flex items-center gap-1"><Plus size={12} /> Add element</button>)}
                 </div>
               )}
             </div>
@@ -247,7 +247,7 @@ function Days({ projectId, canEdit, days, scenes, locs, locName, onChange, supab
                   </div>
                   {/* Requirements */}
                   <div>
-                    <div className="flex items-center justify-between mb-1"><div className="text-xs font-semibold text-white">Requirements</div>{canEdit && <button onClick={() => seedReqs(d.id)} className="text-xs text-[#f5b301] hover:underline">Pull from scenes</button>}</div>
+                    <div className="flex items-center justify-between mb-1"><div className="text-xs font-semibold text-white">Requirements</div>{canEdit && <button onClick={() => seedReqs(d.id)} className="text-xs text-[#D6B16F] hover:underline">Pull from scenes</button>}</div>
                     <div className="space-y-1">{reqs.length === 0 ? <span className="text-xs text-[#8888aa]">No requirements.</span> : reqs.map(r => (
                       <div key={r.id} className="flex items-center justify-between text-xs"><span className="text-white/90">{cat(r.category)} {r.label}{r.qty > 1 ? ` ×${r.qty}` : ''}{r.dept ? ` · ${r.dept}` : ''}</span>
                         {canEdit && <span className="flex items-center gap-2"><select value={r.status} onChange={e => reqStatus(r, e.target.value, d.id)} className="bg-[#13131a] border border-[#2a2a3a] rounded text-[11px] text-white px-1 py-0.5">{['pending', 'arranged', 'done'].map(s => <option key={s} value={s}>{s}</option>)}</select><button onClick={() => delReq(r.id, d.id)} className="text-[#8888aa] hover:text-red-400"><Trash2 size={11} /></button></span>}</div>
@@ -329,7 +329,7 @@ function DOOD({ days, scenes, elems, supabase }: any) {
       return w[i] ? 'W' : 'H'
     })
   }
-  const color = (c: string) => c === 'H' ? 'text-amber-300' : c.includes('S') || c.includes('F') ? 'text-[#f5b301]' : c === 'W' ? 'text-emerald-300' : 'text-transparent'
+  const color = (c: string) => c === 'H' ? 'text-amber-300' : c.includes('S') || c.includes('F') ? 'text-[#D6B16F]' : c === 'W' ? 'text-emerald-300' : 'text-transparent'
 
   return (
     <div>

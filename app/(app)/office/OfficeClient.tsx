@@ -170,7 +170,7 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
             {notices.map(n => (
               <div key={n.id} className="px-5 py-3.5 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-white flex items-center gap-2">{n.pinned && <Pin size={12} className="text-[#f5b301]" />}{n.title}</div>
+                  <div className="text-sm font-medium text-white flex items-center gap-2">{n.pinned && <Pin size={12} className="text-[#D6B16F]" />}{n.title}</div>
                   {n.body && <div className="text-xs text-[#aaaacc] mt-0.5 whitespace-pre-wrap">{n.body}</div>}
                   <div className="text-[11px] text-[#5a5a7a] mt-1">{formatDate(n.created_at)}</div>
                 </div>
@@ -189,7 +189,7 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
       {/* Filters: department + My Tasks */}
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={() => setMineOnly(m => !m)}
-          className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${mineOnly ? 'bg-[#f5b301]/15 border-[#f5b301]/40 text-[#f5b301]' : 'bg-[#13131a] border-[#2a2a3a] text-[#8888aa] hover:text-white'}`}>
+          className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${mineOnly ? 'bg-[#D6B16F]/15 border-[#D6B16F]/40 text-[#D6B16F]' : 'bg-[#13131a] border-[#2a2a3a] text-[#8888aa] hover:text-white'}`}>
           <UserCircle size={13} className="inline mr-1 -mt-0.5" /> My Tasks{myOpen.length ? ` (${myOpen.length})` : ''}
         </button>
         <span className="w-px h-5 bg-[#2a2a3a] mx-1" />
@@ -216,7 +216,7 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${PRIORITY_CLS[t.priority]}`}>{t.priority}</span>
                         <span className="text-[10px] text-[#8888aa]">{OFFICE_DEPT_LABELS[t.department]}</span>
-                        {t.assigned_role && <span className="text-[10px] text-[#f5b301] inline-flex items-center gap-0.5"><UserCircle size={10} /> {ROLE_LABELS[t.assigned_role]}</span>}
+                        {t.assigned_role && <span className="text-[10px] text-[#D6B16F] inline-flex items-center gap-0.5"><UserCircle size={10} /> {ROLE_LABELS[t.assigned_role]}</span>}
                         {t.assignee?.full_name && <span className="text-[10px] text-[#aaaacc]">· {t.assignee.full_name}</span>}
                         {t.recurrence !== 'none' && <span className="text-[10px] text-[#8888aa] inline-flex items-center gap-0.5"><RefreshCw size={9} /> {t.recurrence}</span>}
                       </div>
@@ -271,7 +271,7 @@ export function OfficeClient({ tasks, notices, team, finance, userId, role }: Pr
         <div className="space-y-3">
           <Input label="Title *" value={nform.title} onChange={e => setNform({ ...nform, title: e.target.value })} />
           <Textarea label="Message" value={nform.body} onChange={e => setNform({ ...nform, body: e.target.value })} />
-          <label className="flex items-center gap-2 text-sm text-white cursor-pointer"><input type="checkbox" checked={nform.pinned} onChange={e => setNform({ ...nform, pinned: e.target.checked })} className="h-4 w-4 accent-amber-400" /><Pin size={13} className="text-[#f5b301]" /> Pin to top</label>
+          <label className="flex items-center gap-2 text-sm text-white cursor-pointer"><input type="checkbox" checked={nform.pinned} onChange={e => setNform({ ...nform, pinned: e.target.checked })} className="h-4 w-4 accent-amber-400" /><Pin size={13} className="text-[#D6B16F]" /> Pin to top</label>
           <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setNoticeOpen(false)}>Cancel</Button><Button onClick={saveNotice} loading={saving}>{editingNotice ? 'Save' : 'Post'}</Button></div>
         </div>
       </Modal>

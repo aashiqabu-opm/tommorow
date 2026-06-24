@@ -187,10 +187,10 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
                             isPersonal && 'border',
                             active
                               ? (isPersonal
-                                  ? 'bg-[#f5b301]/15 text-[#f5b301] border-[#f5b301]/40'
+                                  ? 'bg-[#D6B16F]/15 text-[#D6B16F] border-[#D6B16F]/40'
                                   : 'bg-white/10 text-white border border-white/15')
                               : (isPersonal
-                                  ? 'text-[#f5b301] border-[#f5b301]/25 hover:bg-[#f5b301]/10'
+                                  ? 'text-[#D6B16F] border-[#D6B16F]/25 hover:bg-[#D6B16F]/10'
                                   : 'text-[#8888aa] hover:text-white hover:bg-[#1a1a24]')
                           )}
                         >

@@ -62,11 +62,11 @@ export function ProductionSuite({ projectId, projectStatus, userId, canEditCasti
 
   return (
     <div className="bg-[#13131a] border border-[#2a2a3a] rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-1"><Film size={15} className="text-[#f5b301]" /><span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f5b301]">Production & Casting</span></div>
+      <div className="flex items-center gap-2 mb-1"><Film size={15} className="text-[#D6B16F]" /><span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D6B16F]">Production & Casting</span></div>
       <div className="flex gap-1 mb-4 border-b border-[#2a2a3a] overflow-x-auto">
         {TABS.map(([id, label, Icon]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${tab === id ? 'border-[#f5b301] text-white' : 'border-transparent text-[#8888aa] hover:text-white'}`}>
+            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${tab === id ? 'border-[#D6B16F] text-white' : 'border-transparent text-[#8888aa] hover:text-white'}`}>
             <Icon size={14} /> {label}
           </button>
         ))}
@@ -157,8 +157,8 @@ function Auditions({ projectId, rows, characters, canEdit, onChange, supabase, t
       {rows.length === 0 ? <Empty t="No auditions logged. Add applicants and track them through to callback/cast." /> : (
         <div className="space-y-2">{rows.map(r => (
           <div key={r.id} className="flex items-center justify-between bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-4 py-3">
-            <div className="min-w-0"><div className="text-sm text-white font-medium flex items-center gap-2">{r.applicant_name} {charName(r.character_id) && <span className="text-[#8888aa] font-normal">for {charName(r.character_id)}</span>} {badge(r.status)}{typeof r.ai_score === 'number' && <span className="text-[10px] text-[#f5b301]">{r.ai_score}/100</span>}</div>
-              <div className="text-xs text-[#8888aa] mt-0.5">{[r.age, r.location, r.contact].filter(Boolean).join(' · ')}{r.video_url && <a href={r.video_url} target="_blank" rel="noreferrer" className="ml-2 text-[#f5b301] inline-flex items-center gap-1">tape <ExternalLink size={11} /></a>}</div></div>
+            <div className="min-w-0"><div className="text-sm text-white font-medium flex items-center gap-2">{r.applicant_name} {charName(r.character_id) && <span className="text-[#8888aa] font-normal">for {charName(r.character_id)}</span>} {badge(r.status)}{typeof r.ai_score === 'number' && <span className="text-[10px] text-[#D6B16F]">{r.ai_score}/100</span>}</div>
+              <div className="text-xs text-[#8888aa] mt-0.5">{[r.age, r.location, r.contact].filter(Boolean).join(' · ')}{r.video_url && <a href={r.video_url} target="_blank" rel="noreferrer" className="ml-2 text-[#D6B16F] inline-flex items-center gap-1">tape <ExternalLink size={11} /></a>}</div></div>
             {canEdit && <div className="flex items-center gap-2 shrink-0">
               <select value={r.status} onChange={e => setStatus(r, e.target.value)} className="bg-[#13131a] border border-[#2a2a3a] rounded text-xs text-white px-1.5 py-1">{['new', 'shortlist', 'maybe', 'pass', 'callback', 'cast'].map(s => <option key={s} value={s}>{s}</option>)}</select>
               <button onClick={() => del(r)} className="text-[#8888aa] hover:text-red-400"><Trash2 size={15} /></button></div>}
@@ -246,7 +246,7 @@ function Documents({ projectId, rows, canEdit, userId, onChange, supabase, toast
       <Modal open={open} onClose={() => setOpen(false)} title="Add document">
         <div className="space-y-3">
           <Select label="Type" value={docType} onChange={e => setDocType(e.target.value)} options={[['screenplay', 'Screenplay'], ['chart', 'Chart'], ['pdf', 'PDF'], ['reference', 'Reference'], ['other', 'Other']].map(([v, l]) => ({ value: v, label: l }))} />
-          <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#f5b301]/50 text-[#f5b301]' : 'text-white bg-[#13131a] border-[#2a2a3a] hover:border-white/30'}`}>
+          <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#D6B16F]/50 text-[#D6B16F]' : 'text-white bg-[#13131a] border-[#2a2a3a] hover:border-white/30'}`}>
             {analyzing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}{analyzing ? 'AI reading…' : file ? file.name : 'Upload screenplay / chart / PDF'}
             <input type="file" className="hidden" disabled={analyzing} onChange={e => onFile(e.target.files?.[0] ?? null)} />
           </label>
@@ -254,8 +254,8 @@ function Documents({ projectId, rows, canEdit, userId, onChange, supabase, toast
           {summary && <div className="text-xs text-[#aaaacc] bg-[#13131a] border border-[#2a2a3a] rounded-lg p-2"><span className="text-[#8888aa]">AI summary:</span> {summary}</div>}
           {extractedChars.length > 0 && (
             <div className="text-xs bg-[#13131a] border border-[#2a2a3a] rounded-lg p-2">
-              <div className="text-[#8888aa] mb-1 flex items-center gap-1"><Sparkles size={12} className="text-[#f5b301]" /> {extractedChars.length} characters found in the screenplay</div>
-              <button onClick={() => addCharacters(extractedChars)} className="flex items-center gap-1 text-[#f5b301] hover:underline"><UserPlus size={12} /> Add all to Characters</button>
+              <div className="text-[#8888aa] mb-1 flex items-center gap-1"><Sparkles size={12} className="text-[#D6B16F]" /> {extractedChars.length} characters found in the screenplay</div>
+              <button onClick={() => addCharacters(extractedChars)} className="flex items-center gap-1 text-[#D6B16F] hover:underline"><UserPlus size={12} /> Add all to Characters</button>
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save} loading={saving}>Save</Button></div>
@@ -289,7 +289,7 @@ function PressKit({ projectId, rows, canEdit, userId, projectStatus, onChange, s
   async function del(r: PressItem) { if (!confirm('Delete?')) return; if (r.file_path) await supabase.storage.from('documents').remove([r.file_path]); await supabase.from('project_press_kit').delete().eq('id', r.id); onChange() }
   return (
     <div>
-      {projectStatus !== 'released' && <div className="text-[11px] text-[#f5b301] bg-[#f5b301]/10 border border-[#f5b301]/20 rounded-lg px-3 py-2 mb-3">Assemble the press kit before release — posters, hi-res stills, logos & publicity materials in one place.</div>}
+      {projectStatus !== 'released' && <div className="text-[11px] text-[#D6B16F] bg-[#D6B16F]/10 border border-[#D6B16F]/20 rounded-lg px-3 py-2 mb-3">Assemble the press kit before release — posters, hi-res stills, logos & publicity materials in one place.</div>}
       {canEdit && <div className="flex justify-end mb-3"><Button icon={Plus} onClick={() => setOpen(true)}>Add asset</Button></div>}
       {rows.length === 0 ? <Empty t="No press-kit assets yet. Upload posters, hi-res stills, logos and publicity materials." /> : (
         <div className="space-y-2">{rows.map(r => (

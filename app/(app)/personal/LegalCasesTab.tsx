@@ -210,7 +210,7 @@ export function LegalCasesTab({ ownerId, rows, onChange }: { ownerId: string; ro
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-[#8888aa] mb-1">Court / legal document — AI reads it and fills the form</label>
-            <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#f5b301]/50 text-[#f5b301]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
+            <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#D6B16F]/50 text-[#D6B16F]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
               {analyzing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
               {analyzing ? 'AI reading the document…' : file ? file.name : 'Choose a file (notice / order / petition — PDF or photo)'}
               <input type="file" className="hidden" disabled={analyzing} onChange={e => onFile(e.target.files?.[0] ?? null)} />

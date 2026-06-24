@@ -121,12 +121,12 @@ export function VehicleTab({ ownerId, rows, onChange }: { ownerId: string; rows:
       )}
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit vehicle' : 'Add vehicle'}>
         <div className="space-y-3">
-          <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#f5b301]/50 text-[#f5b301]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
+          <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#D6B16F]/50 text-[#D6B16F]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
             {analyzing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
             {analyzing ? 'AI reading the document…' : 'Upload RC / insurance / PUC — AI fills dates'}
             <input type="file" className="hidden" disabled={analyzing} onChange={e => onFile(e.target.files?.[0] ?? null)} />
           </label>
-          {aiFilled && <div className="text-[11px] text-[#f5b301] flex items-center gap-1"><Sparkles size={12} /> AI-filled — review before saving.</div>}
+          {aiFilled && <div className="text-[11px] text-[#D6B16F] flex items-center gap-1"><Sparkles size={12} /> AI-filled — review before saving.</div>}
           <Input label="Name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Fortuner" />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Reg number" value={reg} onChange={e => setReg(e.target.value.toUpperCase())} />

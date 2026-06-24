@@ -170,7 +170,7 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
             key={c.value}
             onClick={() => setCompanyFilter(c.value)}
             className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors cursor-pointer ${
-              companyFilter === c.value ? 'border-[#f5b301] text-white' : 'border-transparent text-[#8888aa] hover:text-white'
+              companyFilter === c.value ? 'border-[#D6B16F] text-white' : 'border-transparent text-[#8888aa] hover:text-white'
             }`}
           >
             {c.label}
@@ -217,7 +217,7 @@ export function ProjectsClient({ projects, payments, liabilities, income, userId
                 </h3>
                 
                 {project.production_company && (
-                  <span className="text-[10px] font-semibold tracking-wider text-[#f5b301] uppercase mb-2 block">
+                  <span className="text-[10px] font-semibold tracking-wider text-[#D6B16F] uppercase mb-2 block">
                     {project.production_company}
                   </span>
                 )}

@@ -186,7 +186,7 @@ export default async function DashboardPage() {
           <h2 className="text-xs font-semibold text-[#8888aa] uppercase tracking-wider mb-3">Shoot this week</h2>
           {upcomingShoot.length === 0 ? <p className="text-sm text-[#8888aa]">No shoot days scheduled in the next 7 days.</p> : (
             <div className="space-y-2">{upcomingShoot.slice(0, 6).map((s, i) => (
-              <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 ${s.shoot_date === todayStr ? 'bg-[#f5b301]/10 border border-[#f5b301]/30' : 'bg-[#1a1a24] border border-[#2a2a3a]'}`}>
+              <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 ${s.shoot_date === todayStr ? 'bg-[#D6B16F]/10 border border-[#D6B16F]/30' : 'bg-[#1a1a24] border border-[#2a2a3a]'}`}>
                 <div className="text-sm text-white">{s.project?.name ?? 'Film'} <span className="text-[#8888aa]">· {s.location?.name ?? '—'}</span></div>
                 <div className="text-xs text-[#8888aa]">{s.shoot_date === todayStr ? 'TODAY' : formatDate(s.shoot_date)}{s.call_time ? ` · ${s.call_time}` : ''}</div>
               </div>

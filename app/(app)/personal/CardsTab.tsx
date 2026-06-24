@@ -55,7 +55,7 @@ export function CardsTab({ ownerId, cards, txns, onChange }: { ownerId: string; 
     <div className="space-y-6">
       <div className="bg-[#13131a] border border-[#2a2a3a] rounded-lg p-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs text-[#8888aa]">
-          <Mail size={14} className="text-[#f5b301]" /> Auto-imported from Gmail monthly — bank/card alerts, statements (incl. password-protected PDFs) & merchant receipts. Duplicates auto-reconciled{dupCount ? ` (${dupCount} matched)` : ''}.
+          <Mail size={14} className="text-[#D6B16F]" /> Auto-imported from Gmail monthly — bank/card alerts, statements (incl. password-protected PDFs) & merchant receipts. Duplicates auto-reconciled{dupCount ? ` (${dupCount} matched)` : ''}.
         </div>
         <Button variant="ghost" icon={syncing ? undefined : RefreshCw} onClick={syncNow} disabled={syncing}>
           {syncing ? <span className="flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Syncing…</span> : 'Sync now'}
@@ -64,7 +64,7 @@ export function CardsTab({ ownerId, cards, txns, onChange }: { ownerId: string; 
 
       {/* Prominent expense totals */}
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-1 bg-gradient-to-br from-[#1a1a24] to-[#13131a] border border-[#f5b301]/30 rounded-2xl p-6 flex flex-col justify-center">
+        <div className="md:col-span-1 bg-gradient-to-br from-[#1a1a24] to-[#13131a] border border-[#D6B16F]/30 rounded-2xl p-6 flex flex-col justify-center">
           <div className="text-[11px] uppercase tracking-[0.15em] text-[#8888aa]">Spent this month</div>
           <div className="text-4xl lg:text-5xl font-bold text-white mt-2">{fmtBig(monthSpend)}</div>
           <div className="text-sm text-[#8888aa] mt-2">This week: <span className="text-white font-medium">{fmtBig(weekSpend)}</span></div>
@@ -75,7 +75,7 @@ export function CardsTab({ ownerId, cards, txns, onChange }: { ownerId: string; 
             {(() => { const max = Math.max(1, ...monthlySplit.map(m => m.total)); return monthlySplit.map(m => (
               <div key={m.key} className="flex items-center gap-3">
                 <div className="w-10 text-xs text-[#8888aa] shrink-0">{m.label}</div>
-                <div className="flex-1 h-5 bg-[#1a1a24] rounded overflow-hidden"><div className="h-full bg-[#f5b301]/70 rounded" style={{ width: `${(m.total / max) * 100}%` }} /></div>
+                <div className="flex-1 h-5 bg-[#1a1a24] rounded overflow-hidden"><div className="h-full bg-[#D6B16F]/70 rounded" style={{ width: `${(m.total / max) * 100}%` }} /></div>
                 <div className="w-24 text-right text-sm text-white shrink-0">{fmtBig(m.total)}</div>
               </div>
             )) })()}
@@ -111,9 +111,9 @@ function GstBlock({ ownerId, rows, onChange, toast }: { ownerId: string; rows: P
   async function sendAll() { for (const r of eligible) await send(r) }
 
   return (
-    <div className="bg-[#13131a] border border-[#f5b301]/30 rounded-lg p-4">
+    <div className="bg-[#13131a] border border-[#D6B16F]/30 rounded-lg p-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Receipt size={15} className="text-[#f5b301]" /> GST inputs for filing {eligible.length ? `· ${formatCurrency(inputTotal)} credit` : ''}</h3>
+        <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Receipt size={15} className="text-[#D6B16F]" /> GST inputs for filing {eligible.length ? `· ${formatCurrency(inputTotal)} credit` : ''}</h3>
         {eligible.length > 1 && <Button onClick={sendAll}>Send all to accounts</Button>}
       </div>
       {eligible.length === 0 ? (

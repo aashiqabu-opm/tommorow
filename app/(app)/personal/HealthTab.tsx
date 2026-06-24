@@ -100,12 +100,12 @@ export function HealthTab({ ownerId, rows, onChange }: { ownerId: string; rows: 
       )}
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit policy' : 'Add policy'}>
         <div className="space-y-3">
-          <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#f5b301]/50 text-[#f5b301]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
+          <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#D6B16F]/50 text-[#D6B16F]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
             {analyzing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
             {analyzing ? 'AI reading the policy…' : 'Upload policy PDF — AI fills details'}
             <input type="file" className="hidden" disabled={analyzing} onChange={e => onFile(e.target.files?.[0] ?? null)} />
           </label>
-          {aiFilled && <div className="text-[11px] text-[#f5b301] flex items-center gap-1"><Sparkles size={12} /> AI-filled — review before saving.</div>}
+          {aiFilled && <div className="text-[11px] text-[#D6B16F] flex items-center gap-1"><Sparkles size={12} /> AI-filled — review before saving.</div>}
           <div className="grid grid-cols-2 gap-3">
             <Input label="Insurer" value={insurer} onChange={e => setInsurer(e.target.value)} />
             <Select label="Kind" value={kind} onChange={e => setKind(e.target.value as PersonalHealthPolicy['kind'])} options={Object.entries(KIND_LABELS).map(([value, label]) => ({ value, label }))} />

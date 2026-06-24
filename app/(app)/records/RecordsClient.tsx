@@ -275,8 +275,8 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 mb-1">
-        <Music size={16} className="text-[#f5b301]" />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f5b301]">OPM Records · Separate Company</span>
+        <Music size={16} className="text-[#D6B16F]" />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D6B16F]">OPM Records · Separate Company</span>
       </div>
       <PageHeader
         title="OPM Records"
@@ -304,7 +304,7 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
             key={id}
             onClick={() => setTab(id)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors cursor-pointer ${
-              tab === id ? 'border-[#f5b301] text-white' : 'border-transparent text-[#8888aa] hover:text-white'
+              tab === id ? 'border-[#D6B16F] text-white' : 'border-transparent text-[#8888aa] hover:text-white'
             }`}
           >
             <Icon size={14} /> {label}
@@ -323,7 +323,7 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
               {channels.slice(0, 5).map(c => (
                 <div key={c.id} className="bg-[#13131a] border border-[#2a2a3a] rounded-lg p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-[#f5b301]">
+                    <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-[#D6B16F]">
                       {c.platform === 'youtube' ? <Youtube size={16} /> : <Link2 size={16} />}
                     </div>
                     <div>
@@ -482,7 +482,7 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
               <div key={c.id} className="bg-[#1a1a24] border border-[#2a2a3a] hover:border-white/10 rounded-xl p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-3">
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-white/5 text-[#f5b301]">
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-white/5 text-[#D6B16F]">
                       {c.platform}
                     </span>
                     <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${c.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
@@ -505,7 +505,7 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
                 </div>
 
                 <div className="flex justify-between items-center border-t border-[#2a2a3a] pt-3">
-                  <a href={c.url} target="_blank" rel="noreferrer" className="text-xs text-[#f5b301] hover:underline flex items-center gap-1">
+                  <a href={c.url} target="_blank" rel="noreferrer" className="text-xs text-[#D6B16F] hover:underline flex items-center gap-1">
                     Open Channel <Eye size={12} />
                   </a>
                   <div className="space-x-3">
@@ -627,7 +627,7 @@ export function RecordsClient({ titles, channels, royalties, releases, userId, r
             <Input label="Distributor ref" value={relForm.distributor_ref} onChange={e => setRelForm({ ...relForm, distributor_ref: e.target.value })} placeholder="external release id" />
           </div>
           <div className="rounded-lg border border-[#2a2a3a] bg-[#13131a] p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#f5b301] mb-2">Delivery QC checklist</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#D6B16F] mb-2">Delivery QC checklist</p>
             <div className="grid grid-cols-2 gap-2">
               {([['art_ready', 'Cover art'], ['audio_ready', 'Masters / audio'], ['metadata_ready', 'Metadata + ISRC'], ['lyrics_ready', 'Lyrics'], ['rights_cleared', 'Rights cleared']] as const).map(([k, lbl]) => (
                 <label key={k} className="flex items-center gap-2 text-sm text-white cursor-pointer">

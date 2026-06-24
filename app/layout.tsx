@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'OPM Flash',
-  description: 'Internal office operating system for OPM Cinemas',
+  description: 'OPM Flash',
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon-32.png',

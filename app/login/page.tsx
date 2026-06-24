@@ -44,8 +44,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
           <OPMLogo width={171} className="text-white mb-7" />
-          <h1 className="text-xl font-semibold text-white tracking-tight">OFFICE</h1>
-          <p className="text-sm text-[#8888aa] mt-1">OPM Control Center</p>
+          <h1 className="text-xl font-semibold text-white tracking-tight">OPM Flash</h1>
         </div>
 
         {/* Form */}

@@ -82,7 +82,7 @@ function Logs({ projectId, geofences, crew, rows, crewName, zoneName, userId, ca
           project_id: projectId, onboarding_id: form.onboarding_id || null,
           crew_name: person?.full_name ?? (form.crew_name || null), geofence_id: zone.id,
           log_date: new Date().toISOString().slice(0, 10), check_in_at: new Date().toISOString(),
-          method: 'gps', consent_ok: true, latitude: pos.coords.latitude, longitude: pos.coords.longitude,
+          method: 'geofence', consent_ok: true, latitude: pos.coords.latitude, longitude: pos.coords.longitude,
           notes: form.notes || null, created_by: userId,
         }).select().single()
         setGpsLoading(false)

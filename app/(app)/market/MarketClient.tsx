@@ -141,7 +141,7 @@ export function MarketClient({ films, canRefresh }: Props) {
           {debug.text_preview && (
             <details>
               <summary className="text-[#8888aa] cursor-pointer">Model output preview</summary>
-              <pre className="mt-1 whitespace-pre-wrap text-[10px] text-[#8888aa] bg-[#0a0a0f] rounded-lg p-2 max-h-48 overflow-auto">{debug.text_preview}</pre>
+              <pre className="mt-1 whitespace-pre-wrap text-[10px] text-[#8888aa] bg-[#000000] rounded-lg p-2 max-h-48 overflow-auto">{debug.text_preview}</pre>
             </details>
           )}
         </div>

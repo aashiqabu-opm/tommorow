@@ -72,8 +72,8 @@ export function BriefView({ brief, error, label, healthLabel, showRunway }: Prop
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#f5b301]/20 to-[#f5b301]/5 border border-[#f5b301]/30 flex items-center justify-center">
-            <Brain size={20} className="text-[#f5b301]" />
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#D6B16F]/20 to-[#D6B16F]/5 border border-[#D6B16F]/30 flex items-center justify-center">
+            <Brain size={20} className="text-[#D6B16F]" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">{label}</h1>
@@ -109,7 +109,7 @@ export function BriefView({ brief, error, label, healthLabel, showRunway }: Prop
           {/* Headline */}
           <div className="bg-gradient-to-br from-[#1a1a24] to-[#13131a] border border-[#2a2a3a] rounded-2xl p-6">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-[#8888aa] mb-2">
-              <Sparkles size={12} className="text-[#f5b301]" /> Headline
+              <Sparkles size={12} className="text-[#D6B16F]" /> Headline
             </div>
             <p className="text-lg lg:text-2xl font-bold text-white leading-snug">{c.headline}</p>
           </div>

@@ -174,14 +174,14 @@ export function LegalTab({ ownerId, rows, onChange }: { ownerId: string; rows: P
           {/* Upload first — AI reads it and fills the rest */}
           <div>
             <label className="block text-xs font-medium text-[#8888aa] mb-1">File — AI reads it and fills the form</label>
-            <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#f5b301]/50 text-[#f5b301]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
+            <label className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 cursor-pointer border ${analyzing ? 'border-[#D6B16F]/50 text-[#D6B16F]' : 'text-white bg-[#1a1a24] border-[#2a2a3a] hover:border-white/30'}`}>
               {analyzing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
               {analyzing ? 'AI reading the document…' : file ? file.name : 'Choose a file (photo / PDF)'}
               <input type="file" className="hidden" disabled={analyzing} onChange={e => onFile(e.target.files?.[0] ?? null)} />
             </label>
           </div>
           {aiFilled && (
-            <div className="text-[11px] text-[#f5b301] flex items-center gap-1"><Sparkles size={12} /> AI-filled below — please review before saving.</div>
+            <div className="text-[11px] text-[#D6B16F] flex items-center gap-1"><Sparkles size={12} /> AI-filled below — please review before saving.</div>
           )}
           <Input label="Title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Flat sale deed — Kochi" />
           <Select label="Type" value={docType} onChange={e => setDocType(e.target.value)} options={DOC_TYPES.map(v => ({ value: v, label: v }))} />

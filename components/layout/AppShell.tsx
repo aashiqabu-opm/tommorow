@@ -16,7 +16,7 @@ export function AppShell({ profile, children }: AppShellProps) {
 
   return (
     <ToastProvider>
-      <div className="flex h-screen bg-[#0a0a0f]">
+      <div className="flex h-screen bg-[#000000]">
         <Sidebar
           role={profile.role}
           isOpen={sidebarOpen}

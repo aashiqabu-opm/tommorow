@@ -158,14 +158,14 @@ export function emailTemplate(title: string, bodyHtml: string): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:24px 0;">
     <tr><td align="center">
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
-        <tr><td style="background:#0a0a0f;padding:20px 28px;">
+        <tr><td style="background:#000000;padding:20px 28px;">
           <span style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:2px;">OPM&nbsp;OFFICE</span>
         </td></tr>
         <tr><td style="padding:28px;">
           <h2 style="margin:0 0 12px;font-size:18px;color:#18181b;">${title}</h2>
           <div style="font-size:14px;line-height:1.6;color:#3f3f46;">${bodyHtml}</div>
           <div style="margin-top:24px;">
-            <a href="${APP_URL}" style="display:inline-block;background:#0a0a0f;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;">Open OPM Flash</a>
+            <a href="${APP_URL}" style="display:inline-block;background:#000000;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;">Open OPM Flash</a>
           </div>
         </td></tr>
         <tr><td style="padding:16px 28px;border-top:1px solid #e4e4e7;">

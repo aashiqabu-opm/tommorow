@@ -109,7 +109,7 @@ export function AskOpm() {
         {messages.length === 0 && (
           <div className="text-center py-10">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 border border-white/10 mb-4">
-              <Sparkles size={22} className="text-[#f5b301]" />
+              <Sparkles size={22} className="text-[#D6B16F]" />
             </div>
             <p className="text-[#8888aa] text-sm mb-5">Ask anything about OPM Cinemas — finances, projects, contracts, production. I only see what your role is allowed to see.</p>
             <div className="grid sm:grid-cols-2 gap-2">

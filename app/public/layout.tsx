@@ -6,7 +6,7 @@ export const metadata = { title: 'OPM Cinemas' }
 // Standalone public layout — no app shell, no auth, no Toast context.
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
+    <div className="min-h-screen bg-[#000000] text-white flex flex-col">
       <header className="border-b border-[#2a2a3a]">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/public" className="text-lg font-bold tracking-tight">OPM Cinemas</Link>

@@ -17,7 +17,7 @@ export default function PublicHome() {
       <div className="grid sm:grid-cols-3 gap-4 mt-6">
         {CARDS.map(c => (
           <Link key={c.href} href={c.href} className="rounded-2xl border border-[#2a2a3a] bg-[#13131a] p-5 hover:border-white/30 transition-colors">
-            <c.icon size={20} className="text-[#f5b301]" />
+            <c.icon size={20} className="text-[#D6B16F]" />
             <div className="text-sm font-semibold text-white mt-3">{c.title}</div>
             <p className="text-xs text-[#8888aa] mt-1">{c.desc}</p>
           </Link>

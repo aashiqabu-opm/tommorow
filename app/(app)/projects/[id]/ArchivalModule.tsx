@@ -139,7 +139,7 @@ export function ArchivalModule({ projectId, canEdit, userId }: { projectId: stri
             return (
               <div key={cat.value} className="bg-[#1a1a24] border border-[#2a2a3a] rounded-xl p-4 flex flex-col h-full">
                 <div className="flex items-center gap-2 mb-2 border-b border-[#2a2a3a]/40 pb-2">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#f5b301]">
+                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#D6B16F]">
                     <Icon size={16} />
                   </div>
                   <div>

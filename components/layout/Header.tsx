@@ -33,7 +33,7 @@ export function Header({ profile, onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="h-16 border-b border-[#2a2a3a] bg-[#0a0a0f] flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
+    <header className="h-16 border-b border-[#2a2a3a] bg-[#000000] flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}

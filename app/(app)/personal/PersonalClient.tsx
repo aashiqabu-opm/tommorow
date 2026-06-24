@@ -169,7 +169,7 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1"><Lock size={16} className="text-[#f5b301]" /><span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f5b301]">Private</span></div>
+      <div className="flex items-center gap-2 mb-1"><Lock size={16} className="text-[#D6B16F]" /><span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#D6B16F]">Private</span></div>
       <PageHeader
         title="Personal"
         subtitle="Your private founder workspace — visible only to you."
@@ -199,12 +199,12 @@ export function PersonalClient({ ownerId, ledger, guarantees, accounts, taxProfi
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className="bg-[#13131a] border border-[#2a2a3a] hover:border-white/20 hover:bg-[#181824] p-5 rounded-2xl text-left transition-all group flex flex-col h-full focus:outline-none focus:ring-1 focus:ring-[#f5b301] cursor-pointer"
+                className="bg-[#13131a] border border-[#2a2a3a] hover:border-white/20 hover:bg-[#181824] p-5 rounded-2xl text-left transition-all group flex flex-col h-full focus:outline-none focus:ring-1 focus:ring-[#D6B16F] cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-3 group-hover:bg-[#f5b301]/10 group-hover:border-[#f5b301]/30 transition-all">
-                  <Icon size={18} className="text-[#8888aa] group-hover:text-[#f5b301] transition-all" />
+                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-3 group-hover:bg-[#D6B16F]/10 group-hover:border-[#D6B16F]/30 transition-all">
+                  <Icon size={18} className="text-[#8888aa] group-hover:text-[#D6B16F] transition-all" />
                 </div>
-                <h3 className="text-white font-semibold text-sm mb-1 group-hover:text-[#f5b301] transition-all">{item.title}</h3>
+                <h3 className="text-white font-semibold text-sm mb-1 group-hover:text-[#D6B16F] transition-all">{item.title}</h3>
                 <p className="text-[11px] text-[#8888aa] mb-4 flex-grow line-clamp-2">{item.description}</p>
                 <div className="mt-auto pt-2.5 border-t border-[#2a2a3a] w-full flex justify-between items-center text-[10px]">
                   <span className="text-[#5a5a7a] uppercase tracking-wider font-semibold">Status</span>
